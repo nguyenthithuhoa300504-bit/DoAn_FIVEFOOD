@@ -1,0 +1,57 @@
+3.	Tên dự án/ đề tài (dự kiến) thực hiện trong học phần
+Phát triển ứng dụng Web App đặt và giao đồ ăn trực tuyến FIVEFOOD
+4.	Tóm tắt đề tài
+
+Đề tài nhằm mục tiêu xây dựng hệ thống đặt và giao đồ ăn trực tuyến FIVEFOOD, hỗ trợ các nghiệp vụ cốt lõi từ việc duyệt thực đơn, quản lý giỏ hàng, áp dụng chương trình khuyến mãi, đặt hàng cho đến mô phỏng lộ trình giao nhận thời gian thực trên bản đồ số và thu thập phản hồi, đánh giá từ khách hàng.
+Hệ thống được thiết kế theo cấu trúc tách biệt giữa lớp giao diện (Frontend) và lớp xử lý nghiệp vụ/dữ liệu (Backend) qua giao thức RESTful API. Sự phân tầng rõ rệt này đảm bảo tính độc lập giữa các thành phần phát triển, cho phép hệ thống vận hành linh hoạt và sẵn sàng cho việc nâng cấp, chuyển đổi công nghệ hoặc mở rộng quy mô trong tương lai. Cụ thể, cấu trúc này giúp việc di chuyển phần giao diện người dùng sang các framework hiện đại như ReactJS và tái cấu trúc hệ thống API backend sang framework mạnh mẽ như NestJS được thực hiện dễ dàng mà không làm ảnh hưởng đến cơ sở dữ liệu hoặc luồng nghiệp vụ sẵn có. Đồng thời, thiết kế tách biệt giúp giảm thiểu phụ thuộc, tăng hiệu năng truyền tải dữ liệu và tối ưu hóa việc phân chia máy chủ lưu trữ (hosting) riêng biệt cho từng thành phần.
+
+5.	Mục tiêu và kết quả mong đợi 
+Mục tiêu của đề tài:
+•	Nghiên cứu và phát triển một hệ thống Web App đặt và giao đồ ăn trực tuyến FIVEFOOD, hỗ trợ đầy đủ quy trình từ đặt món, thanh toán, giao hàng đến đánh giá món ăn. 
+•	Thiết kế hệ thống theo kiến trúc phân tầng giữa Frontend và Backend thông qua RESTful API, đảm bảo tính bảo mật, khả năng mở rộng và dễ dàng nâng cấp trong tương lai. 
+•	Xây dựng cơ sở dữ liệu quan hệ trên SQL Server theo mô hình chuẩn hóa, kết hợp Stored Procedures, Triggers và Transaction nhằm đảm bảo tính toàn vẹn dữ liệu và tối ưu hiệu năng xử lý. 
+•	Xây dựng hệ thống xác thực và phân quyền người dùng bằng JWT, mã hóa mật khẩu bằng bcrypt, đảm bảo an toàn thông tin trong quá trình sử dụng hệ thống. 
+•	Tích hợp Chatbot AI hỗ trợ khách hàng tư vấn món ăn, giải đáp các câu hỏi thường gặp, hướng dẫn đặt hàng, hỗ trợ sử dụng voucher và thanh toán, góp phần nâng cao trải nghiệm người dùng. 
+•	Xây dựng hệ thống gợi ý món ăn thông minh (Recommender System) dựa trên lịch sử đặt món, sở thích người dùng, danh mục sản phẩm và mức độ phổ biến nhằm cá nhân hóa trải nghiệm khách hàng.
+•	Tích hợp cổng thanh toán trực tuyến (VNPay Sandbox hoặc MoMo Sandbox), hỗ trợ thanh toán an toàn, nhanh chóng và tự động cập nhật trạng thái giao dịch sau khi thanh toán thành công. 
+•	Tích hợp bản đồ số để hỗ trợ lựa chọn địa chỉ giao hàng và theo dõi trạng thái đơn hàng trong quá trình vận chuyển. 
+•	Xây dựng giao diện thân thiện, dễ sử dụng trên nhiều thiết bị, đáp ứng nhu cầu của khách hàng và quản trị viên. 
+* Kết quả mong đợi
+Hệ thống cho phép:
+1) Đối với Khách hàng (Giao diện Client):
+- Đăng ký và đăng nhập tài khoản an toàn qua cơ chế mã hóa JWT và mật khẩu băm (bcryptjs).
+- Xem danh sách món ăn phân trang mượt mà, lọc theo danh mục sản phẩm (Cơm, Trà sữa, Pizza, Đồ uống, Bánh...) và tìm kiếm món ăn theo từ khóa.
+- Thêm món ăn vào giỏ hàng và cập nhật số lượng trực tiếp. Hệ thống hỗ trợ cơ chế Giỏ hàng hỗn hợp (Hybrid Cart) – lưu giữ giỏ hàng trong LocalStorage khi chưa đăng nhập và tự động đồng bộ lên Database ngay sau khi đăng nhập thành công.
+- Yêu thích sản phẩm để lưu lại danh sách món ăn ưa thích tiện lợi.
+- Tiến hành đặt hàng bằng cách chọn địa chỉ trên bản đồ số tích hợp (sử dụng bản đồ Leaflet & OpenStreetMap) hoặc nhập địa chỉ thủ công
+- Thanh toán đơn hàng thông qua nhiều phương thức như Tiền mặt (COD) và cổng thanh toán trực tuyến (VNPay Sandbox hoặc MoMo Sandbox); hệ thống tự động cập nhật trạng thái giao dịch sau khi thanh toán thành công.
+- Áp dụng các mã khuyến mãi tự động tính toán số tiền giảm giá và cập nhật lại hóa đơn theo các điều kiện giá trị đơn hàng tối thiểu.
+- Theo dõi trạng thái đơn hàng thời gian thực qua giao diện bản đồ mô phỏng lộ trình di chuyển của shipper trên tuyến đường từ cửa hàng đến địa chỉ nhận.
+- Đánh giá chất lượng món ăn (từ 1 đến 5 sao kèm bình luận nhận xét) đối với các đơn hàng đã giao thành công.
+-Trò chuyện với Chatbot AI để được tư vấn món ăn phù hợp theo sở thích, ngân sách hoặc nhu cầu dinh dưỡng; đồng thời hỗ trợ giải đáp các câu hỏi thường gặp về thực đơn, chương trình khuyến mãi, quy trình đặt hàng và thanh toán. 
+- Hệ thống đề xuất món ăn thông minh (Recommender System) dựa trên lịch sử đặt món, món ăn yêu thích, danh mục sản phẩm và xu hướng lựa chọn của người dùng nhằm cá nhân hóa trải nghiệm mua sắm. 
+- Gợi ý các món ăn thường được mua kèm, món ăn tương tự hoặc món bán chạy để giúp khách hàng dễ dàng lựa chọn và tăng trải nghiệm sử dụng hệ thống. 
+- Xem và cập nhật thông tin cá nhân (Họ tên, SĐT, Địa chỉ) cùng khả năng đổi mật khẩu trực tiếp.
+2) Đối với Quản trị viên (Giao diện Admin Dashboard):
+- Đăng nhập tài khoản phân quyền quản trị cao nhất (Admin).
+-Quản lý người dùng (Thêm, sửa, khóa/mở khóa tài khoản khách hàng, phân quyền Admin).
+- Quản lý danh mục món ăn (Thêm, Sửa, Xóa).
+- Quản lý danh sách sản phẩm/món ăn (Thêm, Sửa, Xóa sản phẩm, cập nhật số lượng tồn kho, giá bán, hình ảnh và trạng thái tạm ngưng bán khi hết nguyên liệu).
+- Quản lý trạng thái đơn hàng: tiếp nhận, cập nhật trạng thái "Chờ xác nhận", "Đang giao", "Hoàn thành" hoặc "Đã hủy".
+- Quản lý các chương trình khuyến mãi, voucher giảm giá (tạo mã mới, cập nhật số lượng sử dụng, phần trăm/số tiền giảm, thiết lập ngày bắt đầu và kết thúc).
+-  Theo dõi thống kê số lượt sử dụng Chatbot AI.
+-  Theo dõi trạng thái các giao dịch thanh toán trực tuyến, hỗ trợ kiểm tra và xử lý các giao dịch thành công hoặc thất bại.
+Dashboard Analytics hỗ trợ thống kê và trực quan hóa dữ liệu thông qua các biểu đồ, bao gồm:
+•	Thống kê doanh thu theo ngày, tháng và năm. 
+•	Thống kê Top 10 món ăn bán chạy. 
+•	Thống kê tỷ lệ thanh toán giữa COD và thanh toán trực tuyến (VNPay/MoMo). 
+•	Thống kê số lượt sử dụng Chatbot AI nhằm đánh giá mức độ tương tác của người dùng.
+3) Đối với Hệ thống Cơ sở dữ liệu và Logic Nghiệp vụ:
+- Toàn bộ nghiệp vụ tạo hóa đơn và thanh toán được đóng gói trong Stored Procedure `sp_TaoHoaDon` bằng cơ chế TRANSACTION để đảm bảo tính nhất quán (ACID), tự động rollback nếu xảy ra bất kỳ lỗi hệ thống nào.
+- Tích hợp Trigger `trg_ChiTietHoaDon_Insert` tự động trừ số lượng sản phẩm tồn kho tương ứng ngay sau khi thêm chi tiết hóa đơn.
+- Tích hợp Trigger `trg_HoaDon_UpdateStatus` tự động xử lý khi hủy đơn hàng: hoàn trả lại số lượng tồn kho cho sản phẩm và cộng lại lượt sử dụng cho mã khuyến mãi đã dùng.
+- Middleware backend kiểm tra xác thực JWT trên từng endpoint yêu cầu bảo mật, tự động từ chối các request không hợp lệ. Hàm helper `apiFetch` ở frontend tự động xử lý token hết hạn và chuyển hướng đăng nhập thân thiện.
+- Tích hợp API của mô hình ngôn ngữ lớn (LLM) để xây dựng Chatbot AI hỗ trợ tư vấn khách hàng theo thời gian thực. 
+-  Xây dựng thuật toán Recommender System theo phương pháp Rule-based Recommendation, kết hợp lịch sử mua hàng, danh mục sản phẩm và mức độ phổ biến của món ăn để đề xuất món ăn phù hợp cho từng khách hàng. 
+-  Hệ thống xử lý giao dịch thanh toán trực tuyến thông qua API của cổng thanh toán, xác thực kết quả thanh toán và tự động cập nhật trạng thái đơn hàng. 
+-  Ghi nhận nhật ký hoạt động của người dùng và các giao dịch quan trọng nhằm hỗ trợ quản lý, kiểm tra và xử lý sự cố khi cần thiết
