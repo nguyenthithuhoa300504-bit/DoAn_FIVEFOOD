@@ -3,6 +3,8 @@ import { apiFetch } from '../utils/apiFetch';
 
 const CartContext = createContext();
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
@@ -38,7 +40,7 @@ export const CartProvider = ({ children }) => {
   const fetchCartFromServer = async () => {
     try {
       setLoading(true);
-      const data = await apiFetch('http://localhost:3000/api/cart');
+      const data = await apiFetch(`${API_BASE_URL}/cart`);
       setCart(data);
     } catch (err) {
       console.error('Không thể tải giỏ hàng từ server:', err.message);
@@ -50,7 +52,7 @@ export const CartProvider = ({ children }) => {
   // 3. Đăng ký tài khoản mới
   const registerUser = async (fullName, email, phone, password) => {
     try {
-      const data = await apiFetch('http://localhost:3000/api/auth/register', {
+      const data = await apiFetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         body: JSON.stringify({ fullName, email, phone, password }),
       });
@@ -63,7 +65,7 @@ export const CartProvider = ({ children }) => {
   // 4. Đăng nhập + Đồng bộ hóa giỏ hàng
   const loginUser = async (email, password) => {
     try {
-      const data = await apiFetch('http://localhost:3000/api/auth/login', {
+      const data = await apiFetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -78,7 +80,7 @@ export const CartProvider = ({ children }) => {
       const localCart = JSON.parse(localStorage.getItem('local_cart')) || [];
       if (localCart.length > 0) {
         try {
-          const syncedCart = await apiFetch('http://localhost:3000/api/cart/sync', {
+          const syncedCart = await apiFetch(`${API_BASE_URL}/cart/sync`, {
             method: 'POST',
             // Truyền token trực tiếp vì token state có thể chưa cập nhật kịp thời trong header mặc định
             headers: {
@@ -120,7 +122,7 @@ export const CartProvider = ({ children }) => {
     if (token) {
       // Đã đăng nhập -> Gửi request lên API Backend
       try {
-        const data = await apiFetch('http://localhost:3000/api/cart', {
+        const data = await apiFetch(`${API_BASE_URL}/cart`, {
           method: 'POST',
           body: JSON.stringify({
             productId: product.ProductID,
@@ -163,7 +165,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId) => {
     if (token) {
       try {
-        const data = await apiFetch(`http://localhost:3000/api/cart/${productId}`, {
+        const data = await apiFetch(`${API_BASE_URL}/cart/${productId}`, {
           method: 'DELETE'
         });
         setCart(data);

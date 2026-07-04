@@ -3,6 +3,9 @@ import { useCart } from './context/CartContext';
 import { apiFetch } from './utils/apiFetch';
 import './App.css';
 
+// Đọc địa chỉ API Backend từ biến môi trường của Vite
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 // Danh sách món ăn mẫu (Mockup) hiển thị dự phòng nếu database trống
 const MOCK_PRODUCTS = [
   { ProductID: 1, ProductName: 'Bánh Mì Thịt Nướng', CategoryID: 1, CategoryName: 'Bánh mì', Price: 25000, Inventory: 10, ImageURL: '🥖', IsActive: true },
@@ -55,7 +58,7 @@ function App() {
   // Tải danh sách sản phẩm từ backend
   const fetchProducts = async () => {
     try {
-      const data = await apiFetch('http://localhost:3000/api/products?limit=50');
+      const data = await apiFetch(`${API_BASE_URL}/products?limit=50`);
       if (data.products && data.products.length > 0) {
         setProducts(data.products);
       } else {
@@ -70,7 +73,7 @@ function App() {
   // Tải danh sách danh mục
   const fetchCategories = async () => {
     try {
-      const data = await apiFetch('http://localhost:3000/api/categories');
+      const data = await apiFetch(`${API_BASE_URL}/categories`);
       setCategories(data);
     } catch (err) {
       console.warn('Không tải được danh mục từ Backend.');
@@ -143,14 +146,14 @@ function App() {
     try {
       if (productForm.id) {
         // Cập nhật sản phẩm
-        await apiFetch(`http://localhost:3000/api/admin/products/${productForm.id}`, {
+        await apiFetch(`${API_BASE_URL}/admin/products/${productForm.id}`, {
           method: 'PUT',
           body: JSON.stringify(bodyData)
         });
         setAdminSuccess('Cập nhật món ăn thành công!');
       } else {
         // Tạo sản phẩm mới
-        await apiFetch('http://localhost:3000/api/admin/products', {
+        await apiFetch(`${API_BASE_URL}/admin/products`, {
           method: 'POST',
           body: JSON.stringify(bodyData)
         });
@@ -172,7 +175,7 @@ function App() {
     setAdminError('');
 
     try {
-      await apiFetch('http://localhost:3000/api/admin/categories', {
+      await apiFetch(`${API_BASE_URL}/admin/categories`, {
         method: 'POST',
         body: JSON.stringify(categoryForm)
       });
@@ -187,7 +190,7 @@ function App() {
   // Admin: Đọc lịch sử thay đổi của sản phẩm (Temporal Table)
   const loadProductHistory = async (productId) => {
     try {
-      const data = await apiFetch(`http://localhost:3000/api/admin/products/${productId}/history`);
+      const data = await apiFetch(`${API_BASE_URL}/admin/products/${productId}/history`);
       setSelectedHistory(data);
     } catch (err) {
       alert('Lỗi khi tải lịch sử: ' + err.message);
@@ -198,7 +201,7 @@ function App() {
   const handleSoftDelete = async (productId) => {
     if (!confirm('Bạn có chắc muốn ngừng bán sản phẩm này?')) return;
     try {
-      await apiFetch(`http://localhost:3000/api/admin/products/${productId}`, {
+      await apiFetch(`${API_BASE_URL}/admin/products/${productId}`, {
         method: 'DELETE'
       });
       setAdminSuccess('Đã ngừng bán món ăn thành công.');
@@ -211,7 +214,7 @@ function App() {
   // Admin: Bật lại sản phẩm
   const handleRestoreProduct = async (productId) => {
     try {
-      await apiFetch(`http://localhost:3000/api/admin/products/${productId}/status`, {
+      await apiFetch(`${API_BASE_URL}/admin/products/${productId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ isActive: true })
       });
