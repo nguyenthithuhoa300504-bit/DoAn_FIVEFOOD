@@ -11,11 +11,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     const config: sql.config = {
-      user: this.configService.get<string>('DB_USER'),
-      password: this.configService.get<string>('DB_PASSWORD'),
-      server: this.configService.get<string>('DB_HOST'),
-      database: this.configService.get<string>('DB_NAME'),
-      port: parseInt(this.configService.get<string>('DB_PORT'), 10) || 1433,
+      user: this.configService.get<string>('DB_USER') || 'sa',
+      password: this.configService.get<string>('DB_PASSWORD') || '',
+      server: this.configService.get<string>('DB_HOST') || 'localhost',
+      database: this.configService.get<string>('DB_NAME') || 'DOAN_H',
+      port: parseInt(this.configService.get<string>('DB_PORT') || '1433', 10),
       options: {
         encrypt: this.configService.get<string>('DB_ENCRYPT') === 'true',
         trustServerCertificate: this.configService.get<string>('DB_TRUST_SERVER_CERTIFICATE') === 'true',
