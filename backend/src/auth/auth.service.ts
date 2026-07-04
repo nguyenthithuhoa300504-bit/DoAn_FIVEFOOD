@@ -68,4 +68,30 @@ export class AuthService {
       },
     };
   }
+
+  /**
+   * Thay đổi mật khẩu người dùng
+   */
+  async changePassword(userId: number, oldPassword: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại.');
+    }
+
+    // Đọc thông tin user hoàn chỉnh từ DB (để lấy PasswordHash)
+    const userFull = await this.usersService.findByEmail(user.Email);
+
+    const isPasswordValid = await bcrypt.compare(oldPassword, userFull.PasswordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Mật khẩu cũ không chính xác.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    await this.usersService.updatePassword(userId, newPasswordHash);
+    return {
+      message: 'Đổi mật khẩu thành công.'
+    };
+  }
 }

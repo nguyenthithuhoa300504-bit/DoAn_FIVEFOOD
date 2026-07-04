@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
 
 const CartContext = createContext();
 
@@ -9,6 +10,18 @@ export const CartProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
   const [loading, setLoading] = useState(false);
+
+  // Lắng nghe sự kiện Token hết hạn từ apiFetch
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      logout();
+    };
+
+    window.addEventListener('auth-expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth-expired', handleAuthExpired);
+    };
+  }, []);
 
   // 1. Đồng bộ và tải giỏ hàng ban đầu
   useEffect(() => {
@@ -25,19 +38,10 @@ export const CartProvider = ({ children }) => {
   const fetchCartFromServer = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3000/api/cart', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCart(data);
-      } else if (res.status === 401) {
-        logout();
-      }
+      const data = await apiFetch('http://localhost:3000/api/cart');
+      setCart(data);
     } catch (err) {
-      console.error('Không thể kết nối đến server để tải giỏ hàng:', err);
+      console.error('Không thể tải giỏ hàng từ server:', err.message);
     } finally {
       setLoading(false);
     }
@@ -46,13 +50,10 @@ export const CartProvider = ({ children }) => {
   // 3. Đăng ký tài khoản mới
   const registerUser = async (fullName, email, phone, password) => {
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const data = await apiFetch('http://localhost:3000/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, phone, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Đăng ký thất bại');
       return { success: true, message: data.message };
     } catch (err) {
       return { success: false, message: err.message };
@@ -62,13 +63,10 @@ export const CartProvider = ({ children }) => {
   // 4. Đăng nhập + Đồng bộ hóa giỏ hàng
   const loginUser = async (email, password) => {
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const data = await apiFetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Đăng nhập thất bại');
 
       // Lưu Token và Thông tin User
       localStorage.setItem('token', data.accessToken);
@@ -79,24 +77,25 @@ export const CartProvider = ({ children }) => {
       // --- ĐỒNG BỘ GIỎ HÀNG LAI (HYBRID CART SYNC) ---
       const localCart = JSON.parse(localStorage.getItem('local_cart')) || [];
       if (localCart.length > 0) {
-        const syncRes = await fetch('http://localhost:3000/api/cart/sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${data.accessToken}`
-          },
-          body: JSON.stringify({
-            items: localCart.map(item => ({
-              productId: item.ProductID,
-              quantity: item.Quantity
-            }))
-          })
-        });
-        if (syncRes.ok) {
-          const syncedCart = await syncRes.json();
+        try {
+          const syncedCart = await apiFetch('http://localhost:3000/api/cart/sync', {
+            method: 'POST',
+            // Truyền token trực tiếp vì token state có thể chưa cập nhật kịp thời trong header mặc định
+            headers: {
+              'Authorization': `Bearer ${data.accessToken}`
+            },
+            body: JSON.stringify({
+              items: localCart.map(item => ({
+                productId: item.ProductID,
+                quantity: item.Quantity
+              }))
+            })
+          });
           setCart(syncedCart);
           // Làm sạch giỏ hàng cục bộ
           localStorage.removeItem('local_cart');
+        } catch (syncErr) {
+          console.error('Lỗi khi đồng bộ giỏ hàng:', syncErr.message);
         }
       }
 
@@ -121,30 +120,23 @@ export const CartProvider = ({ children }) => {
     if (token) {
       // Đã đăng nhập -> Gửi request lên API Backend
       try {
-        const res = await fetch('http://localhost:3000/api/cart', {
+        const data = await apiFetch('http://localhost:3000/api/cart', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({
             productId: product.ProductID,
             quantity: quantity
           })
         });
-        if (res.ok) {
-          const data = await res.json();
-          setCart(data);
-        }
+        setCart(data);
       } catch (err) {
-        console.error('Lỗi khi thêm giỏ hàng lên server:', err);
+        console.error('Lỗi khi thêm giỏ hàng lên server:', err.message);
       }
     } else {
       // Chưa đăng nhập -> Lưu trữ vào localStorage
       const localCart = JSON.parse(localStorage.getItem('local_cart')) || [];
       const existingIndex = localCart.findIndex(item => item.ProductID === product.ProductID);
 
-      if (existingIndex > 0 || existingIndex === 0) {
+      if (existingIndex > -1) {
         localCart[existingIndex].Quantity += quantity;
         if (localCart[existingIndex].Quantity <= 0) {
           localCart.splice(existingIndex, 1);
@@ -171,18 +163,12 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId) => {
     if (token) {
       try {
-        const res = await fetch(`http://localhost:3000/api/cart/${productId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        const data = await apiFetch(`http://localhost:3000/api/cart/${productId}`, {
+          method: 'DELETE'
         });
-        if (res.ok) {
-          const data = await res.json();
-          setCart(data);
-        }
+        setCart(data);
       } catch (err) {
-        console.error('Lỗi khi xóa giỏ hàng trên server:', err);
+        console.error('Lỗi khi xóa giỏ hàng trên server:', err.message);
       }
     } else {
       const localCart = JSON.parse(localStorage.getItem('local_cart')) || [];
