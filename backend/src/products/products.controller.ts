@@ -74,7 +74,7 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Post('categories')
+  @Post('admin/categories')
   @HttpCode(HttpStatus.CREATED)
   async createCategory(@Body() body: any) {
     const { categoryName, description } = body;
@@ -86,7 +86,7 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Put('categories/:id')
+  @Put('admin/categories/:id')
   async updateCategory(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
     const { categoryName, description } = body;
     const updated = await this.productsService.updateCategory(id, categoryName, description);
@@ -104,7 +104,7 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Post('products')
+  @Post('admin/products')
   @HttpCode(HttpStatus.CREATED)
   async createProduct(@Body() body: any) {
     const { productName, categoryId, price, inventory, imageUrl } = body;
@@ -116,7 +116,7 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Put('products/:id')
+  @Put('admin/products/:id')
   async updateProduct(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
     const { productName, categoryId, price, inventory, imageUrl } = body;
     const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl);
@@ -130,11 +130,28 @@ export class ProductsController {
   }
 
   /**
+   * Xóa mềm / Khóa món ăn (Admin)
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  @Delete('admin/products/:id')
+  async deleteProduct(@Param('id', ParseIntPipe) id: number) {
+    const updated = await this.productsService.toggleProductStatus(id, false);
+    if (!updated) {
+      throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để xóa mềm.`);
+    }
+    return {
+      message: 'Ngừng bán món ăn thành công (Xóa mềm).',
+      product: updated
+    };
+  }
+
+  /**
    * Tắt hoạt động (ngừng kinh doanh) hoặc bật lại món ăn
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Put('products/:id/status')
+  @Put('admin/products/:id/status')
   async toggleProductStatus(@Param('id', ParseIntPipe) id: number, @Body('isActive') isActive: boolean) {
     const updated = await this.productsService.toggleProductStatus(id, isActive);
     if (!updated) {
@@ -151,7 +168,7 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  @Get('products/:id/history')
+  @Get('admin/products/:id/history')
   async getProductHistory(@Param('id', ParseIntPipe) id: number) {
     const product = await this.productsService.getProductById(id);
     if (!product) {
