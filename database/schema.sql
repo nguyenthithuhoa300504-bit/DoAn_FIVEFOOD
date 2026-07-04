@@ -6,11 +6,11 @@
 -- Khởi tạo Database mới (Bỏ comment nếu muốn tạo mới hoàn toàn)
 USE master;
 GO
-DROP DATABASE IF EXISTS DOAN_T;
+DROP DATABASE IF EXISTS DOAN_H;
 GO
-CREATE DATABASE DOAN_T;
+CREATE DATABASE DOAN_H;
 GO
-USE DOAN_T;
+USE DOAN_H;
 GO
 -- ==========================================
 -- 1. XÓA BẢNG VÀ LOGIC CŨ (NẾU CÓ)
