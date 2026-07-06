@@ -75,6 +75,50 @@ export class CartService {
   }
 
   /**
+   * Thiết lập số lượng chính xác cho sản phẩm trong giỏ hàng (sử dụng cho PUT /api/cart/update)
+   */
+  async updateCartQuantity(userId: number, productId: number, quantity: number) {
+    if (quantity <= 0) {
+      return await this.removeFromCart(userId, productId);
+    }
+
+    // Kiểm tra xem món ăn đã có trong giỏ hàng chưa
+    const existing = await this.dbService.query(
+      `SELECT CartItemID FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
+      [
+        { name: 'UserID', type: sql.Int, value: userId },
+        { name: 'ProductID', type: sql.Int, value: productId }
+      ]
+    );
+
+    if (existing.recordset.length > 0) {
+      await this.dbService.query(
+        `UPDATE CartItems 
+         SET Quantity = @Quantity, UpdatedAt = GETDATE() 
+         WHERE UserID = @UserID AND ProductID = @ProductID`,
+        [
+          { name: 'UserID', type: sql.Int, value: userId },
+          { name: 'ProductID', type: sql.Int, value: productId },
+          { name: 'Quantity', type: sql.Int, value: quantity }
+        ]
+      );
+    } else {
+      // Nếu chưa có, thêm mới
+      await this.dbService.query(
+        `INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) 
+         VALUES (@UserID, @ProductID, @Quantity, GETDATE())`,
+        [
+          { name: 'UserID', type: sql.Int, value: userId },
+          { name: 'ProductID', type: sql.Int, value: productId },
+          { name: 'Quantity', type: sql.Int, value: quantity }
+        ]
+      );
+    }
+
+    return await this.getCart(userId);
+  }
+
+  /**
    * Xóa hẳn sản phẩm khỏi giỏ hàng
    */
   async removeFromCart(userId: number, productId: number) {

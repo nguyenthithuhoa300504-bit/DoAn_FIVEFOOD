@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, ParseIntPipe, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -9,6 +9,7 @@ export class CartController {
 
   /**
    * API Lấy giỏ hàng của user hiện tại
+   * GET /api/cart
    */
   @Get()
   async getCart(@Request() req) {
@@ -17,9 +18,10 @@ export class CartController {
   }
 
   /**
-   * API Thêm/Cập nhật số lượng món ăn trong giỏ hàng
+   * API Thêm món ăn vào giỏ hàng (cộng dồn số lượng)
+   * POST /api/cart/add
    */
-  @Post()
+  @Post('add')
   @HttpCode(HttpStatus.OK)
   async addToCart(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
@@ -28,16 +30,30 @@ export class CartController {
   }
 
   /**
-   * API Xóa hẳn sản phẩm khỏi giỏ hàng
+   * API Cập nhật số lượng món ăn trong giỏ hàng (thiết lập giá trị tuyệt đối)
+   * PUT /api/cart/update
    */
-  @Delete(':productId')
+  @Put('update')
+  @HttpCode(HttpStatus.OK)
+  async updateCartQuantity(@Request() req, @Body() body: any) {
+    const userId = req.user.userId;
+    const { productId, quantity } = body;
+    return await this.cartService.updateCartQuantity(userId, parseInt(productId, 10), parseInt(quantity, 10));
+  }
+
+  /**
+   * API Xóa hẳn sản phẩm khỏi giỏ hàng
+   * DELETE /api/cart/remove/:productId
+   */
+  @Delete('remove/:productId')
   async removeFromCart(@Request() req, @Param('productId', ParseIntPipe) productId: number) {
     const userId = req.user.userId;
     return await this.cartService.removeFromCart(userId, productId);
   }
 
   /**
-   * API Đồng bộ hóa giỏ hàng từ localStorage lên database khi đăng nhập
+   * API Đồng bộ hóa giỏ hàng từ localStorage lên database khi đăng nhập thành công
+   * POST /api/cart/sync
    */
   @Post('sync')
   @HttpCode(HttpStatus.OK)

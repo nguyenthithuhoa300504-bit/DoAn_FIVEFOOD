@@ -122,7 +122,7 @@ export const CartProvider = ({ children }) => {
     if (token) {
       // Đã đăng nhập -> Gửi request lên API Backend
       try {
-        const data = await apiFetch(`${API_BASE_URL}/cart`, {
+        const data = await apiFetch(`${API_BASE_URL}/cart/add`, {
           method: 'POST',
           body: JSON.stringify({
             productId: product.ProductID,
@@ -165,7 +165,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId) => {
     if (token) {
       try {
-        const data = await apiFetch(`${API_BASE_URL}/cart/${productId}`, {
+        const data = await apiFetch(`${API_BASE_URL}/cart/remove/${productId}`, {
           method: 'DELETE'
         });
         setCart(data);
