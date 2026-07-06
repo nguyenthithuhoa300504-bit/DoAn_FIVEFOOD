@@ -1,10 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from './context/CartContext';
 import { apiFetch } from './utils/apiFetch';
+import L from 'leaflet';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+// Tọa độ cửa hàng cố định (Hà Nội làm trung tâm)
+const STORE_COORDS = [21.0285, 105.8542];
+
+// Component bản đồ Leaflet tích hợp trực tiếp không qua react-leaflet để tránh conflict React 19
+function LeafletMap({ onLocationSelected }) {
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markerInstance = useRef(null);
+
+  useEffect(() => {
+    if (!mapInstance.current && mapRef.current) {
+      // Khởi tạo bản đồ tại Hà Nội
+      mapInstance.current = L.map(mapRef.current).setView(STORE_COORDS, 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(mapInstance.current);
+
+      // Thêm marker cửa hàng
+      L.marker(STORE_COORDS, {
+        icon: L.divIcon({
+          html: '<span style="font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🏪</span>',
+          className: 'store-emoji-icon',
+          iconAnchor: [15, 15]
+        })
+      }).addTo(mapInstance.current).bindPopup('<b>Cửa hàng FIVEFOOD</b><br/>Tọa độ: Hanoi Center').openPopup();
+
+      // Sự kiện click trên bản đồ để chọn tọa độ giao hàng
+      mapInstance.current.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        
+        if (markerInstance.current) {
+          markerInstance.current.setLatLng(e.latlng);
+        } else {
+          markerInstance.current = L.marker(e.latlng, {
+            icon: L.divIcon({
+              html: '<span style="font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">📍</span>',
+              className: 'user-emoji-icon',
+              iconAnchor: [15, 15]
+            })
+          }).addTo(mapInstance.current);
+        }
+
+        onLocationSelected(lat, lng);
+      });
+    }
+
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+        markerInstance.current = null;
+      }
+    };
+  }, [onLocationSelected]);
+
+  return (
+    <div style={{ margin: '10px 0' }}>
+      <label style={{ display: 'block', fontSize: '12px', color: '#ff5722', marginBottom: '5px', fontWeight: 'bold' }}>
+        🗺️ Click vào bản đồ để chọn vị trí giao hàng:
+      </label>
+      <div 
+        ref={mapRef} 
+        style={{ 
+          width: '100%', 
+          height: '220px', 
+          borderRadius: '12px', 
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)'
+        }} 
+      />
+    </div>
+  );
+}
 
 // Danh sách món ăn mẫu (Mockup) hiển thị dự phòng nếu database trống
 const MOCK_PRODUCTS = [
@@ -23,12 +99,13 @@ function App() {
     loginUser,
     logout,
     addToCart,
-    removeFromCart
+    removeFromCart,
+    fetchCartFromServer
   } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [activeTab, setActiveTab] = useState('menu'); // menu, admin, login, register
+  const [activeTab, setActiveTab] = useState('menu'); // menu, orders, admin, login, register
   
   // States cho Form Auth
   const [email, setEmail] = useState('');
@@ -54,6 +131,199 @@ function App() {
   const [adminSuccess, setAdminSuccess] = useState('');
   const [adminError, setAdminError] = useState('');
   const [selectedHistory, setSelectedHistory] = useState(null); // Lịch sử Temporal Table của sản phẩm được chọn
+
+  // --- States Phân hệ 4: Đặt hàng & Khuyến mãi ---
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [distance, setDistance] = useState(null);
+  const [duration, setDuration] = useState(null);
+  const [shippingFee, setShippingFee] = useState(0);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [checkoutError, setCheckoutError] = useState('');
+  
+  const [clientOrders, setClientOrders] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+
+  // Tải danh sách đơn hàng cho Khách hàng
+  const fetchClientOrders = async () => {
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/orders`);
+      setClientOrders(data);
+    } catch (err) {
+      console.error('Không tải được lịch sử đơn hàng:', err);
+    }
+  };
+
+  // Tải danh sách đơn hàng toàn hệ thống cho Admin
+  const fetchAdminOrders = async () => {
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/admin/orders`);
+      setAdminOrders(data);
+    } catch (err) {
+      console.error('Không tải được đơn hàng Admin:', err);
+    }
+  };
+
+  // Xem chi tiết đơn hàng
+  const loadOrderDetails = async (orderId, isAdmin = false) => {
+    try {
+      const url = isAdmin ? `${API_BASE_URL}/admin/orders/${orderId}` : `${API_BASE_URL}/orders/${orderId}`;
+      const data = await apiFetch(url);
+      setSelectedOrderDetails(data);
+    } catch (err) {
+      alert('Lỗi tải chi tiết đơn hàng: ' + err.message);
+    }
+  };
+
+  // Admin cập nhật trạng thái đơn hàng
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await apiFetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+      fetchAdminOrders();
+      if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
+        loadOrderDetails(orderId, true);
+      }
+    } catch (err) {
+      alert('Lỗi cập nhật trạng thái: ' + err.message);
+    }
+  };
+
+  // Khách hàng tự hủy đơn hàng (trạng thái Chờ xác nhận)
+  const handleCancelOrder = async (orderId) => {
+    if (!confirm('Bạn có chắc muốn hủy đơn hàng này không?')) return;
+    try {
+      await apiFetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+        method: 'PUT'
+      });
+      alert('Đã hủy đơn hàng thành công.');
+      fetchClientOrders();
+      if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
+        setSelectedOrderDetails(null); // Đóng modal chi tiết
+      }
+    } catch (err) {
+      alert('Hủy đơn hàng thất bại: ' + err.message);
+    }
+  };
+
+  // Tải khoảng cách qua OSRM API và tính phí ship tự động
+  const handleLocationSelected = async (lat, lng) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setCheckoutError('');
+    try {
+      // OSRM format: lon,lat
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/105.8542,21.0285;${lng},${lat}?overview=false`);
+      const data = await res.json();
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const distKm = route.distance / 1000;
+        setDistance(distKm);
+        setDuration(route.duration);
+        // Tính phí ship: 5000đ/km, tối thiểu 15.000đ
+        const fee = Math.max(15000, Math.round(distKm * 5000));
+        setShippingFee(fee);
+      } else {
+        setShippingFee(15000);
+      }
+    } catch (err) {
+      console.error('Lỗi tính quãng đường OSRM:', err);
+      setShippingFee(15000); // Mức phí giao mặc định
+    }
+  };
+
+  // Kiểm tra & áp dụng Voucher
+  const handleApplyPromo = async () => {
+    setPromoError('');
+    setPromoSuccess('');
+    if (!promoCodeInput.trim()) return;
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/orders/validate-promo`, {
+        method: 'POST',
+        body: JSON.stringify({
+          code: promoCodeInput.trim().toUpperCase(),
+          totalAmount: totalPrice
+        })
+      });
+      if (data.valid) {
+        setDiscountAmount(data.discountAmount);
+        setAppliedPromo(data.promoCode);
+        setPromoSuccess(`${data.message} (Giảm -${data.discountAmount.toLocaleString('vi-VN')} đ)`);
+      } else {
+        setPromoError(data.message);
+        setDiscountAmount(0);
+        setAppliedPromo('');
+      }
+    } catch (err) {
+      setPromoError(err.message || 'Lỗi khi áp dụng mã.');
+    }
+  };
+
+  // Tiến hành thanh toán / đặt đơn hàng
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+    setCheckoutError('');
+    
+    if (!shippingAddress.trim()) {
+      setCheckoutError('Vui lòng điền địa chỉ giao hàng.');
+      return;
+    }
+    if (!latitude || !longitude) {
+      setCheckoutError('Vui lòng bấm chọn vị trí giao hàng trên bản đồ số.');
+      return;
+    }
+
+    try {
+      const orderData = {
+        shippingAddress,
+        latitude,
+        longitude,
+        paymentMethod,
+        promoCode: appliedPromo || null,
+        shippingFee
+      };
+
+      const result = await apiFetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        body: JSON.stringify(orderData)
+      });
+
+      alert(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
+      
+      // Xóa các state tạm
+      setIsCheckoutOpen(false);
+      setShippingAddress('');
+      setLatitude(null);
+      setLongitude(null);
+      setDistance(null);
+      setDuration(null);
+      setShippingFee(0);
+      setPromoCodeInput('');
+      setAppliedPromo('');
+      setDiscountAmount(0);
+      setPromoSuccess('');
+      
+      // Đồng bộ lại giỏ hàng từ server để cập nhật trống
+      await fetchCartFromServer();
+      
+      // Chuyển sang tab xem lịch sử đơn hàng
+      setActiveTab('orders');
+      fetchClientOrders();
+    } catch (err) {
+      setCheckoutError(err.message || 'Lỗi xảy ra khi tạo đơn hàng.');
+    }
+  };
 
   // Tải danh sách sản phẩm từ backend
   const fetchProducts = async () => {
@@ -243,10 +513,19 @@ function App() {
             🍽 Thực đơn
           </button>
 
+          {isLoggedIn && user?.role !== 'Admin' && (
+            <button 
+              className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('orders'); fetchClientOrders(); }}
+            >
+              📦 Đơn hàng
+            </button>
+          )}
+
           {isLoggedIn && user?.role === 'Admin' && (
             <button 
               className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('admin'); setAdminSuccess(''); setAdminError(''); }}
+              onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}
             >
               🛠 Quản trị
             </button>
@@ -376,7 +655,14 @@ function App() {
                     </div>
                     <button 
                       className="btn btn-primary w-full btn-checkout"
-                      onClick={() => alert(isLoggedIn ? 'Tiến hành đặt hàng! (Phân hệ 4)' : 'Vui lòng đăng nhập để tiến hành đặt hàng.')}
+                      onClick={() => {
+                        if (!isLoggedIn) {
+                          alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                          setActiveTab('login');
+                        } else {
+                          setIsCheckoutOpen(true);
+                        }
+                      }}
                     >
                       Đặt Hàng Ngay
                     </button>
@@ -389,251 +675,348 @@ function App() {
 
         {/* Tab Admin (CRUD Thực đơn và Kho) */}
         {activeTab === 'admin' && isLoggedIn && user?.role === 'Admin' && (
-          <div className="admin-grid fade-in">
-            {/* Form quản lý */}
-            <div className="admin-forms">
-              {/* Product Form */}
-              <div className="glass-panel admin-form-card">
-                <h3>{productForm.id ? '✏️ Cập Nhật Món Ăn' : '➕ Thêm Món Ăn Mới'}</h3>
-                {adminSuccess && <div className="alert alert-success">{adminSuccess}</div>}
-                {adminError && <div className="alert alert-danger">{adminError}</div>}
-                
-                <form onSubmit={handleProductSubmit}>
-                  <div className="form-group">
-                    <label>Tên món ăn</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      value={productForm.productName}
-                      onChange={(e) => setProductForm({...productForm, productName: e.target.value})}
-                      placeholder="Ví dụ: Phở Gà Ngon" 
-                      required 
-                    />
-                  </div>
-
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>Danh mục</label>
-                      <select 
-                        className="form-control"
-                        value={productForm.categoryId}
-                        onChange={(e) => setProductForm({...productForm, categoryId: e.target.value})}
-                        required
-                      >
-                        <option value="">-- Chọn danh mục --</option>
-                        {categories.map(cat => (
-                          <option key={cat.CategoryID} value={cat.CategoryID}>{cat.CategoryName}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Biểu tượng emoji</label>
-                      <input 
-                        type="text" 
-                        className="form-control"
-                        value={productForm.imageUrl}
-                        onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
-                        placeholder="🍔" 
-                        required 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>Giá bán (đ)</label>
-                      <input 
-                        type="number" 
-                        className="form-control"
-                        value={productForm.price}
-                        onChange={(e) => setProductForm({...productForm, price: e.target.value})}
-                        placeholder="35000" 
-                        required 
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Số lượng kho</label>
-                      <input 
-                        type="number" 
-                        className="form-control"
-                        value={productForm.inventory}
-                        onChange={(e) => setProductForm({...productForm, inventory: e.target.value})}
-                        placeholder="50" 
-                        required 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="btn-group-admin">
-                    <button type="submit" className="btn btn-primary">{productForm.id ? 'Cập Nhật' : 'Thêm Mới'}</button>
-                    {productForm.id && (
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary"
-                        onClick={() => setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔' })}
-                      >
-                        Hủy
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-
-              {/* Category Form */}
-              <div className="glass-panel admin-form-card" style={{ marginTop: '20px' }}>
-                <h3>📁 Tạo Danh Mục Mới</h3>
-                <form onSubmit={handleCategorySubmit}>
-                  <div className="form-group">
-                    <label>Tên danh mục</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      value={categoryForm.categoryName}
-                      onChange={(e) => setCategoryForm({...categoryForm, categoryName: e.target.value})}
-                      placeholder="Ví dụ: Đồ ăn vặt" 
-                      required 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Mô tả</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      value={categoryForm.description}
-                      onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
-                      placeholder="Các món ăn vặt giòn ngon" 
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-secondary w-full">Tạo Danh Mục</button>
-                </form>
-              </div>
+          <div style={{ width: '100%' }}>
+            {/* Sub-tabs */}
+            <div className="admin-subtabs glass-panel" style={{ padding: '10px 20px', borderRadius: '12px', marginBottom: '20px', display: 'flex', gap: '15px' }}>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'products' ? 'active' : ''}`}
+                onClick={() => setAdminSubtab('products')}
+              >
+                🍔 Quản lý Thực đơn & Kho
+              </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'orders' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('orders'); fetchAdminOrders(); }}
+              >
+                📦 Quản lý Đơn hàng ({adminOrders.length})
+              </button>
             </div>
 
-            {/* List products for admin */}
-            <div className="admin-list glass-panel">
-              <div className="list-header">
-                <h2>Danh Sách Thực Đơn & Kho Hàng</h2>
-                <p className="text-muted">Quản lý và xem lịch sử cập nhật giá/kho (Temporal Tables)</p>
-              </div>
+            {adminSubtab === 'products' ? (
+              <div className="admin-grid fade-in">
+                {/* Form quản lý */}
+                <div className="admin-forms">
+                  {/* Product Form */}
+                  <div className="glass-panel admin-form-card">
+                    <h3>{productForm.id ? '✏️ Cập Nhật Món Ăn' : '➕ Thêm Món Ăn Mới'}</h3>
+                    {adminSuccess && <div className="alert alert-success">{adminSuccess}</div>}
+                    {adminError && <div className="alert alert-danger">{adminError}</div>}
+                    
+                    <form onSubmit={handleProductSubmit}>
+                      <div className="form-group">
+                        <label>Tên món ăn</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          value={productForm.productName}
+                          onChange={(e) => setProductForm({...productForm, productName: e.target.value})}
+                          placeholder="Ví dụ: Phở Gà Ngon" 
+                          required 
+                        />
+                      </div>
 
-              <div className="admin-products-table-container">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Ảnh</th>
-                      <th>Tên Món</th>
-                      <th>Danh Mục</th>
-                      <th>Giá Bán</th>
-                      <th>Kho</th>
-                      <th>Trạng Thái</th>
-                      <th>Hành Động</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map(prod => (
-                      <tr key={prod.ProductID}>
-                        <td><span className="table-emoji">{prod.ImageURL || '🍔'}</span></td>
-                        <td><strong>{prod.ProductName}</strong></td>
-                        <td>{prod.CategoryName}</td>
-                        <td className="text-orange">{prod.Price.toLocaleString('vi-VN')} đ</td>
-                        <td>{prod.Inventory}</td>
-                        <td>
-                          <span className={`status-pill ${prod.IsActive || prod.IsActive === undefined ? 'active' : 'inactive'}`}>
-                            {prod.IsActive || prod.IsActive === undefined ? 'Đang bán' : 'Ngừng bán'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="action-buttons-cell">
-                            <button 
-                              className="btn btn-secondary btn-icon-sm"
-                              title="Sửa món ăn"
-                              onClick={() => setProductForm({
-                                id: prod.ProductID,
-                                productName: prod.ProductName,
-                                categoryId: prod.CategoryID,
-                                price: prod.Price,
-                                inventory: prod.Inventory,
-                                imageUrl: prod.ImageURL || '🍔'
-                              })}
-                            >
-                              ✏️
-                            </button>
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label>Danh mục</label>
+                          <select 
+                            className="form-control"
+                            value={productForm.categoryId}
+                            onChange={(e) => setProductForm({...productForm, categoryId: e.target.value})}
+                            required
+                          >
+                            <option value="">-- Chọn danh mục --</option>
+                            {categories.map(cat => (
+                              <option key={cat.CategoryID} value={cat.CategoryID}>{cat.CategoryName}</option>
+                            ))}
+                          </select>
+                        </div>
 
-                            {prod.IsActive || prod.IsActive === undefined ? (
-                              <button 
-                                className="btn btn-danger btn-icon-sm"
-                                title="Ngừng bán (Xóa mềm)"
-                                onClick={() => handleSoftDelete(prod.ProductID)}
-                              >
-                                🔒
-                              </button>
-                            ) : (
-                              <button 
-                                className="btn btn-primary btn-icon-sm"
-                                title="Kích hoạt bán lại"
-                                onClick={() => handleRestoreProduct(prod.ProductID)}
-                              >
-                                🔓
-                              </button>
-                            )}
+                        <div className="form-group">
+                          <label>Biểu tượng emoji</label>
+                          <input 
+                            type="text" 
+                            className="form-control"
+                            value={productForm.imageUrl}
+                            onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
+                            placeholder="🍔" 
+                            required 
+                          />
+                        </div>
+                      </div>
 
-                            <button 
-                              className="btn btn-info btn-icon-sm"
-                              title="Xem lịch sử giá/kho"
-                              onClick={() => loadProductHistory(prod.ProductID)}
-                            >
-                              📜 Lịch sử
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label>Giá bán (đ)</label>
+                          <input 
+                            type="number" 
+                            className="form-control"
+                            value={productForm.price}
+                            onChange={(e) => setProductForm({...productForm, price: e.target.value})}
+                            placeholder="35000" 
+                            required 
+                          />
+                        </div>
 
-              {/* Selected product temporal history view */}
-              {selectedHistory && selectedHistory.history && (
-                <div className="temporal-history-modal glass-panel fade-in">
-                  <div className="history-modal-header">
-                    <h3>Lịch Sử Biến Động Giá & Tồn Kho (SQL Server Temporal)</h3>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setSelectedHistory(null)}>Đóng</button>
+                        <div className="form-group">
+                          <label>Số lượng kho</label>
+                          <input 
+                            type="number" 
+                            className="form-control"
+                            value={productForm.inventory}
+                            onChange={(e) => setProductForm({...productForm, inventory: e.target.value})}
+                            placeholder="50" 
+                            required 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="btn-group-admin">
+                        <button type="submit" className="btn btn-primary">{productForm.id ? 'Cập Nhật' : 'Thêm Mới'}</button>
+                        {productForm.id && (
+                          <button 
+                            type="button" 
+                            className="btn btn-secondary"
+                            onClick={() => setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔' })}
+                          >
+                            Hủy
+                          </button>
+                        )}
+                      </div>
+                    </form>
                   </div>
-                  <p className="text-muted text-sm" style={{ marginBottom: '15px' }}>
-                    Sản phẩm: <strong>{selectedHistory.history[0]?.ProductName || 'Món ăn'}</strong> (ID: {selectedHistory.history[0]?.ProductID})
-                  </p>
-                  
-                  <div className="history-timeline">
+
+                  {/* Category Form */}
+                  <div className="glass-panel admin-form-card" style={{ marginTop: '20px' }}>
+                    <h3>📁 Tạo Danh Mục Mới</h3>
+                    <form onSubmit={handleCategorySubmit}>
+                      <div className="form-group">
+                        <label>Tên danh mục</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          value={categoryForm.categoryName}
+                          onChange={(e) => setCategoryForm({...categoryForm, categoryName: e.target.value})}
+                          placeholder="Ví dụ: Đồ ăn vặt" 
+                          required 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Mô tả</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          value={categoryForm.description}
+                          onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
+                          placeholder="Các món ăn vặt giòn ngon" 
+                        />
+                      </div>
+                      <button type="submit" className="btn btn-secondary w-full">Tạo Danh Mục</button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* List products for admin */}
+                <div className="admin-list glass-panel">
+                  <div className="list-header">
+                    <h2>Danh Sách Thực Đơn & Kho Hàng</h2>
+                    <p className="text-muted">Quản lý và xem lịch sử cập nhật giá/kho (Temporal Tables)</p>
+                  </div>
+
+                  <div className="admin-products-table-container">
                     <table className="admin-table">
                       <thead>
                         <tr>
-                          <th>Thời điểm hiệu lực</th>
+                          <th>Ảnh</th>
+                          <th>Tên Món</th>
+                          <th>Danh Mục</th>
                           <th>Giá Bán</th>
-                          <th>Số lượng kho</th>
-                          <th>Kinh doanh</th>
+                          <th>Kho</th>
+                          <th>Trạng Thái</th>
+                          <th>Hành Động</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedHistory.history.map((hist, idx) => (
-                          <tr key={idx}>
-                            <td>{new Date(hist.SysStartTime).toLocaleString('vi-VN')}</td>
-                            <td className="text-orange">{hist.Price.toLocaleString('vi-VN')} đ</td>
-                            <td>{hist.Inventory}</td>
+                        {products.map(prod => (
+                          <tr key={prod.ProductID}>
+                            <td><span className="table-emoji">{prod.ImageURL || '🍔'}</span></td>
+                            <td><strong>{prod.ProductName}</strong></td>
+                            <td>{prod.CategoryName}</td>
+                            <td className="text-orange">{prod.Price.toLocaleString('vi-VN')} đ</td>
+                            <td>{prod.Inventory}</td>
                             <td>
-                              <span className={`status-pill ${hist.IsActive ? 'active' : 'inactive'}`}>
-                                {hist.IsActive ? 'Đang bán' : 'Ngừng bán'}
+                              <span className={`status-pill ${prod.IsActive || prod.IsActive === undefined ? 'active' : 'inactive'}`}>
+                                {prod.IsActive || prod.IsActive === undefined ? 'Đang bán' : 'Ngừng bán'}
                               </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons-cell">
+                                <button 
+                                  className="btn btn-secondary btn-icon-sm"
+                                  title="Sửa món ăn"
+                                  onClick={() => setProductForm({
+                                    id: prod.ProductID,
+                                    productName: prod.ProductName,
+                                    categoryId: prod.CategoryID,
+                                    price: prod.Price,
+                                    inventory: prod.Inventory,
+                                    imageUrl: prod.ImageURL || '🍔'
+                                  })}
+                                >
+                                  ✏️
+                                </button>
+
+                                {prod.IsActive || prod.IsActive === undefined ? (
+                                  <button 
+                                    className="btn btn-danger btn-icon-sm"
+                                    title="Ngừng bán (Xóa mềm)"
+                                    onClick={() => handleSoftDelete(prod.ProductID)}
+                                  >
+                                    🔒
+                                  </button>
+                                ) : (
+                                  <button 
+                                    className="btn btn-primary btn-icon-sm"
+                                    title="Kích hoạt bán lại"
+                                    onClick={() => handleRestoreProduct(prod.ProductID)}
+                                  >
+                                    🔓
+                                  </button>
+                                )}
+
+                                <button 
+                                  className="btn btn-info btn-icon-sm"
+                                  title="Xem lịch sử giá/kho"
+                                  onClick={() => loadProductHistory(prod.ProductID)}
+                                >
+                                  📜 Lịch sử
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Selected product temporal history view */}
+                  {selectedHistory && selectedHistory.history && (
+                    <div className="temporal-history-modal glass-panel fade-in">
+                      <div className="history-modal-header">
+                        <h3>Lịch Sử Biến Động Giá & Tồn Kho (SQL Server Temporal)</h3>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setSelectedHistory(null)}>Đóng</button>
+                      </div>
+                      <p className="text-muted text-sm" style={{ marginBottom: '15px' }}>
+                        Sản phẩm: <strong>{selectedHistory.history[0]?.ProductName || 'Món ăn'}</strong> (ID: {selectedHistory.history[0]?.ProductID})
+                      </p>
+                      
+                      <div className="history-timeline">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Thời điểm hiệu lực</th>
+                              <th>Giá Bán</th>
+                              <th>Số lượng kho</th>
+                              <th>Kinh doanh</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedHistory.history.map((hist, idx) => (
+                              <tr key={idx}>
+                                <td>{new Date(hist.SysStartTime).toLocaleString('vi-VN')}</td>
+                                <td className="text-orange">{hist.Price.toLocaleString('vi-VN')} đ</td>
+                                <td>{hist.Inventory}</td>
+                                <td>
+                                  <span className={`status-pill ${hist.IsActive ? 'active' : 'inactive'}`}>
+                                    {hist.IsActive ? 'Đang bán' : 'Ngừng bán'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* Quản lý đơn hàng Admin */
+              <div className="glass-panel fade-in" style={{ padding: '20px' }}>
+                <div className="list-header" style={{ marginBottom: '20px' }}>
+                  <h2>Đơn Hàng Toàn Hệ Thống</h2>
+                  <p className="text-muted">Quản lý và duyệt trạng thái đơn hàng của thực khách</p>
+                </div>
+
+                <div className="admin-products-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Mã Đơn</th>
+                        <th>Khách Hàng</th>
+                        <th>Ngày Đặt</th>
+                        <th>Tổng Cộng</th>
+                        <th>PT Thanh Toán</th>
+                        <th>Trạng Thái</th>
+                        <th>Hành Động</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminOrders.map(order => (
+                        <tr key={order.OrderID}>
+                          <td><strong>#{order.OrderID}</strong></td>
+                          <td>
+                            <div>{order.FullName}</div>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{order.Email}</span>
+                          </td>
+                          <td>{new Date(order.OrderDate).toLocaleString('vi-VN')}</td>
+                          <td className="text-orange">{order.FinalAmount.toLocaleString('vi-VN')} đ</td>
+                          <td>{order.PaymentMethod} ({order.PaymentStatus})</td>
+                          <td>
+                            <span className={`status-pill status-${order.Status}`}>
+                              {order.Status}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="action-buttons-cell">
+                              <button 
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => loadOrderDetails(order.OrderID, true)}
+                              >
+                                👁️ Chi tiết
+                              </button>
+                              {order.Status === 'Chờ xác nhận' && (
+                                <button 
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đang giao')}
+                                >
+                                  🚚 Giao đơn
+                                </button>
+                              )}
+                              {order.Status === 'Đang giao' && (
+                                <button 
+                                  className="btn btn-success btn-sm"
+                                  onClick={() => handleUpdateOrderStatus(order.OrderID, 'Hoàn thành')}
+                                >
+                                  ✓ Xong
+                                </button>
+                              )}
+                              {order.Status !== 'Hoàn thành' && order.Status !== 'Đã hủy' && (
+                                <button 
+                                  className="btn btn-danger btn-sm"
+                                  onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đã hủy')}
+                                >
+                                  ✕ Hủy
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -746,7 +1129,270 @@ function App() {
             </p>
           </div>
         )}
+        {/* Tab Lịch sử Đơn hàng (Khách hàng) */}
+        {activeTab === 'orders' && isLoggedIn && (
+          <div className="orders-container fade-in" style={{ width: '100%' }}>
+            <div className="list-header" style={{ marginBottom: '20px' }}>
+              <h2>Lịch Sử Đơn Hàng Của Bạn</h2>
+              <p className="text-muted">Theo dõi hành trình và trạng thái các món ăn bạn đã đặt</p>
+            </div>
+
+            {clientOrders.length === 0 ? (
+              <div className="glass-panel text-center" style={{ padding: '40px', borderRadius: '16px' }}>
+                <span style={{ fontSize: '48px' }}>📦</span>
+                <p style={{ marginTop: '15px', color: 'var(--text-muted)' }}>Bạn chưa có đơn hàng nào. Hãy đặt món ngay!</p>
+                <button className="btn btn-primary" style={{ marginTop: '10px' }} onClick={() => setActiveTab('menu')}>Xem Thực Đơn</button>
+              </div>
+            ) : (
+              <div className="orders-grid">
+                {clientOrders.map(order => (
+                  <div key={order.OrderID} className="order-card glass-panel" style={{ borderRadius: '16px' }}>
+                    <div className="order-header">
+                      <div>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>MÃ ĐƠN HÀNG</span>
+                        <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>#{order.OrderID}</h4>
+                      </div>
+                      <span className={`status-pill status-${order.Status}`}>
+                        {order.Status}
+                      </span>
+                    </div>
+
+                    <div className="order-details-grid">
+                      <div className="order-detail-item">
+                        <label>Ngày đặt</label>
+                        <span>{new Date(order.OrderDate).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <div className="order-detail-item">
+                        <label>Địa chỉ nhận</label>
+                        <span className="text-truncate" style={{ maxWidth: '200px', display: 'block' }}>{order.ShippingAddress}</span>
+                      </div>
+                      <div className="order-detail-item">
+                        <label>Thanh toán</label>
+                        <span>{order.PaymentMethod}</span>
+                      </div>
+                      <div className="order-detail-item">
+                        <label>Tổng thanh toán</label>
+                        <span className="text-orange">{order.FinalAmount.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => loadOrderDetails(order.OrderID, false)}
+                      >
+                        👁️ Xem chi tiết
+                      </button>
+                      {order.Status === 'Chờ xác nhận' && (
+                        <button 
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleCancelOrder(order.OrderID)}
+                        >
+                          ✕ Hủy đơn
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* --- PHÂN HỆ 4: CHECKOUT MODAL OVERLAY --- */}
+      {isCheckoutOpen && (
+        <div className="checkout-modal-overlay">
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px' }}>
+              <h2 style={{ margin: 0 }}>🛒 Xác Nhận Đặt Hàng</h2>
+              <button 
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' }}
+                onClick={() => setIsCheckoutOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {checkoutError && <div className="alert alert-danger" style={{ marginTop: '15px' }}>{checkoutError}</div>}
+
+            <form onSubmit={handlePlaceOrder} className="checkout-grid">
+              {/* Cột Trái: Nhập địa chỉ & Bản đồ số */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 'bold' }}>📍 Địa chỉ giao hàng</label>
+                  <input 
+                    type="text"
+                    className="form-control"
+                    placeholder="Số nhà, Tên đường, Quận/Huyện..."
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Leaflet Map */}
+                <LeafletMap onLocationSelected={handleLocationSelected} />
+
+                {latitude && longitude && (
+                  <div style={{ fontSize: '12px', background: 'rgba(255, 87, 34, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255, 87, 34, 0.2)' }}>
+                    🎯 Đã ghim tọa độ: <strong>{latitude.toFixed(6)}, {longitude.toFixed(6)}</strong>
+                    {distance !== null && (
+                      <div style={{ marginTop: '4px' }}>
+                        🛣️ Khoảng cách: <strong>{distance.toFixed(1)} km</strong> (Thời gian di chuyển dự kiến: {Math.round(duration / 60)} phút)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Cột Phải: Voucher, Thanh Toán & Tổng Tiền */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  {/* Voucher Section */}
+                  <div className="form-group">
+                    <label style={{ fontWeight: 'bold' }}>🎟️ Mã Giảm Giá (Voucher)</label>
+                    <div className="promo-input-group">
+                      <input 
+                        type="text"
+                        className="form-control"
+                        placeholder="Mã VOUCHER (Ví dụ: FIVEFOOD50)"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value)}
+                      />
+                      <button type="button" className="btn btn-secondary" onClick={handleApplyPromo}>Áp dụng</button>
+                    </div>
+                    {promoError && <div style={{ color: '#ff5252', fontSize: '13px', marginTop: '5px' }}>⚠️ {promoError}</div>}
+                    {promoSuccess && <div className="promo-success">✓ {promoSuccess}</div>}
+                  </div>
+
+                  {/* Payment Methods */}
+                  <div className="form-group" style={{ marginTop: '15px' }}>
+                    <label style={{ fontWeight: 'bold' }}>💳 Phương thức thanh toán</label>
+                    <div className="payment-methods">
+                      <label className="payment-option">
+                        <input 
+                          type="radio" 
+                          name="paymentMethod" 
+                          value="COD" 
+                          checked={paymentMethod === 'COD'}
+                          onChange={() => setPaymentMethod('COD')}
+                        />
+                        <span>💵 Thanh toán tiền mặt khi nhận hàng (COD)</span>
+                      </label>
+                      <label className="payment-option">
+                        <input 
+                          type="radio" 
+                          name="paymentMethod" 
+                          value="VNPAY" 
+                          checked={paymentMethod === 'VNPAY'}
+                          onChange={() => setPaymentMethod('VNPAY')}
+                        />
+                        <span>🏦 Ví điện tử VNPAY (Sandbox)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Table */}
+                <div>
+                  <div className="checkout-summary">
+                    <div className="checkout-summary-row">
+                      <span>Tạm tính hàng:</span>
+                      <span>{totalPrice.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    <div className="checkout-summary-row">
+                      <span>Phí giao hàng (OSRM):</span>
+                      <span>{shippingFee.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="checkout-summary-row" style={{ color: 'var(--success-color)' }}>
+                        <span>Giảm giá Voucher:</span>
+                        <span>-{discountAmount.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    )}
+                    <div className="checkout-summary-row total">
+                      <span>Tổng cộng thanh toán:</span>
+                      <span>{Math.max(0, totalPrice + shippingFee - discountAmount).toLocaleString('vi-VN')} đ</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                    <button type="submit" className="btn btn-primary w-full" style={{ padding: '12px' }}>
+                      🚀 Đặt Hàng Ngay
+                    </button>
+                    <button type="button" className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setIsCheckoutOpen(false)}>
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- CHI TIẾT ĐƠN HÀNG MODAL OVERLAY --- */}
+      {selectedOrderDetails && (
+        <div className="checkout-modal-overlay">
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px', maxWidth: '600px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>Chi Tiết Hóa Đơn #{selectedOrderDetails.OrderID}</h3>
+              <button 
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' }}
+                onClick={() => setSelectedOrderDetails(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
+              <div>👤 <strong>Khách hàng:</strong> {selectedOrderDetails.FullName} ({selectedOrderDetails.Phone})</div>
+              <div>📍 <strong>Địa chỉ giao:</strong> {selectedOrderDetails.ShippingAddress}</div>
+              <div>📅 <strong>Thời gian đặt:</strong> {new Date(selectedOrderDetails.OrderDate).toLocaleString('vi-VN')}</div>
+              <div>💳 <strong>Phương thức thanh toán:</strong> {selectedOrderDetails.PaymentMethod} ({selectedOrderDetails.PaymentStatus})</div>
+              <div>📊 <strong>Trạng thái đơn:</strong> <span className={`status-pill status-${selectedOrderDetails.Status}`}>{selectedOrderDetails.Status}</span></div>
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 10px 0' }}>📋 Món ăn đã đặt:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedOrderDetails.items?.map((detail, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px' }}>
+                      <span>{detail.ProductName} <strong>x{detail.Quantity}</strong></span>
+                      <span className="text-orange">{(detail.UnitPrice * detail.Quantity).toLocaleString('vi-VN')} đ</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tạm tính:</span>
+                  <span>{selectedOrderDetails.TotalAmount?.toLocaleString('vi-VN')} đ</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Phí ship (OSRM):</span>
+                  <span>{selectedOrderDetails.ShippingFee?.toLocaleString('vi-VN')} đ</span>
+                </div>
+                {selectedOrderDetails.DiscountAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--success-color)' }}>
+                    <span>Giảm giá Voucher:</span>
+                    <span>-{selectedOrderDetails.DiscountAmount?.toLocaleString('vi-VN')} đ</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', color: 'var(--primary-color)' }}>
+                  <span>Tổng tiền thanh toán:</span>
+                  <span>{selectedOrderDetails.FinalAmount?.toLocaleString('vi-VN')} đ</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button className="btn btn-secondary" onClick={() => setSelectedOrderDetails(null)}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

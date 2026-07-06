@@ -125,6 +125,7 @@ CREATE TABLE Orders (
     OrderDate DATETIME DEFAULT GETDATE(),
     TotalAmount DECIMAL(18,2) NOT NULL,
     DiscountAmount DECIMAL(18,2) DEFAULT 0,
+    ShippingFee DECIMAL(18,2) NOT NULL DEFAULT 0,
     FinalAmount DECIMAL(18,2) NOT NULL,
     PromotionID INT NULL,
     Status NVARCHAR(50) DEFAULT N'Chờ xác nhận', -- Chờ xác nhận, Đang giao, Hoàn thành, Đã hủy
@@ -308,110 +309,156 @@ CREATE PROCEDURE sp_TaoHoaDon
     @Longitude DECIMAL(9,6),
     @PaymentMethod NVARCHAR(50),
     @PromoCode VARCHAR(50) = NULL,
-    @NewOrderID INT OUTPUT
+    @ShippingFee DECIMAL(18,2) = 0
 AS
 BEGIN
     SET NOCOUNT ON;
     
+    DECLARE @TotalAmount DECIMAL(18,2) = 0;
+    DECLARE @DiscountAmount DECIMAL(18,2) = 0;
+    DECLARE @FinalAmount DECIMAL(18,2) = 0;
+    DECLARE @PromotionID INT = NULL;
+    DECLARE @DiscountPercentage INT = 0;
+    DECLARE @MaxDiscountAmount DECIMAL(18,2) = 0;
+    DECLARE @MinOrderValue DECIMAL(18,2) = 0;
+    DECLARE @UsageLimit INT = 0;
+    DECLARE @UsedCount INT = 0;
+    DECLARE @StartDate DATETIME;
+    DECLARE @EndDate DATETIME;
+    
     BEGIN TRY
         BEGIN TRANSACTION;
         
-        -- 1. Kiểm tra tài khoản người dùng hoạt động
-        IF NOT EXISTS (SELECT 1 FROM Users WHERE UserID = @UserID AND IsLocked = 0)
+        -- 1. Kiểm tra người dùng
+        IF NOT EXISTS (SELECT 1 FROM Users WHERE UserID = @UserID)
         BEGIN
-            THROW 50001, N'Người dùng không tồn tại hoặc tài khoản đã bị khóa.', 1;
+            THROW 50001, N'Người dùng không tồn tại.', 1;
         END;
-        
-        -- 2. Kiểm tra giỏ hàng của người dùng trên hệ thống
+
+        -- 2. Kiểm tra giỏ hàng
         IF NOT EXISTS (SELECT 1 FROM CartItems WHERE UserID = @UserID)
         BEGIN
-            THROW 50002, N'Giỏ hàng trống. Không thể thực hiện đặt hàng.', 1;
+            THROW 50002, N'Giỏ hàng của bạn đang trống.', 1;
         END;
-        
-        -- 3. Tính tổng giá trị đơn hàng trước giảm giá
-        DECLARE @TotalAmount DECIMAL(18,2);
-        SELECT @TotalAmount = SUM(p.Price * c.Quantity)
+
+        -- 3. Tính toán tổng tiền hàng
+        SELECT @TotalAmount = SUM(c.Quantity * p.Price)
         FROM CartItems c
         INNER JOIN Products p ON c.ProductID = p.ProductID
         WHERE c.UserID = @UserID;
-        
-        -- 4. Xử lý Voucher khuyến mãi (nếu có áp dụng)
-        DECLARE @PromotionID INT = NULL;
-        DECLARE @DiscountPercentage INT = 0;
-        DECLARE @MaxDiscountAmount DECIMAL(18,2) = 0;
-        DECLARE @MinOrderValue DECIMAL(18,2) = 0;
-        DECLARE @DiscountAmount DECIMAL(18,2) = 0;
-        
-        IF @PromoCode IS NOT NULL AND @PromoCode <> ''
+
+        -- 4. Kiểm tra tồn kho của từng sản phẩm trong giỏ hàng
+        IF EXISTS (
+            SELECT 1 
+            FROM CartItems c 
+            INNER JOIN Products p ON c.ProductID = p.ProductID 
+            WHERE c.UserID = @UserID AND c.Quantity > p.Inventory
+        )
+        BEGIN
+            DECLARE @ErrProdName NVARCHAR(255);
+            SELECT TOP 1 @ErrProdName = p.ProductName
+            FROM CartItems c 
+            INNER JOIN Products p ON c.ProductID = p.ProductID 
+            WHERE c.UserID = @UserID AND c.Quantity > p.Inventory;
+            
+            DECLARE @ErrMsg NVARCHAR(255) = N'Sản phẩm "' + @ErrProdName + N'" không đủ hàng trong kho.';
+            THROW 50003, @ErrMsg, 1;
+        END;
+
+        -- 5. Áp dụng mã giảm giá (nếu có)
+        IF @PromoCode IS NOT NULL AND LTRIM(RTRIM(@PromoCode)) <> ''
         BEGIN
             SELECT 
                 @PromotionID = PromotionID,
                 @DiscountPercentage = DiscountPercentage,
                 @MaxDiscountAmount = MaxDiscountAmount,
-                @MinOrderValue = MinOrderValue
+                @MinOrderValue = MinOrderValue,
+                @UsageLimit = UsageLimit,
+                @UsedCount = ISNULL(UsedCount, 0),
+                @StartDate = StartDate,
+                @EndDate = EndDate
             FROM Promotions
-            WHERE PromoCode = @PromoCode 
-              AND StartDate <= GETDATE() 
-              AND EndDate >= GETDATE()
-              AND UsedCount < UsageLimit;
-              
+            WHERE PromoCode = @PromoCode;
+
             IF @PromotionID IS NULL
             BEGIN
-                THROW 50003, N'Mã khuyến mãi không hợp lệ, đã hết hạn hoặc hết lượt dùng.', 1;
+                THROW 50004, N'Mã giảm giá không tồn tại.', 1;
             END;
-            
+
+            -- Kiểm tra ngày
+            IF GETDATE() < @StartDate OR GETDATE() > @EndDate
+            BEGIN
+                THROW 50005, N'Mã giảm giá đã hết hạn hoặc chưa đến ngày áp dụng.', 1;
+            END;
+
+            -- Kiểm tra lượt dùng
+            IF @UsedCount >= @UsageLimit
+            BEGIN
+                THROW 50006, N'Mã giảm giá đã hết lượt sử dụng.', 1;
+            END;
+
+            -- Kiểm tra giá trị đơn tối thiểu
             IF @TotalAmount < @MinOrderValue
             BEGIN
-                DECLARE @ErrMsg NVARCHAR(255) = N'Đơn hàng không đạt giá trị tối thiểu ' + CAST(@MinOrderValue AS NVARCHAR(50)) + N' để áp dụng mã giảm giá này.';
-                THROW 50004, @ErrMsg, 1;
+                DECLARE @MinValStr NVARCHAR(50) = CAST(CAST(@MinOrderValue AS INT) AS VARCHAR(50));
+                DECLARE @MinValErrMsg NVARCHAR(255) = N'Đơn hàng chưa đạt giá trị tối thiểu (' + @MinValStr + N' đ) để áp dụng mã.';
+                THROW 50007, @MinValErrMsg, 1;
             END;
-            
-            -- Tính số tiền giảm giá
+
+            -- Tính số tiền giảm
             SET @DiscountAmount = (@TotalAmount * @DiscountPercentage) / 100.0;
             IF @DiscountAmount > @MaxDiscountAmount
             BEGIN
                 SET @DiscountAmount = @MaxDiscountAmount;
             END;
         END;
-        
-        DECLARE @FinalAmount DECIMAL(18,2) = @TotalAmount - @DiscountAmount;
-        
-        -- 5. Kiểm tra tồn kho của tất cả mặt hàng trong giỏ hàng
-        IF EXISTS (
-            SELECT 1
-            FROM CartItems c
-            INNER JOIN Products p ON c.ProductID = p.ProductID
-            WHERE c.UserID = @UserID AND p.Inventory < c.Quantity
-        )
+
+        -- 6. Tính tổng tiền cuối cùng
+        SET @FinalAmount = @TotalAmount - @DiscountAmount + @ShippingFee;
+        IF @FinalAmount < 0
         BEGIN
-            THROW 50005, N'Một số món ăn trong giỏ hàng của bạn đã hết hoặc không còn đủ số lượng bán.', 1;
+            SET @FinalAmount = 0;
         END;
-        
-        -- 6. Tạo hóa đơn mới
-        INSERT INTO Orders (UserID, TotalAmount, DiscountAmount, FinalAmount, PromotionID, Status, ShippingAddress, Latitude, Longitude, PaymentMethod, PaymentStatus)
-        VALUES (@UserID, @TotalAmount, @DiscountAmount, @FinalAmount, @PromotionID, N'Chờ xác nhận', @ShippingAddress, @Latitude, @Longitude, @PaymentMethod, N'Chưa thanh toán');
+
+        -- 7. Tạo hóa đơn
+        DECLARE @NewOrderID INT;
+        INSERT INTO Orders (
+            UserID, OrderDate, TotalAmount, DiscountAmount, ShippingFee, FinalAmount, 
+            PromotionID, Status, ShippingAddress, Latitude, Longitude, PaymentMethod, PaymentStatus
+        )
+        VALUES (
+            @UserID, GETDATE(), @TotalAmount, @DiscountAmount, @ShippingFee, @FinalAmount,
+            @PromotionID, N'Chờ xác nhận', @ShippingAddress, @Latitude, @Longitude, @PaymentMethod, N'Chưa thanh toán'
+        );
         
         SET @NewOrderID = SCOPE_IDENTITY();
-        
-        -- 7. Chuyển giỏ hàng sang chi tiết đơn hàng (Trigger trg_ChiTietHoaDon_Insert sẽ tự chạy để giảm tồn kho)
+
+        -- 8. Thêm chi tiết hóa đơn
         INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice)
         SELECT @NewOrderID, c.ProductID, c.Quantity, p.Price
         FROM CartItems c
         INNER JOIN Products p ON c.ProductID = p.ProductID
         WHERE c.UserID = @UserID;
-        
-        -- 8. Cập nhật số lần sử dụng của Voucher
+
+        -- 9. Xóa giỏ hàng tạm của người dùng
+        DELETE FROM CartItems WHERE UserID = @UserID;
+
+        -- 10. Tăng số lượt đã sử dụng của Voucher
         IF @PromotionID IS NOT NULL
         BEGIN
             UPDATE Promotions
-            SET UsedCount = UsedCount + 1
+            SET UsedCount = ISNULL(UsedCount, 0) + 1
             WHERE PromotionID = @PromotionID;
         END;
-        
-        -- 9. Dọn sạch giỏ hàng của người dùng sau khi đặt thành công
-        DELETE FROM CartItems WHERE UserID = @UserID;
-        
+
         COMMIT TRANSACTION;
+        
+        -- Trả về dữ liệu để API Node.js đọc
+        SELECT 
+            @NewOrderID AS OrderID,
+            @FinalAmount AS FinalAmount,
+            N'Đơn hàng được tạo thành công.' AS Message;
+            
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0
