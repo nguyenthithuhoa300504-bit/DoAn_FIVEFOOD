@@ -1,0 +1,20 @@
+
+
+=== VNPAY MANUAL DEBUG ===
+Time: 2026-07-07T06:29:01.801Z
+SecretKey used: TTR32CK49S3YZL0CWEDGV8KZQEKAFRSD
+TMN_CODE: 76WDTVCT
+SignData: vnp_Amount=4000000&vnp_Command=pay&vnp_CreateDate=20260707132901&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh_toan_don_hang_33&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=33_1783405741801&vnp_Version=2.1.0
+SecureHash: b5002f01c0a56902ff2548943959e63a69556f3e22a852c0a3bf8ee8859945d691b0a21711b78e5cb305502e306e8f47647a9e3d6097da196adde22d13767d89
+FinalUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4000000&vnp_Command=pay&vnp_CreateDate=20260707132901&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh_toan_don_hang_33&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=33_1783405741801&vnp_Version=2.1.0&vnp_SecureHash=b5002f01c0a56902ff2548943959e63a69556f3e22a852c0a3bf8ee8859945d691b0a21711b78e5cb305502e306e8f47647a9e3d6097da196adde22d13767d89
+=======================
+
+
+=== VNPAY MANUAL DEBUG ===
+Time: 2026-07-07T06:47:14.248Z
+SecretKey used: 5G0WV88VI5FFPS7PGCWQ5G2W9M7PYDUT
+TMN_CODE: 76WDTVCT
+SignData: vnp_Amount=4000000&vnp_Command=pay&vnp_CreateDate=20260707134714&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh_toan_don_hang_34&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=34_1783406834247&vnp_Version=2.1.0
+SecureHash: 9a3494a68c625fc6dd957af583f2cfbbe35b864a334139400efedd1b806ac06962ddbc5c47ada01f7d81156bfb4b4f93562d4f6f2be73fc30f598b2257b5d0d1
+FinalUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4000000&vnp_Command=pay&vnp_CreateDate=20260707134714&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh_toan_don_hang_34&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=34_1783406834247&vnp_Version=2.1.0&vnp_SecureHash=9a3494a68c625fc6dd957af583f2cfbbe35b864a334139400efedd1b806ac06962ddbc5c47ada01f7d81156bfb4b4f93562d4f6f2be73fc30f598b2257b5d0d1
+=======================

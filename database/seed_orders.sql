@@ -12,6 +12,7 @@ PRINT 'Da cap nhat ton kho cac san pham len 50 de tranh thieu hang.';
 GO
 
 -- 2. Xóa sạch đơn hàng cũ để nạp dữ liệu sạch
+DELETE FROM Transactions;
 DELETE FROM OrderDetails;
 DELETE FROM Orders;
 DELETE FROM Promotions;
@@ -69,6 +70,17 @@ INSERT INTO OrderDetails (OrderDetailID, OrderID, ProductID, Quantity, UnitPrice
 (6, 4, 3, 2, 129000.00); -- 2 Pizza (258k)
 SET IDENTITY_INSERT OrderDetails OFF;
 PRINT 'Da nap du lieu seed cho bang OrderDetails.';
+GO
+
+-- 5.5 Nạp dữ liệu bảng Transactions (Lịch sử giao dịch trực tuyến tương ứng)
+SET IDENTITY_INSERT Transactions ON;
+INSERT INTO Transactions (TransactionID, OrderID, PaymentGateway, TransactionNo, Amount, Status, ResponseCode, CreatedAt) VALUES
+-- Giao dịch cho Đơn hàng 2 (149k - Thành công)
+(1, 2, 'VNPAY', 'VNP14892834', 149000.00, 'Thanh cong', '00', DATEADD(hour, -2, GETDATE())),
+-- Giao dịch cho Đơn hàng 4 (178k - Thất bại)
+(2, 4, 'VNPAY', 'VNP14892835', 178000.00, 'That bai', '24', DATEADD(day, -1, GETDATE()));
+SET IDENTITY_INSERT Transactions OFF;
+PRINT 'Da nap du lieu seed cho bang Transactions.';
 GO
 
 -- 6. Hiển thị danh sách hóa đơn vừa nạp để kiểm tra

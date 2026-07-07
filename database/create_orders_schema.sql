@@ -66,6 +66,24 @@ BEGIN
 END;
 GO
 
+-- 3.5 Tạo bảng Transactions (Lịch sử thanh toán trực tuyến) nếu chưa tồn tại
+IF OBJECT_ID('Transactions', 'U') IS NULL
+BEGIN
+    CREATE TABLE Transactions (
+        TransactionID INT IDENTITY(1,1) PRIMARY KEY,
+        OrderID INT NOT NULL,
+        PaymentGateway NVARCHAR(50) NOT NULL, -- VNPAY hoặc MOMO
+        TransactionNo VARCHAR(100) NOT NULL UNIQUE, -- Mã giao dịch bên cổng thanh toán
+        Amount DECIMAL(18,2) NOT NULL,
+        Status NVARCHAR(50) NOT NULL, -- Thanh cong, That bai
+        ResponseCode VARCHAR(10) NULL, -- Mã lỗi phản hồi
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        CONSTRAINT FK_Transactions_Orders FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+    );
+    PRINT 'Da tao bang Transactions.';
+END;
+GO
+
 -- 4. Xóa và Tạo lại Stored Procedure sp_TaoHoaDon
 IF OBJECT_ID('sp_TaoHoaDon', 'P') IS NOT NULL
 BEGIN

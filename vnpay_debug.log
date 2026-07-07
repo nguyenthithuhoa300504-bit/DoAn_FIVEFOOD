@@ -1,0 +1,234 @@
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T16:38:16.311Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "2QXUIBJZ",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "13_1783355896309",
+  "vnp_OrderInfo": "Thanh toan don hang #13",
+  "vnp_OrderType": "190000",
+  "vnp_Amount": "4500000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260706233816",
+  "vnp_SecureHash": "b0b67519c3ab703d558ca0c4d53fb8c51a51ce5ddb366baca72e3f9f14ba40b7be4d2e5d6713dca65231d47da813481f934037bbc8581474fcb654af654a1a49"
+}
+signData: vnp_Amount=4500000&vnp_Command=pay&vnp_CreateDate=20260706233816&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+%2313&vnp_OrderType=190000&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=2QXUIBJZ&vnp_TxnRef=13_1783355896309&vnp_Version=2.1.0
+secureHash: b0b67519c3ab703d558ca0c4d53fb8c51a51ce5ddb366baca72e3f9f14ba40b7be4d2e5d6713dca65231d47da813481f934037bbc8581474fcb654af654a1a49
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Version=2.1.0&vnp_Command=pay&vnp_TmnCode=2QXUIBJZ&vnp_Locale=vn&vnp_CurrCode=VND&vnp_TxnRef=13_1783355896309&vnp_OrderInfo=Thanh+toan+don+hang+%2313&vnp_OrderType=190000&vnp_Amount=4500000&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_IpAddr=127.0.0.1&vnp_CreateDate=20260706233816&vnp_SecureHash=b0b67519c3ab703d558ca0c4d53fb8c51a51ce5ddb366baca72e3f9f14ba40b7be4d2e5d6713dca65231d47da813481f934037bbc8581474fcb654af654a1a49
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T16:41:05.367Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "2QXUIBJZ",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "14_1783356065365",
+  "vnp_OrderInfo": "Thanh toan don hang #14",
+  "vnp_OrderType": "190000",
+  "vnp_Amount": "4927100",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260706234105",
+  "vnp_SecureHash": "A481FF10242CE429F1D7290A4BAA249FCB7DCFAE398B1B0066F8164D99C17D1D9C60AD2860DB8022294DA98061EE73BA6279B7FCAE7E2230109DD9C2E9BB1B6A"
+}
+signData: vnp_Amount=4927100&vnp_Command=pay&vnp_CreateDate=20260706234105&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+%2314&vnp_OrderType=190000&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=2QXUIBJZ&vnp_TxnRef=14_1783356065365&vnp_Version=2.1.0
+secureHash: A481FF10242CE429F1D7290A4BAA249FCB7DCFAE398B1B0066F8164D99C17D1D9C60AD2860DB8022294DA98061EE73BA6279B7FCAE7E2230109DD9C2E9BB1B6A
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Version=2.1.0&vnp_Command=pay&vnp_TmnCode=2QXUIBJZ&vnp_Locale=vn&vnp_CurrCode=VND&vnp_TxnRef=14_1783356065365&vnp_OrderInfo=Thanh+toan+don+hang+%2314&vnp_OrderType=190000&vnp_Amount=4927100&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_IpAddr=127.0.0.1&vnp_CreateDate=20260706234105&vnp_SecureHash=A481FF10242CE429F1D7290A4BAA249FCB7DCFAE398B1B0066F8164D99C17D1D9C60AD2860DB8022294DA98061EE73BA6279B7FCAE7E2230109DD9C2E9BB1B6A
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T16:49:23.287Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "2QXUIBJZ",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "15_1783356563281",
+  "vnp_OrderInfo": "Thanh toan don hang 15",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "14400000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260706234923",
+  "vnp_SecureHash": "CE52CAD0EF30BAD06823D731981743A781EC61E883408502EE745C258C306509D1BFBD302A645A4CB0465E58A082C5CCC79542D37E5831953AC436F7C81B6BD6"
+}
+signData: vnp_Amount=14400000&vnp_Command=pay&vnp_CreateDate=20260706234923&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+15&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=2QXUIBJZ&vnp_TxnRef=15_1783356563281&vnp_Version=2.1.0
+secureHash: CE52CAD0EF30BAD06823D731981743A781EC61E883408502EE745C258C306509D1BFBD302A645A4CB0465E58A082C5CCC79542D37E5831953AC436F7C81B6BD6
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Version=2.1.0&vnp_Command=pay&vnp_TmnCode=2QXUIBJZ&vnp_Locale=vn&vnp_CurrCode=VND&vnp_TxnRef=15_1783356563281&vnp_OrderInfo=Thanh+toan+don+hang+15&vnp_OrderType=other&vnp_Amount=14400000&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_IpAddr=127.0.0.1&vnp_CreateDate=20260706234923&vnp_SecureHash=CE52CAD0EF30BAD06823D731981743A781EC61E883408502EE745C258C306509D1BFBD302A645A4CB0465E58A082C5CCC79542D37E5831953AC436F7C81B6BD6
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T16:53:11.358Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "2QXUIBJZ",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "16_1783356791355",
+  "vnp_OrderInfo": "Thanh toan don hang 16",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "4500000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260706235311"
+}
+signData: vnp_Amount=4500000&vnp_Command=pay&vnp_CreateDate=20260706235311&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+16&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=2QXUIBJZ&vnp_TxnRef=16_1783356791355&vnp_Version=2.1.0
+secureHash: E7E4B5870C5F3A20DEA37CEC6419DCF146D97BB167631F0C95F790547DB94DBA7449DA2758ACA59E6D1EE2512AE96A3CD7E6F0365411BCAAD97122295F35A2C3
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4500000&vnp_Command=pay&vnp_CreateDate=20260706235311&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+16&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=2QXUIBJZ&vnp_TxnRef=16_1783356791355&vnp_Version=2.1.0&vnp_SecureHash=E7E4B5870C5F3A20DEA37CEC6419DCF146D97BB167631F0C95F790547DB94DBA7449DA2758ACA59E6D1EE2512AE96A3CD7E6F0365411BCAAD97122295F35A2C3
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:09:02.892Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "17_1783357742891",
+  "vnp_OrderInfo": "Thanh toan don hang 17",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "14400000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707000902"
+}
+signData: vnp_Amount=14400000&vnp_Command=pay&vnp_CreateDate=20260707000902&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+17&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=17_1783357742891&vnp_Version=2.1.0
+secureHash: CB2A01654C1EECD9FCD59B4A7670B2BEAC3FBD6FE7EE2898F76F1A6694CFC5496A6BAAF2187F90A8F522BD897C4AAC3355A76417DE756F46FAF09E0279BD8305
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=14400000&vnp_Command=pay&vnp_CreateDate=20260707000902&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+17&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=17_1783357742891&vnp_Version=2.1.0&vnp_SecureHash=CB2A01654C1EECD9FCD59B4A7670B2BEAC3FBD6FE7EE2898F76F1A6694CFC5496A6BAAF2187F90A8F522BD897C4AAC3355A76417DE756F46FAF09E0279BD8305
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:18:32.620Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "18_1783358312565",
+  "vnp_OrderInfo": "Thanh toan don hang 18",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "4927100",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707001832"
+}
+signData: vnp_Amount=4927100&vnp_Command=pay&vnp_CreateDate=20260707001832&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+18&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=18_1783358312565&vnp_Version=2.1.0
+secureHash: 2ae05ccf0b887ed1f144277d41184281f36bca4a61f6237778e6bebb0458a0834514265bc2d349bf84da34ba1fb4418e8cbae21e2e65772fca7334e3e9c27445
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4927100&vnp_Command=pay&vnp_CreateDate=20260707001832&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+18&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=18_1783358312565&vnp_Version=2.1.0&vnp_SecureHash=2ae05ccf0b887ed1f144277d41184281f36bca4a61f6237778e6bebb0458a0834514265bc2d349bf84da34ba1fb4418e8cbae21e2e65772fca7334e3e9c27445
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:22:41.345Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "19_1783358561344",
+  "vnp_OrderInfo": "Thanh toan don hang 19",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "15731400",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707002241"
+}
+signData: vnp_Amount=15731400&vnp_Command=pay&vnp_CreateDate=20260707002241&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+19&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=19_1783358561344&vnp_Version=2.1.0
+secureHash: c7f173fa1a4711e5a7363d7e43db6ae111c88e20149b6ddb8e5bdec86413dc04549c7503ce0919ead598be98a6444405cff5f624930753d81d2d5fe0fc6e9c71
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=15731400&vnp_Command=pay&vnp_CreateDate=20260707002241&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+19&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=19_1783358561344&vnp_Version=2.1.0&vnp_SecureHash=c7f173fa1a4711e5a7363d7e43db6ae111c88e20149b6ddb8e5bdec86413dc04549c7503ce0919ead598be98a6444405cff5f624930753d81d2d5fe0fc6e9c71
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:27:28.530Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "20_1783358848470",
+  "vnp_OrderInfo": "Thanh toan don hang 20",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "4500000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707002728"
+}
+signData: vnp_Amount=4500000&vnp_Command=pay&vnp_CreateDate=20260707002728&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+20&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=20_1783358848470&vnp_Version=2.1.0
+secureHash: 2a8a4ef15870bbc6d283c12101faacfc3ea46eb03803f9d8153428dbf1f35b4a51fec60d33dbea36a61c2464703f40c7da8e5a8663572b8c17ff0ae07cb84f2c
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4500000&vnp_Command=pay&vnp_CreateDate=20260707002728&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+20&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=20_1783358848470&vnp_Version=2.1.0&vnp_SecureHash=2a8a4ef15870bbc6d283c12101faacfc3ea46eb03803f9d8153428dbf1f35b4a51fec60d33dbea36a61c2464703f40c7da8e5a8663572b8c17ff0ae07cb84f2c
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:32:23.547Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "21_1783359143544",
+  "vnp_OrderInfo": "Thanh toan don hang 21",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "4927100",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707003223"
+}
+signData: vnp_Amount=4927100&vnp_Command=pay&vnp_CreateDate=20260707003223&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+21&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=21_1783359143544&vnp_Version=2.1.0
+secureHash: 5e399da37dfbce814246ac8b995d1a8bfddcc2d07f3bb8de08e08209cd46f1d4bf1d90c781bc6269507d031e76abc06724b00e6b9a5b1a604a13bd9f42fa3f41
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=4927100&vnp_Command=pay&vnp_CreateDate=20260707003223&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+21&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=21_1783359143544&vnp_Version=2.1.0&vnp_SecureHash=5e399da37dfbce814246ac8b995d1a8bfddcc2d07f3bb8de08e08209cd46f1d4bf1d90c781bc6269507d031e76abc06724b00e6b9a5b1a604a13bd9f42fa3f41
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-06T17:44:10.403Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "22_1783359850390",
+  "vnp_OrderInfo": "Thanh toan don hang 22",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "15054200",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707004410"
+}
+signData: vnp_Amount=15054200&vnp_Command=pay&vnp_CreateDate=20260707004410&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+22&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=22_1783359850390&vnp_Version=2.1.0
+secureHash: fb1b0e3ebfb4e4c88b77a3c7183b199e4960cbee41554af3f1cb1e4c898f5b373e5e9dcf85df624891b78367d5c06ece8cea9b36dbb1f9ced822303fc3eab390
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=15054200&vnp_Command=pay&vnp_CreateDate=20260707004410&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+22&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=22_1783359850390&vnp_Version=2.1.0&vnp_SecureHash=fb1b0e3ebfb4e4c88b77a3c7183b199e4960cbee41554af3f1cb1e4c898f5b373e5e9dcf85df624891b78367d5c06ece8cea9b36dbb1f9ced822303fc3eab390
+=======================
+
+=== VNPAY URL DEBUG ===
+Time: 2026-07-07T04:50:37.266Z
+vnp_Params: {
+  "vnp_Version": "2.1.0",
+  "vnp_Command": "pay",
+  "vnp_TmnCode": "76WDTVCT",
+  "vnp_Locale": "vn",
+  "vnp_CurrCode": "VND",
+  "vnp_TxnRef": "23_1783399837260",
+  "vnp_OrderInfo": "Thanh toan don hang 23",
+  "vnp_OrderType": "other",
+  "vnp_Amount": "14400000",
+  "vnp_ReturnUrl": "http://localhost:5173/",
+  "vnp_IpAddr": "127.0.0.1",
+  "vnp_CreateDate": "20260707115037"
+}
+signData: vnp_Amount=14400000&vnp_Command=pay&vnp_CreateDate=20260707115037&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+23&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=23_1783399837260&vnp_Version=2.1.0
+secureHash: a0c399e14e667b25338dc7ef2d32ea94fd3c5c8ab0e104c3f905224628eff39e79768a52b4af6d8fd01f82580f746ff93ca334c010a103db1d7ed10fd4e82628
+Final URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=14400000&vnp_Command=pay&vnp_CreateDate=20260707115037&vnp_CurrCode=VND&vnp_IpAddr=127.0.0.1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+23&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A5173%2F&vnp_TmnCode=76WDTVCT&vnp_TxnRef=23_1783399837260&vnp_Version=2.1.0&vnp_SecureHash=a0c399e14e667b25338dc7ef2d32ea94fd3c5c8ab0e104c3f905224628eff39e79768a52b4af6d8fd01f82580f746ff93ca334c010a103db1d7ed10fd4e82628
+=======================

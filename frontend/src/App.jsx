@@ -152,6 +152,7 @@ function App() {
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [paymentResult, setPaymentResult] = useState(null);
 
   // Tải danh sách đơn hàng cho Khách hàng
   const fetchClientOrders = async () => {
@@ -299,6 +300,30 @@ function App() {
         body: JSON.stringify(orderData)
       });
 
+      // Nếu chọn thanh toán VNPAY, gọi tiếp API tạo link và chuyển hướng
+      if (paymentMethod === 'VNPAY') {
+        const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
+          method: 'POST',
+          body: JSON.stringify({ orderId: result.OrderID })
+        });
+        if (paymentRes && paymentRes.paymentUrl) {
+          setIsCheckoutOpen(false);
+          setShippingAddress('');
+          setLatitude(null);
+          setLongitude(null);
+          setDistance(null);
+          setDuration(null);
+          setShippingFee(0);
+          setPromoCodeInput('');
+          setAppliedPromo('');
+          setDiscountAmount(0);
+          setPromoSuccess('');
+          await fetchCartFromServer();
+          window.location.href = paymentRes.paymentUrl;
+          return;
+        }
+      }
+
       alert(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
       
       // Xóa các state tạm
@@ -360,6 +385,39 @@ function App() {
     fetchProducts();
     fetchCategories();
   }, [isLoggedIn]);
+
+  // Đón nhận tham số VNPay redirect trả về
+  useEffect(() => {
+    const searchString = window.location.search;
+    const queryParams = new URLSearchParams(searchString);
+    const responseCode = queryParams.get('vnp_ResponseCode');
+    const txnRef = queryParams.get('vnp_TxnRef');
+    if (responseCode && txnRef) {
+      // Dọn sạch query string trên URL trình duyệt để tránh lặp lại giao dịch khi F5
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      const verifyPayment = async () => {
+        try {
+          const res = await apiFetch(`${API_BASE_URL}/payment/vnpay-return${searchString}`);
+          setPaymentResult({
+            success: res.success,
+            orderId: txnRef,
+            message: res.message
+          });
+          fetchClientOrders();
+          setActiveTab('orders');
+        } catch (err) {
+          setPaymentResult({
+            success: false,
+            orderId: txnRef,
+            message: 'Không thể xác thực kết quả thanh toán: ' + err.message
+          });
+        }
+      };
+      
+      verifyPayment();
+    }
+  }, []);
 
   // Tính tổng số lượng và tổng tiền trong giỏ hàng
   const totalItems = cart.reduce((sum, item) => sum + item.Quantity, 0);
@@ -1390,6 +1448,38 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
               <button className="btn btn-secondary" onClick={() => setSelectedOrderDetails(null)}>Đóng</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- POPUP KẾT QUẢ THANH TOÁN VNPAY --- */}
+      {paymentResult && (
+        <div className="checkout-modal-overlay" style={{ zIndex: 3000 }}>
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px', maxWidth: '400px', textAlign: 'center', padding: '30px' }}>
+            {paymentResult.success ? (
+              <div>
+                <div style={{ fontSize: '60px', color: '#4caf50', marginBottom: '15px' }}>🎉</div>
+                <h3 style={{ marginTop: 0, color: '#4caf50' }}>Thanh Toán Thành Công!</h3>
+                <p style={{ fontSize: '14px', margin: '15px 0', opacity: 0.9 }}>
+                  Cảm ơn bạn! Đơn hàng <strong>#{paymentResult.orderId}</strong> của bạn đã được thanh toán thành công qua ví điện tử VNPay.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: '60px', color: '#f44336', marginBottom: '15px' }}>❌</div>
+                <h3 style={{ marginTop: 0, color: '#f44336' }}>Thanh Toán Thất Bại</h3>
+                <p style={{ fontSize: '14px', margin: '15px 0', opacity: 0.9 }}>
+                  {paymentResult.message || 'Giao dịch thanh toán không thành công hoặc đã bị khách hàng hủy bỏ.'}
+                </p>
+              </div>
+            )}
+            <button 
+              className="btn btn-primary" 
+              style={{ marginTop: '10px', padding: '10px 25px' }} 
+              onClick={() => setPaymentResult(null)}
+            >
+              Xác Nhận
+            </button>
           </div>
         </div>
       )}
