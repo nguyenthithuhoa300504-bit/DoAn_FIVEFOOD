@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { EventsGateway } from '../gateway/events.gateway';
 import * as sql from 'mssql';
 
 @Injectable()
 export class OrdersService {
-  constructor(private dbService: DatabaseService) {}
+  constructor(
+    private dbService: DatabaseService,
+    private eventsGateway: EventsGateway
+  ) {}
 
   /**
    * Tạo đơn hàng mới thông qua Stored Procedure sp_TaoHoaDon
@@ -120,7 +124,7 @@ export class OrdersService {
   async updateOrderStatus(orderId: number, status: string) {
     // 1. Kiểm tra đơn hàng có tồn tại không
     const orderResult = await this.dbService.query(
-      `SELECT OrderID, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
+      `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
       [{ name: 'OrderID', type: sql.Int, value: orderId }]
     );
 
@@ -146,6 +150,24 @@ export class OrdersService {
        WHERE OrderID = @OrderID`,
       params
     );
+
+    // Phát sự kiện WebSockets
+    this.eventsGateway.notifyOrderStatusUpdate(orderResult.recordset[0].UserID, orderId, status);
+
+    if (status === 'Đang giao') {
+      const { UserID, Latitude, Longitude } = orderResult.recordset[0];
+      if (Latitude && Longitude) {
+        // Tọa độ cửa hàng cố định (Hà Nội Center)
+        const storeLat = 21.0285;
+        const storeLng = 105.8542;
+        this.eventsGateway.startDeliverySimulation(
+          orderId, 
+          UserID, 
+          storeLat, storeLng, 
+          Latitude, Longitude
+        );
+      }
+    }
 
     return { success: true, message: `Cập nhật đơn hàng sang "${status}" thành công.` };
   }

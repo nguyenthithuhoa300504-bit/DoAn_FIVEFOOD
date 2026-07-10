@@ -9,6 +9,9 @@ import { ProductsModule } from './products/products.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentModule } from './payment/payment.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { PaymentModule } from './payment/payment.module';
     CartModule,
     OrdersModule,
     PaymentModule,
+    GatewayModule,
+    ChatbotModule,
+    RecommendationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from './context/CartContext';
 import { apiFetch } from './utils/apiFetch';
 import L from 'leaflet';
+import io from 'socket.io-client';
+import Chatbot from './components/AIChatbot/Chatbot';
+import RecommendationSection from './components/Recommendations/RecommendationSection';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
@@ -82,6 +85,71 @@ function LeafletMap({ onLocationSelected }) {
   );
 }
 
+// Component bản đồ Delivery Tracking mô phỏng lộ trình Shipper
+function DeliveryTrackingMap({ customerLat, customerLng, shipperLat, shipperLng }) {
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const shipperMarker = useRef(null);
+
+  useEffect(() => {
+    if (!mapInstance.current && mapRef.current) {
+      mapInstance.current = L.map(mapRef.current).setView(STORE_COORDS, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
+
+      // Điểm Cửa hàng
+      L.marker(STORE_COORDS, {
+        icon: L.divIcon({
+          html: '<span style="font-size: 30px;">🏪</span>',
+          className: 'store-emoji-icon',
+          iconAnchor: [15, 15]
+        })
+      }).addTo(mapInstance.current).bindPopup('FIVEFOOD').openPopup();
+
+      // Điểm Khách hàng
+      L.marker([customerLat, customerLng], {
+        icon: L.divIcon({
+          html: '<span style="font-size: 30px;">📍</span>',
+          className: 'user-emoji-icon',
+          iconAnchor: [15, 15]
+        })
+      }).addTo(mapInstance.current).bindPopup('Bạn ở đây');
+
+      // Vẽ đường dẫn nối Cửa hàng - Khách hàng
+      L.polyline([STORE_COORDS, [customerLat, customerLng]], { color: 'blue', dashArray: '5, 10' }).addTo(mapInstance.current);
+
+      // Điểm Shipper
+      shipperMarker.current = L.marker([shipperLat || STORE_COORDS[0], shipperLng || STORE_COORDS[1]], {
+        icon: L.divIcon({
+          html: '<span style="font-size: 30px; transform: scaleX(-1); display: inline-block;">🛵</span>',
+          className: 'shipper-emoji-icon',
+          iconAnchor: [15, 15]
+        })
+      }).addTo(mapInstance.current);
+    } else if (mapInstance.current && shipperMarker.current && shipperLat && shipperLng) {
+      // Cập nhật vị trí Shipper
+      shipperMarker.current.setLatLng([shipperLat, shipperLng]);
+    }
+  }, [customerLat, customerLng, shipperLat, shipperLng]);
+
+  return (
+    <div style={{ margin: '15px 0' }}>
+      <label style={{ display: 'block', fontSize: '14px', color: '#ff5722', marginBottom: '10px', fontWeight: 'bold' }}>
+        🛵 Bản đồ theo dõi Shipper trực tiếp:
+      </label>
+      <div 
+        ref={mapRef} 
+        style={{ 
+          width: '100%', 
+          height: '250px', 
+          borderRadius: '12px', 
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)'
+        }} 
+      />
+    </div>
+  );
+}
+
 // Danh sách món ăn mẫu (Mockup) hiển thị dự phòng nếu database trống
 const MOCK_PRODUCTS = [
   { ProductID: 1, ProductName: 'Bánh Mì Thịt Nướng', CategoryID: 1, CategoryName: 'Bánh mì', Price: 25000, Inventory: 10, ImageURL: '🥖', IsActive: true },
@@ -153,6 +221,53 @@ function App() {
   const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+
+  // Realtime Delivery Socket State
+  const [socket, setSocket] = useState(null);
+  const [shipperLocation, setShipperLocation] = useState(null);
+
+  // Khởi tạo Socket.io khi user đăng nhập
+  useEffect(() => {
+    if (isLoggedIn) {
+      const token = localStorage.getItem('token');
+      const newSocket = io(API_BASE_URL.replace('/api', ''), {
+        auth: { token }
+      });
+
+      newSocket.on('orderStatusUpdate', (data) => {
+        // Cập nhật UI ngầm
+        fetchClientOrders();
+        fetchAdminOrders();
+        
+        // Nếu đang mở chi tiết đơn này
+        setSelectedOrderDetails(prev => {
+          if (prev && prev.OrderID === data.orderId) {
+            return { ...prev, Status: data.status };
+          }
+          return prev;
+        });
+      });
+
+      newSocket.on('shipperLocation', (data) => {
+        setShipperLocation({
+          orderId: data.orderId,
+          lat: data.lat,
+          lng: data.lng,
+          progress: data.progress
+        });
+      });
+
+      newSocket.on('deliveryCompleted', (data) => {
+        setShipperLocation(null);
+        alert(`🎉 Đơn hàng #${data.orderId} của bạn đã được giao thành công!`);
+      });
+
+      setSocket(newSocket);
+      return () => newSocket.close();
+    } else {
+      if (socket) socket.close();
+    }
+  }, [isLoggedIn]);
 
   // Tải danh sách đơn hàng cho Khách hàng
   const fetchClientOrders = async () => {
@@ -616,7 +731,9 @@ function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {activeTab === 'menu' && (
-          <div className="menu-grid fade-in">
+          <>
+            <RecommendationSection isLoggedIn={isLoggedIn} />
+            <div className="menu-grid fade-in">
             {/* Left Column: Product List */}
             <div className="products-section glass-panel">
               <div className="section-header">
@@ -728,7 +845,8 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
+          </>
         )}
 
         {/* Tab Admin (CRUD Thực đơn và Kho) */}
@@ -1411,6 +1529,15 @@ function App() {
               <div>💳 <strong>Phương thức thanh toán:</strong> {selectedOrderDetails.PaymentMethod} ({selectedOrderDetails.PaymentStatus})</div>
               <div>📊 <strong>Trạng thái đơn:</strong> <span className={`status-pill status-${selectedOrderDetails.Status}`}>{selectedOrderDetails.Status}</span></div>
 
+              {selectedOrderDetails.Status === 'Đang giao' && selectedOrderDetails.Latitude && selectedOrderDetails.Longitude && (
+                <DeliveryTrackingMap 
+                  customerLat={selectedOrderDetails.Latitude} 
+                  customerLng={selectedOrderDetails.Longitude} 
+                  shipperLat={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lat : null}
+                  shipperLng={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lng : null}
+                />
+              )}
+
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', marginTop: '10px' }}>
                 <h4 style={{ margin: '0 0 10px 0' }}>📋 Món ăn đã đặt:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1483,6 +1610,7 @@ function App() {
           </div>
         </div>
       )}
+      <Chatbot />
     </div>
   );
 }
