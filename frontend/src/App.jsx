@@ -5,6 +5,9 @@ import L from 'leaflet';
 import io from 'socket.io-client';
 import Chatbot from './components/AIChatbot/Chatbot';
 import RecommendationSection from './components/Recommendations/RecommendationSection';
+import FavoriteList from './components/Favorites/FavoriteList';
+import ReviewModal from './components/Reviews/ReviewModal';
+import ProductReviewsModal from './components/Reviews/ProductReviewsModal';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
@@ -218,9 +221,14 @@ function App() {
   
   const [clientOrders, setClientOrders] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
+  const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
   const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+
+  // States cho Phân hệ 8: Đánh giá & Yêu thích
+  const [reviewProductData, setReviewProductData] = useState(null);
+  const [viewReviewsProduct, setViewReviewsProduct] = useState(null);
 
   // Realtime Delivery Socket State
   const [socket, setSocket] = useState(null);
@@ -285,7 +293,18 @@ function App() {
       const data = await apiFetch(`${API_BASE_URL}/admin/orders`);
       setAdminOrders(data);
     } catch (err) {
-      console.error('Không tải được đơn hàng Admin:', err);
+      console.error('Lỗi khi tải đơn hàng admin', err);
+    }
+  };
+
+  const fetchChatbotLogs = async () => {
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/chatbot/logs`);
+      if (data && data.success) {
+        setAdminChatbotLogs(data.data);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải nhật ký chatbot', err);
     }
   };
 
@@ -501,6 +520,24 @@ function App() {
     fetchCategories();
   }, [isLoggedIn]);
 
+  // Thêm vào danh sách yêu thích
+  const handleAddFavorite = async (productId) => {
+    if (!isLoggedIn) {
+      alert('Vui lòng đăng nhập để lưu món yêu thích.');
+      setActiveTab('login');
+      return;
+    }
+    try {
+      await apiFetch(`${API_BASE_URL}/favorites`, {
+        method: 'POST',
+        body: JSON.stringify({ productId })
+      });
+      alert('💖 Đã thêm vào danh sách yêu thích!');
+    } catch (err) {
+      alert(err.message || 'Sản phẩm đã có trong danh sách yêu thích!');
+    }
+  };
+
   // Đón nhận tham số VNPay redirect trả về
   useEffect(() => {
     const searchString = window.location.search;
@@ -687,12 +724,20 @@ function App() {
           </button>
 
           {isLoggedIn && user?.role !== 'Admin' && (
-            <button 
-              className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('orders'); fetchClientOrders(); }}
-            >
-              📦 Đơn hàng
-            </button>
+            <>
+              <button 
+                className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('orders'); fetchClientOrders(); }}
+              >
+                📦 Đơn hàng
+              </button>
+              <button 
+                className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`}
+                onClick={() => setActiveTab('favorites')}
+              >
+                💖 Yêu thích
+              </button>
+            </>
           )}
 
           {isLoggedIn && user?.role === 'Admin' && (
@@ -730,6 +775,10 @@ function App() {
 
       {/* Main Content Area */}
       <main className="main-content">
+        {activeTab === 'favorites' && isLoggedIn && (
+          <FavoriteList onAddToCart={addToCart} />
+        )}
+
         {activeTab === 'menu' && (
           <>
             <RecommendationSection isLoggedIn={isLoggedIn} />
@@ -757,6 +806,24 @@ function App() {
                       <p className="inventory-status">
                         Còn lại: <span className="inv-qty">{product.Inventory}</span> món
                       </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        style={{ flex: 1, padding: '5px' }}
+                        onClick={() => handleAddFavorite(product.ProductID)}
+                        title="Thêm vào yêu thích"
+                      >
+                        ❤️
+                      </button>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        style={{ flex: 1, padding: '5px' }}
+                        onClick={() => setViewReviewsProduct(product)}
+                        title="Xem đánh giá"
+                      >
+                        💬
+                      </button>
                     </div>
                     <button 
                       className="btn btn-primary btn-add-cart"
@@ -866,9 +933,15 @@ function App() {
               >
                 📦 Quản lý Đơn hàng ({adminOrders.length})
               </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'chatbotLogs' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('chatbotLogs'); fetchChatbotLogs(); }}
+              >
+                🤖 Nhật ký Chatbot
+              </button>
             </div>
 
-            {adminSubtab === 'products' ? (
+            {adminSubtab === 'products' && (
               <div className="admin-grid fade-in">
                 {/* Form quản lý */}
                 <div className="admin-forms">
@@ -1115,8 +1188,10 @@ function App() {
                   )}
                 </div>
               </div>
-            ) : (
-              /* Quản lý đơn hàng Admin */
+            )}
+            
+            {/* Quản lý đơn hàng Admin */}
+            {adminSubtab === 'orders' && (
               <div className="glass-panel fade-in" style={{ padding: '20px' }}>
                 <div className="list-header" style={{ marginBottom: '20px' }}>
                   <h2>Đơn Hàng Toàn Hệ Thống</h2>
@@ -1188,6 +1263,51 @@ function App() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Quản lý Nhật ký Chatbot Admin */}
+            {adminSubtab === 'chatbotLogs' && (
+              <div className="glass-panel fade-in" style={{ padding: '20px' }}>
+                <div className="list-header" style={{ marginBottom: '20px' }}>
+                  <h2>Lịch Sử Trò Chuyện Trợ Lý AI</h2>
+                  <p className="text-muted">Theo dõi nội dung khách hàng giao tiếp với Chatbot</p>
+                </div>
+
+                <div className="admin-products-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '150px' }}>Thời Gian</th>
+                        <th style={{ width: '200px' }}>Khách Hàng</th>
+                        <th>Câu Hỏi (User)</th>
+                        <th>Trả Lời (AI)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminChatbotLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '30px' }}>
+                            Chưa có dữ liệu hội thoại nào.
+                          </td>
+                        </tr>
+                      ) : (
+                        adminChatbotLogs.map(log => (
+                          <tr key={log.LogID}>
+                            <td>{new Date(log.CreatedAt).toLocaleString('vi-VN')}</td>
+                            <td>
+                              <strong>{log.FullName}</strong>
+                              <div style={{ fontSize: '12px', color: '#888' }}>{log.Email}</div>
+                              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>Session: {log.SessionID.substring(0, 8)}...</div>
+                            </td>
+                            <td><div style={{ whiteSpace: 'pre-wrap', color: '#e0f7fa' }}>{log.userMessage}</div></td>
+                            <td><div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: '1.5' }}>{log.botResponse}</div></td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1542,8 +1662,22 @@ function App() {
                 <h4 style={{ margin: '0 0 10px 0' }}>📋 Món ăn đã đặt:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {selectedOrderDetails.items?.map((detail, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px' }}>
-                      <span>{detail.ProductName} <strong>x{detail.Quantity}</strong></span>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span>{detail.ProductName} <strong>x{detail.Quantity}</strong></span>
+                        {selectedOrderDetails.Status === 'Hoàn thành' && user?.role !== 'Admin' && (
+                          <button 
+                            className="btn btn-sm" 
+                            style={{ padding: '2px 8px', fontSize: '11px', marginTop: '5px', alignSelf: 'flex-start', background: '#ff9800', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={() => setReviewProductData({ 
+                              product: { ProductID: detail.ProductID, ProductName: detail.ProductName },
+                              orderId: selectedOrderDetails.OrderID 
+                            })}
+                          >
+                            ⭐ Đánh giá món này
+                          </button>
+                        )}
+                      </div>
                       <span className="text-orange">{(detail.UnitPrice * detail.Quantity).toLocaleString('vi-VN')} đ</span>
                     </div>
                   ))}
@@ -1610,6 +1744,27 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* --- PHÂN HỆ 8: ĐÁNH GIÁ (REVIEW) MODALS --- */}
+      {reviewProductData && (
+        <ReviewModal 
+          product={reviewProductData.product}
+          orderId={reviewProductData.orderId}
+          onClose={() => setReviewProductData(null)}
+          onSuccess={() => {
+            setReviewProductData(null);
+            alert('Cảm ơn bạn đã gửi đánh giá!');
+          }}
+        />
+      )}
+
+      {viewReviewsProduct && (
+        <ProductReviewsModal 
+          product={viewReviewsProduct}
+          onClose={() => setViewReviewsProduct(null)}
+        />
+      )}
+
       <Chatbot />
     </div>
   );

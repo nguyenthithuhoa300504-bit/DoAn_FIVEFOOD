@@ -12,6 +12,8 @@ import { PaymentModule } from './payment/payment.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -28,12 +30,10 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
     GatewayModule,
     ChatbotModule,
     RecommendationsModule,
+    FavoritesModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
-
-
-
-
