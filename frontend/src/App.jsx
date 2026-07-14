@@ -179,7 +179,7 @@ function App() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [activeTab, setActiveTab] = useState('menu'); // menu, orders, admin, login, register
+  const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
   
   // States cho Form Auth
   const [email, setEmail] = useState('');
@@ -241,6 +241,9 @@ function App() {
   const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
   const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  
+  // Product Detail Modal State
+  const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
 
   // States cho Phân hệ 8: Đánh giá & Yêu thích
@@ -253,6 +256,35 @@ function App() {
   // Realtime Delivery Socket State
   const [socket, setSocket] = useState(null);
   const [shipperLocation, setShipperLocation] = useState(null);
+
+  // Hero Banner Slider State
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const banners = [
+    {
+      title: "Khám phá ẩm thực <br/><span class='text-highlight'>TIN-STORES</span>",
+      subtitle: "Hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác chỉ có tại cửa hàng của chúng tôi.",
+      img: "🍲"
+    },
+    {
+      title: "Món Mới <br/><span class='text-highlight'>Bùng Nổ</span>",
+      subtitle: "Thưởng thức hương vị hoàn toàn mới lạ. Đặt ngay kẻo lỡ!",
+      img: "🍕"
+    },
+    {
+      title: "Giao Hàng <br/><span class='text-highlight'>Siêu Tốc</span>",
+      subtitle: "Nóng hổi vừa thổi vừa ăn, giao ngay đến tận cửa nhà bạn.",
+      img: "🚀"
+    }
+  ];
+
+  useEffect(() => {
+    if (activeTab === 'menu') {
+      const timer = setInterval(() => {
+        setCurrentBanner(prev => (prev + 1) % banners.length);
+      }, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [activeTab, banners.length]);
 
   // Khởi tạo Socket.io khi user đăng nhập
   useEffect(() => {
@@ -745,78 +777,138 @@ function App() {
     }
   };
 
+  const renderProductCard = (product) => (
+    <div key={product.ProductID} className="product-card new-design">
+      <div className="product-card-top" onClick={() => setSelectedProductDetails(product)}>
+        <div className="product-img-wrapper">
+          {product.ImageURL && product.ImageURL.length < 5 ? (
+            <div className="emoji-placeholder">{product.ImageURL}</div>
+          ) : (
+            <img 
+              src={product.ImageURL || 'https://via.placeholder.com/200?text=No+Image'} 
+              alt={product.ProductName} 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://via.placeholder.com/200?text=No+Image';
+              }}
+            />
+          )}
+        </div>
+        <div className="floating-actions" onClick={(e) => e.stopPropagation()}>
+          <button className="icon-btn heart-btn">❤️</button>
+          <button className="icon-btn cart-btn" onClick={() => addToCart(product, 1)}>🛒</button>
+        </div>
+      </div>
+      <div className="product-info" onClick={() => setSelectedProductDetails(product)}>
+        <h3>{product.ProductName}</h3>
+        <div className="product-tags">
+          <span className="tag">Việt Nam</span>
+          <span className="tag">Đồ ăn</span>
+        </div>
+        <p className="product-desc">Hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác.</p>
+        
+        <div className="price-row">
+          <span className="price">{product.Price.toLocaleString('vi-VN')} đ</span>
+        </div>
+      </div>
+      <button 
+        className="btn btn-primary btn-buy-now"
+        onClick={() => {
+          addToCart(product, 1);
+          if (!isLoggedIn) {
+            alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+            setActiveTab('login');
+          } else {
+            setSelectedCheckoutProduct(product);
+          }
+        }}
+      >
+        Mua Ngay
+      </button>
+    </div>
+  );
+
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="glass-panel header-bar fade-in">
+      <header className="header-bar fade-in">
         <div className="logo-section">
-          <span className="logo-emoji">🍕</span>
-          <h1>FIVEFOOD</h1>
-          <span className="logo-badge">Dynamic Menu v1.0</span>
+          <h1>STORES</h1>
         </div>
 
         <div className="nav-controls">
           <button 
+            className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+            onClick={() => setActiveTab('home')}
+          >
+            Trang Chủ
+          </button>
+          
+          <button 
             className={`nav-btn ${activeTab === 'menu' ? 'active' : ''}`}
             onClick={() => setActiveTab('menu')}
           >
-            🍽 Thực đơn
+            Thực đơn
           </button>
 
-          {isLoggedIn && user?.role !== 'Admin' && (
-            <>
-              <button 
-                className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('orders'); fetchClientOrders(); }}
-              >
-                📦 Đơn hàng
-              </button>
-              <button 
-                className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-                onClick={() => setActiveTab('favorites')}
-              >
-                💖 Yêu thích
-              </button>
-              <button 
-                className={`nav-btn ${isLiveChatOpen ? 'active' : ''}`}
-                onClick={() => setIsLiveChatOpen(true)}
-              >
-                💬 Hỗ trợ
-              </button>
-            </>
-          )}
+          <button 
+            className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => {
+              if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem đơn hàng'); setActiveTab('login'); return; }
+              setActiveTab('orders'); 
+              fetchClientOrders(); 
+            }}
+          >
+            Đặt hàng
+          </button>
+
+          <button 
+            className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`}
+            onClick={() => {
+              if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
+              setActiveTab('favorites');
+            }}
+          >
+            Yêu thích
+          </button>
+
+          <button className="nav-btn" onClick={() => {
+            if(!isLoggedIn) { alert('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
+            setIsLiveChatOpen(true);
+          }}>
+            Liên hệ
+          </button>
 
           {isLoggedIn && user?.role === 'Admin' && (
             <button 
               className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
               onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}
             >
-              🛠 Quản trị
+              Quản trị
             </button>
           )}
-          
+
           {isLoggedIn ? (
-            <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: '10px' }}>
               <NotificationDropdown socket={socket} />
-              <span className="user-name" style={{ marginLeft: '10px' }}>👤 {user?.fullName} ({user?.role})</span>
-              <button className="btn btn-secondary btn-sm" onClick={logout}>Đăng xuất</button>
+              <div className="user-avatar" title={`Đăng xuất (${user?.fullName})`} onClick={logout}>
+                👤
+              </div>
             </div>
           ) : (
-            <div className="auth-btn-group">
-              <button 
-                className={`nav-btn ${activeTab === 'login' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('login'); setAuthError(''); setAuthSuccess(''); }}
-              >
-                Đăng nhập
-              </button>
-              <button 
-                className={`nav-btn ${activeTab === 'register' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('register'); setAuthError(''); setAuthSuccess(''); }}
-              >
-                Đăng ký
-              </button>
+            <div className="user-profile" style={{ marginLeft: '10px' }}>
+               <div className="user-avatar" title="Đăng nhập" onClick={() => setActiveTab('login')}>
+                ?
+              </div>
             </div>
           )}
+
+          <button 
+            className="cart-pill"
+            onClick={() => setActiveTab('cart')}
+          >
+            🛒 {totalItems}
+          </button>
         </div>
       </header>
 
@@ -826,100 +918,119 @@ function App() {
           <FavoriteList onAddToCart={addToCart} />
         )}
 
-        {activeTab === 'menu' && (
+        {activeTab === 'home' && (
           <>
-            <RecommendationSection isLoggedIn={isLoggedIn} />
-            <div className="menu-grid fade-in">
-            {/* Left Column: Product List */}
-            <div className="products-section glass-panel">
-              <div className="section-header">
-                <h2>Menu Món Ăn Đặc Sắc</h2>
-                <p className="text-muted">Chọn món ăn nóng hổi và thêm vào giỏ hàng</p>
+            <div className="hero-banner glass-panel">
+              <div className="hero-content" key={currentBanner} style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
+                <h1 className="hero-title" dangerouslySetInnerHTML={{ __html: banners[currentBanner].title }}></h1>
+                <p className="hero-subtitle">{banners[currentBanner].subtitle}</p>
+                <div className="hero-buttons">
+                  <button className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '16px', borderRadius: '30px' }} onClick={() => setActiveTab('menu')}>
+                    Chọn món ngay
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '12px 30px', fontSize: '16px', borderRadius: '30px', marginLeft: '15px', background: 'transparent', border: '1px solid var(--primary-color)', color: 'var(--text-main)' }} onClick={() => setActiveTab('menu')}>
+                    Khám phá tại đây
+                  </button>
+                </div>
               </div>
-
-              <div className="product-cards-container">
-                {products.filter(p => p.IsActive || p.IsActive === undefined).map((product) => (
-                  <div key={product.ProductID} className="product-card glass-panel">
-                    <div className="product-img">
-                      {product.ImageURL && product.ImageURL.length < 5 ? (
-                        <span className="food-emoji">{product.ImageURL}</span>
-                      ) : (
-                        <span className="food-emoji">🍔</span>
-                      )}
-                    </div>
-                    <div className="product-info">
-                      <h3>{product.ProductName}</h3>
-                      <p className="price">{product.Price.toLocaleString('vi-VN')} đ</p>
-                      <p className="inventory-status">
-                        Còn lại: <span className="inv-qty">{product.Inventory}</span> món
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                      <button 
-                        className="btn btn-secondary btn-sm"
-                        style={{ flex: 1, padding: '5px' }}
-                        onClick={() => handleAddFavorite(product.ProductID)}
-                        title="Thêm vào yêu thích"
-                      >
-                        ❤️
-                      </button>
-                      <button 
-                        className="btn btn-secondary btn-sm"
-                        style={{ flex: 1, padding: '5px' }}
-                        onClick={() => setViewReviewsProduct(product)}
-                        title="Xem đánh giá"
-                      >
-                        💬
-                      </button>
-                    </div>
-                    <button 
-                      className="btn btn-primary btn-add-cart"
-                      onClick={() => addToCart(product, 1)}
-                    >
-                      🛒 Thêm giỏ hàng
-                    </button>
-                  </div>
+              <div className="hero-shapes">
+                <div className="shape-1"></div>
+                <div className="shape-2"></div>
+                <div className="hero-main-img" key={currentBanner} style={{ animation: 'float 6s ease-in-out infinite, fadeIn 0.5s ease-in-out' }}>
+                  {banners[currentBanner].img}
+                </div>
+              </div>
+              
+              <div className="banner-indicators" style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px' }}>
+                {banners.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => setCurrentBanner(idx)}
+                    style={{ 
+                      width: currentBanner === idx ? '24px' : '8px', 
+                      height: '8px', 
+                      borderRadius: '4px', 
+                      background: currentBanner === idx ? 'var(--primary-color)' : 'rgba(0,0,0,0.2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  />
                 ))}
               </div>
             </div>
 
-            {/* Right Column: Cart Detail */}
-            <div className="cart-section glass-panel">
-              <div className="section-header-cart">
+            <RecommendationSection isLoggedIn={isLoggedIn} />
+
+            <div id="home-featured-products" className="products-section full-width fade-in" style={{ paddingTop: '20px' }}>
+              <div className="section-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>Món Ngon Nổi Bật</h2>
+                <p style={{ color: '#666', marginTop: '10px' }}>Khám phá các món ăn được yêu thích nhất hôm nay</p>
+              </div>
+
+              <div className="product-cards-container" style={{ gap: '30px' }}>
+                {products.filter(p => p.IsActive || p.IsActive === undefined).slice(0, 8).map(renderProductCard)}
+              </div>
+              
+              <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                <button className="btn btn-secondary" style={{ padding: '12px 40px', fontSize: '16px', borderRadius: '30px', border: '2px solid var(--primary-color)', color: 'var(--primary-color)', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
+                  Xem Toàn Bộ Thực Đơn &rarr;
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'menu' && (
+          <div id="products-grid" className="products-section full-width fade-in" style={{ paddingTop: '20px' }}>
+            <div className="section-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>Tất Cả Sản Phẩm Của Chúng Tôi</h2>
+              <p style={{ color: '#666', marginTop: '10px' }}>Khám phá thực đơn đa dạng và phong phú</p>
+            </div>
+
+            <div className="product-cards-container" style={{ gap: '30px' }}>
+              {products.filter(p => p.IsActive || p.IsActive === undefined).map(renderProductCard)}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Giỏ hàng (Cart) thay vì nằm cột bên phải */}
+        {activeTab === 'cart' && (
+            <div className="cart-section full-width glass-panel fade-in" style={{ maxWidth: '800px', margin: '0 auto', marginTop: '20px' }}>
+              <div className="section-header-cart" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px', marginBottom: '15px' }}>
                 <div className="cart-title-row">
-                  <h2>Giỏ Hàng Của Bạn</h2>
-                  <span className="cart-count-badge">{totalItems} món</span>
+                  <h2 style={{ color: 'var(--primary-color)', fontSize: '24px' }}>🛒 Giỏ Hàng Của Bạn</h2>
+                  <span className="cart-count-badge" style={{ fontSize: '16px', padding: '5px 12px' }}>{totalItems} món</span>
                 </div>
                 {isLoggedIn ? (
-                  <span className="sync-badge db-synced">⚡ Đã đồng bộ với Database SQL Server</span>
+                  <span className="sync-badge db-synced" style={{ marginTop: '10px', display: 'inline-block' }}>⚡ Đã đồng bộ với Database</span>
                 ) : (
-                  <span className="sync-badge local-stored">💾 Đang lưu tạm ở LocalStorage (Chưa đăng nhập)</span>
+                  <span className="sync-badge local-stored" style={{ marginTop: '10px', display: 'inline-block' }}>💾 Đang lưu tạm ở LocalStorage</span>
                 )}
               </div>
 
               {cart.length === 0 ? (
-                <div className="empty-cart-view">
-                  <span className="empty-emoji">🛒</span>
-                  <p>Giỏ hàng của bạn đang trống.</p>
-                  <p className="text-muted text-sm">Hãy chọn món ngon bên trái để thưởng thức nhé!</p>
+                <div className="empty-cart-view" style={{ padding: '50px 20px' }}>
+                  <span className="empty-emoji" style={{ fontSize: '60px' }}>🛒</span>
+                  <p style={{ fontSize: '18px', marginTop: '15px' }}>Giỏ hàng của bạn đang trống.</p>
+                  <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={() => setActiveTab('menu')}>Quay lại Trang Chủ để chọn món</button>
                 </div>
               ) : (
-                <div className="cart-items-list">
+                <div className="cart-items-list" style={{ gap: '15px' }}>
                   {cart.map((item) => (
-                    <div key={item.ProductID} className="cart-item glass-panel">
-                      <div className="cart-item-info">
-                        <h4>{item.ProductName}</h4>
-                        <p className="cart-item-price">{item.Price.toLocaleString('vi-VN')} đ</p>
+                    <div key={item.ProductID} className="cart-item glass-panel" style={{ padding: '15px', display: 'flex', alignItems: 'center' }}>
+                      <div className="cart-item-info" style={{ flex: 1 }}>
+                        <h4 style={{ fontSize: '18px', margin: '0 0 5px 0' }}>{item.ProductName}</h4>
+                        <p className="cart-item-price" style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>{item.Price.toLocaleString('vi-VN')} đ</p>
                       </div>
-                      <div className="cart-item-actions">
-                        <div className="quantity-controls">
+                      <div className="cart-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div className="quantity-controls" style={{ background: 'var(--panel-bg)', borderRadius: '20px', padding: '5px' }}>
                           <button 
                             className="qty-btn"
                             onClick={() => addToCart(item, -1)}
                           >
                             -
                           </button>
-                          <span className="qty-val">{item.Quantity}</span>
+                          <span className="qty-val" style={{ margin: '0 15px', fontWeight: 'bold' }}>{item.Quantity}</span>
                           <button 
                             className="qty-btn"
                             onClick={() => addToCart(item, 1)}
@@ -930,6 +1041,7 @@ function App() {
                         <button 
                           className="btn-delete"
                           onClick={() => removeFromCart(item.ProductID)}
+                          title="Xóa khỏi giỏ hàng"
                         >
                           🗑️
                         </button>
@@ -937,30 +1049,38 @@ function App() {
                     </div>
                   ))}
 
-                  <div className="cart-summary glass-panel">
-                    <div className="summary-row">
-                      <span>Tổng tiền hàng:</span>
-                      <span className="total-amount">{totalPrice.toLocaleString('vi-VN')} đ</span>
+                  <div className="cart-summary glass-panel" style={{ marginTop: '20px', padding: '20px', background: 'rgba(0, 168, 255, 0.05)', border: '1px solid var(--primary-color)' }}>
+                    <div className="summary-row" style={{ fontSize: '20px', marginBottom: '15px' }}>
+                      <span style={{ fontWeight: 'bold' }}>Tổng tiền thanh toán:</span>
+                      <span className="total-amount" style={{ color: 'var(--primary-color)', fontSize: '24px' }}>{totalPrice.toLocaleString('vi-VN')} đ</span>
                     </div>
-                    <button 
-                      className="btn btn-primary w-full btn-checkout"
-                      onClick={() => {
-                        if (!isLoggedIn) {
-                          alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
-                          setActiveTab('login');
-                        } else {
-                          setIsCheckoutOpen(true);
-                        }
-                      }}
-                    >
-                      Đặt Hàng Ngay
-                    </button>
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                      <button 
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: '15px', fontSize: '16px' }}
+                        onClick={() => setActiveTab('menu')}
+                      >
+                        Tiếp tục mua hàng
+                      </button>
+                      <button 
+                        className="btn btn-primary btn-checkout"
+                        style={{ flex: 2, padding: '15px', fontSize: '18px' }}
+                        onClick={() => {
+                          if (!isLoggedIn) {
+                            alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                            setActiveTab('login');
+                          } else {
+                            setIsCheckoutOpen(true);
+                          }
+                        }}
+                      >
+                        Thanh Toán Ngay 💳
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-            </div>
-          </>
         )}
 
         {/* Tab Admin (CRUD Thực đơn và Kho) */}
@@ -1868,6 +1988,96 @@ function App() {
           product={viewReviewsProduct}
           onClose={() => setViewReviewsProduct(null)}
         />
+      )}
+
+      {/* --- PHÂN HỆ: PRODUCT DETAIL MODAL --- */}
+      {selectedProductDetails && (
+        <div className="checkout-modal-overlay" style={{ zIndex: 4000 }} onClick={() => setSelectedProductDetails(null)}>
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px', maxWidth: '500px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--panel-bg)', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <button 
+                className="close-btn" 
+                style={{ position: 'absolute', top: '15px', right: '15px', color: 'var(--text-main)', background: 'rgba(0,0,0,0.1)', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }} 
+                onClick={() => setSelectedProductDetails(null)}
+              >
+                ✕
+              </button>
+              {selectedProductDetails.ImageURL && selectedProductDetails.ImageURL.length < 5 ? (
+                <span style={{ fontSize: '100px' }}>{selectedProductDetails.ImageURL}</span>
+              ) : (
+                <span style={{ fontSize: '100px' }}>🍔</span>
+              )}
+            </div>
+            
+            <div style={{ padding: '25px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '28px', margin: '0 0 10px 0', color: 'var(--primary-color)' }}>{selectedProductDetails.ProductName}</h2>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
+                <span className="tag" style={{ background: 'var(--panel-border)', padding: '4px 10px', borderRadius: '15px', fontSize: '12px' }}>Việt Nam</span>
+                <span className="tag" style={{ background: 'var(--panel-border)', padding: '4px 10px', borderRadius: '15px', fontSize: '12px' }}>Đồ ăn</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.5' }}>
+                Món {selectedProductDetails.ProductName} được chế biến từ những nguyên liệu tươi ngon nhất, mang lại hương vị hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác.
+              </p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--panel-border)', paddingTop: '20px', marginBottom: '20px' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ display: 'block', fontSize: '14px', color: 'var(--text-muted)' }}>Giá bán:</span>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff5252' }}>{selectedProductDetails.Price.toLocaleString('vi-VN')} đ</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ display: 'block', fontSize: '14px', color: 'var(--text-muted)' }}>Kho:</span>
+                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{selectedProductDetails.Inventory} món</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: '15px', fontSize: '16px', borderRadius: '30px' }}
+                  onClick={() => {
+                    addToCart(selectedProductDetails, 1);
+                    setSelectedProductDetails(null);
+                    if (!isLoggedIn) {
+                      alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                      setActiveTab('login');
+                    } else {
+                      setIsCheckoutOpen(true);
+                    }
+                  }}
+                >
+                  Mua Hàng Ngay 💳
+                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    style={{ flex: 1, padding: '12px', borderRadius: '30px' }}
+                    onClick={() => {
+                      addToCart(selectedProductDetails, 1);
+                      setSelectedProductDetails(null);
+                    }}
+                  >
+                    🛒 Thêm Giỏ Hàng
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    style={{ flex: 1, padding: '12px', borderRadius: '30px', background: 'transparent', border: '1px solid var(--primary-color)', color: 'var(--primary-color)' }}
+                    onClick={() => {
+                      if (!isLoggedIn) {
+                        alert('Vui lòng đăng nhập để sử dụng tính năng Chat.');
+                        setActiveTab('login');
+                      } else {
+                        setSelectedProductDetails(null);
+                        setIsLiveChatOpen(true);
+                      }
+                    }}
+                  >
+                    💬 Chat Cửa Hàng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {isLiveChatOpen && (
