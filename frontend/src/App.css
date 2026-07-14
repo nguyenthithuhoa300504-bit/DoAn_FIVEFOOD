@@ -752,4 +752,67 @@
   font-weight: 600;
 }
 
+/* Floating Hotline */
+.floating-hotline {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
 
+.hotline-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b35, #ff3c00);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 32px;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+  text-decoration: none;
+  animation: pulse-hotline 2s infinite;
+  cursor: pointer;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  transition: transform 0.3s;
+}
+
+.hotline-btn:hover {
+  transform: scale(1.1);
+}
+
+.hotline-text {
+  background: rgba(255, 255, 255, 0.95);
+  color: #ff3c00;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: translateX(-15px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.floating-hotline:hover .hotline-text {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@keyframes pulse-hotline {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(255, 107, 53, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
+  }
+}

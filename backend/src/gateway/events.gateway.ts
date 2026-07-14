@@ -2,12 +2,16 @@ import {
   WebSocketGateway,
   WebSocketServer,
   OnGatewayConnection,
-  OnGatewayDisconnect
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
+import { ChatService } from '../chat/chat.service';
 import * as sql from 'mssql';
 
 @WebSocketGateway({
@@ -22,7 +26,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
-    private dbService: DatabaseService
+    private dbService: DatabaseService,
+    private chatService: ChatService
   ) {}
 
   async handleConnection(client: Socket) {
@@ -99,5 +104,46 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       orderId,
       status
     });
+    
+    // Ghi vào DB thông báo luôn
+    this.chatService.addNotification(userId, 'Cập nhật đơn hàng', `Đơn hàng #${orderId} của bạn đã chuyển sang trạng thái: ${status}`);
+    this.server.to(`room_user_${userId}`).emit('newNotification');
+  }
+
+  // ============================================
+  // CHAT REALTIME EVENTS
+  // ============================================
+
+  @SubscribeMessage('sendMessage')
+  async handleSendMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { receiverId: number; text: string }
+  ) {
+    try {
+      const token = client.handshake.auth.token;
+      const secret = this.configService.get<string>('JWT_SECRET');
+      const decoded = this.jwtService.verify(token, { secret });
+      const senderId = parseInt(decoded.sub);
+
+      // Lưu tin nhắn vào Database
+      const result = await this.chatService.saveMessage(senderId, payload.receiverId, payload.text);
+
+      const messageObj = {
+        MessageID: result.MessageID,
+        SenderID: senderId,
+        ReceiverID: payload.receiverId,
+        MessageText: payload.text,
+        SentAt: result.SentAt,
+        IsRead: false
+      };
+
+      // Gửi lại cho người gửi (để hiển thị luôn lên UI của họ)
+      client.emit('receiveMessage', messageObj);
+      
+      // Gửi cho người nhận
+      this.server.to(`room_user_${payload.receiverId}`).emit('receiveMessage', messageObj);
+    } catch (err) {
+      console.error('Error handling sendMessage event:', err);
+    }
   }
 }

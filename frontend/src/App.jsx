@@ -8,6 +8,9 @@ import RecommendationSection from './components/Recommendations/RecommendationSe
 import FavoriteList from './components/Favorites/FavoriteList';
 import ReviewModal from './components/Reviews/ReviewModal';
 import ProductReviewsModal from './components/Reviews/ProductReviewsModal';
+import NotificationDropdown from './components/Notifications/NotificationDropdown';
+import LiveChatModal from './components/LiveChat/LiveChatModal';
+import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
@@ -230,6 +233,9 @@ function App() {
   const [reviewProductData, setReviewProductData] = useState(null);
   const [viewReviewsProduct, setViewReviewsProduct] = useState(null);
 
+  // States cho Phân hệ 9: Thông báo & Chat Realtime
+  const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
+
   // Realtime Delivery Socket State
   const [socket, setSocket] = useState(null);
   const [shipperLocation, setShipperLocation] = useState(null);
@@ -268,6 +274,10 @@ function App() {
       newSocket.on('deliveryCompleted', (data) => {
         setShipperLocation(null);
         alert(`🎉 Đơn hàng #${data.orderId} của bạn đã được giao thành công!`);
+      });
+
+      newSocket.on('shipperCalling', (data) => {
+        alert(`📞 Shipper đang gọi cho bạn (Lần ${data.callCount}/3) để giao đơn hàng #${data.orderId}. Vui lòng nghe máy!`);
       });
 
       setSocket(newSocket);
@@ -332,6 +342,22 @@ function App() {
       }
     } catch (err) {
       alert('Lỗi cập nhật trạng thái: ' + err.message);
+    }
+  };
+
+  // Admin mô phỏng Shipper gọi điện thoại
+  const handleShipperCall = async (orderId) => {
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/orders/${orderId}/shipper-call`, {
+        method: 'POST'
+      });
+      alert(res.message);
+      fetchAdminOrders();
+      if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
+        loadOrderDetails(orderId, true);
+      }
+    } catch (err) {
+      alert('Lỗi gọi điện: ' + err.message);
     }
   };
 
@@ -737,6 +763,12 @@ function App() {
               >
                 💖 Yêu thích
               </button>
+              <button 
+                className={`nav-btn ${isLiveChatOpen ? 'active' : ''}`}
+                onClick={() => setIsLiveChatOpen(true)}
+              >
+                💬 Hỗ trợ
+              </button>
             </>
           )}
 
@@ -750,8 +782,9 @@ function App() {
           )}
           
           {isLoggedIn ? (
-            <div className="user-profile">
-              <span className="user-name">👤 {user?.fullName} ({user?.role})</span>
+            <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <NotificationDropdown socket={socket} />
+              <span className="user-name" style={{ marginLeft: '10px' }}>👤 {user?.fullName} ({user?.role})</span>
               <button className="btn btn-secondary btn-sm" onClick={logout}>Đăng xuất</button>
             </div>
           ) : (
@@ -938,6 +971,12 @@ function App() {
                 onClick={() => { setAdminSubtab('chatbotLogs'); fetchChatbotLogs(); }}
               >
                 🤖 Nhật ký Chatbot
+              </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'liveChat' ? 'active' : ''}`}
+                onClick={() => setAdminSubtab('liveChat')}
+              >
+                💬 Hỗ trợ trực tuyến
               </button>
             </div>
 
@@ -1244,14 +1283,23 @@ function App() {
                                 </button>
                               )}
                               {order.Status === 'Đang giao' && (
-                                <button 
-                                  className="btn btn-success btn-sm"
-                                  onClick={() => handleUpdateOrderStatus(order.OrderID, 'Hoàn thành')}
-                                >
-                                  ✓ Xong
-                                </button>
+                                <>
+                                  <button 
+                                    className="btn btn-warning btn-sm"
+                                    onClick={() => handleShipperCall(order.OrderID)}
+                                    style={{ marginLeft: '5px', marginRight: '5px' }}
+                                  >
+                                    📞 Gọi ({order.CallCount || 0}/3)
+                                  </button>
+                                  <button 
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => handleUpdateOrderStatus(order.OrderID, 'Hoàn thành')}
+                                  >
+                                    ✓ Xong
+                                  </button>
+                                </>
                               )}
-                              {order.Status !== 'Hoàn thành' && order.Status !== 'Đã hủy' && (
+                              {order.Status !== 'Hoàn thành' && order.Status !== 'Đã hủy' && order.Status !== 'Trả hàng' && (
                                 <button 
                                   className="btn btn-danger btn-sm"
                                   onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đã hủy')}
@@ -1311,6 +1359,13 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* Quản lý Chat Realtime */}
+            {adminSubtab === 'liveChat' && (
+              <div style={{ marginTop: '20px' }}>
+                <AdminLiveChat socket={socket} user={user} />
               </div>
             )}
           </div>
@@ -1764,6 +1819,22 @@ function App() {
           onClose={() => setViewReviewsProduct(null)}
         />
       )}
+
+      {isLiveChatOpen && (
+        <LiveChatModal 
+          socket={socket} 
+          user={user} 
+          onClose={() => setIsLiveChatOpen(false)} 
+        />
+      )}
+
+      {/* Floating Hotline */}
+      <div className="floating-hotline">
+        <span className="hotline-text">Gọi ngay 1900 1234</span>
+        <a href="tel:19001234" className="hotline-btn">
+          📞
+        </a>
+      </div>
 
       <Chatbot />
     </div>

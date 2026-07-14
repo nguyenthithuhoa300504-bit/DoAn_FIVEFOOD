@@ -53,7 +53,7 @@ export class OrdersService {
   async getClientOrders(userId: number) {
     const result = await this.dbService.query(
       `SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.DiscountAmount, o.ShippingFee, o.FinalAmount, 
-              o.Status, o.PaymentMethod, o.PaymentStatus, o.ShippingAddress, p.PromoCode
+              o.Status, o.PaymentMethod, o.PaymentStatus, o.ShippingAddress, o.CallCount, p.PromoCode
        FROM Orders o
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
        WHERE o.UserID = @UserID
@@ -109,7 +109,7 @@ export class OrdersService {
   async getAllOrders() {
     const result = await this.dbService.query(
       `SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.DiscountAmount, o.ShippingFee, o.FinalAmount, 
-              o.Status, o.PaymentMethod, o.PaymentStatus, o.ShippingAddress, u.FullName, u.Email
+              o.Status, o.PaymentMethod, o.PaymentStatus, o.ShippingAddress, o.CallCount, u.FullName, u.Email
        FROM Orders o
        INNER JOIN Users u ON o.UserID = u.UserID
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
@@ -170,6 +170,55 @@ export class OrdersService {
     }
 
     return { success: true, message: `Cập nhật đơn hàng sang "${status}" thành công.` };
+  }
+
+  /**
+   * Mô phỏng Shipper gọi điện thoại cho khách hàng
+   */
+  async simulateShipperCall(orderId: number) {
+    const orderResult = await this.dbService.query(
+      `SELECT OrderID, UserID, Status, CallCount FROM Orders WHERE OrderID = @OrderID`,
+      [{ name: 'OrderID', type: sql.Int, value: orderId }]
+    );
+
+    if (orderResult.recordset.length === 0) {
+      throw new NotFoundException('Đơn hàng không tồn tại.');
+    }
+
+    const order = orderResult.recordset[0];
+    if (order.Status !== 'Đang giao') {
+      throw new BadRequestException('Chỉ có thể gọi điện khi đơn hàng ở trạng thái Đang giao.');
+    }
+
+    const newCallCount = (order.CallCount || 0) + 1;
+
+    if (newCallCount > 3) {
+      // Quá 3 lần -> Trả hàng lại bên shop
+      await this.updateOrderStatus(orderId, 'Trả hàng');
+      return { 
+        success: true, 
+        message: 'Shipper đã gọi quá 3 lần không bắt máy. Đơn hàng tự động chuyển sang "Trả hàng".',
+        callCount: newCallCount
+      };
+    } else {
+      // Cập nhật số lần gọi
+      await this.dbService.query(
+        `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
+        [
+          { name: 'CallCount', type: sql.Int, value: newCallCount },
+          { name: 'OrderID', type: sql.Int, value: orderId }
+        ]
+      );
+      
+      // Gửi thông báo WebSocket cho Client biết shipper đang gọi
+      this.eventsGateway.server.to(`room_user_${order.UserID}`).emit('shipperCalling', { orderId, callCount: newCallCount });
+
+      return { 
+        success: true, 
+        message: `Đã mô phỏng Shipper gọi điện (Lần ${newCallCount}/3).`,
+        callCount: newCallCount
+      };
+    }
   }
 
   /**

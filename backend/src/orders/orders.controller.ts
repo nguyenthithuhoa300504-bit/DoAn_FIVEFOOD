@@ -120,4 +120,14 @@ export class AdminOrdersController {
   ) {
     return await this.ordersService.updateOrderStatus(id, status);
   }
+
+  /**
+   * Admin mô phỏng shipper gọi điện thoại cho khách hàng
+   * POST /api/admin/orders/:id/shipper-call
+   */
+  @Post(':id/shipper-call')
+  @Roles('Admin')
+  async simulateShipperCall(@Param('id', ParseIntPipe) id: number) {
+    return await this.ordersService.simulateShipperCall(id);
+  }
 }
