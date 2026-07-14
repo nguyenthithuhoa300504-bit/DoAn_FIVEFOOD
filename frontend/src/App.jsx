@@ -215,12 +215,26 @@ function App() {
   const [duration, setDuration] = useState(null);
   const [shippingFee, setShippingFee] = useState(0);
   const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [activePromotions, setActivePromotions] = useState([]);
   const [appliedPromo, setAppliedPromo] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [checkoutError, setCheckoutError] = useState('');
+
+  // Fetch active promotions khi mở modal thanh toán
+  useEffect(() => {
+    if (isCheckoutOpen) {
+      apiFetch(`${API_BASE_URL}/orders/promotions/active`)
+        .then(res => {
+          if (Array.isArray(res)) {
+            setActivePromotions(res);
+          }
+        })
+        .catch(err => console.error('Error fetching promotions:', err));
+    }
+  }, [isCheckoutOpen]);
   
   const [clientOrders, setClientOrders] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
@@ -1603,16 +1617,52 @@ function App() {
                   {/* Voucher Section */}
                   <div className="form-group">
                     <label style={{ fontWeight: 'bold' }}>🎟️ Mã Giảm Giá (Voucher)</label>
-                    <div className="promo-input-group">
-                      <input 
-                        type="text"
-                        className="form-control"
-                        placeholder="Mã VOUCHER (Ví dụ: FIVEFOOD50)"
-                        value={promoCodeInput}
-                        onChange={(e) => setPromoCodeInput(e.target.value)}
-                      />
-                      <button type="button" className="btn btn-secondary" onClick={handleApplyPromo}>Áp dụng</button>
+                    <div className="promo-list">
+                      {activePromotions.map(promo => {
+                        const potentialDiscount = Math.min((totalPrice * promo.DiscountPercentage) / 100, promo.MaxDiscountAmount);
+                        const isExpensive = totalPrice >= 150000;
+                        const isEligible = totalPrice >= promo.MinOrderValue;
+                        
+                        return (
+                          <label 
+                            key={promo.PromotionID} 
+                            className={`promo-card ${promoCodeInput === promo.PromoCode ? 'selected' : ''} ${!isEligible ? 'disabled' : ''}`}
+                          >
+                            <input 
+                              type="radio" 
+                              name="promo" 
+                              value={promo.PromoCode}
+                              checked={promoCodeInput === promo.PromoCode}
+                              onChange={() => {
+                                if (isEligible) {
+                                  setPromoCodeInput(promo.PromoCode);
+                                }
+                              }}
+                              disabled={!isEligible}
+                            />
+                            <div className="promo-card-content">
+                              <div className="promo-card-header">
+                                <span className="promo-code-badge">{promo.PromoCode}</span>
+                                {isEligible ? (
+                                  <span className="promo-discount-text">
+                                    {isExpensive 
+                                      ? `Giảm ngay ${potentialDiscount.toLocaleString('vi-VN')}đ` 
+                                      : `Giảm ${promo.DiscountPercentage}% (Tối đa ${promo.MaxDiscountAmount.toLocaleString('vi-VN')}đ)`}
+                                  </span>
+                                ) : (
+                                  <span className="promo-discount-text" style={{ color: '#aaa', fontSize: '12px' }}>
+                                    Đơn tối thiểu {promo.MinOrderValue.toLocaleString('vi-VN')}đ
+                                  </span>
+                                )}
+                              </div>
+                              {promo.Description && <div className="promo-desc">{promo.Description}</div>}
+                            </div>
+                          </label>
+                        );
+                      })}
+                      {activePromotions.length === 0 && <div style={{ fontSize: '13px', color: '#666', padding: '10px 0' }}>Không có mã giảm giá khả dụng.</div>}
                     </div>
+                    <button type="button" className="btn btn-secondary" onClick={handleApplyPromo} style={{ marginTop: '10px', width: '100%' }}>Áp dụng Khuyến mãi</button>
                     {promoError && <div style={{ color: '#ff5252', fontSize: '13px', marginTop: '5px' }}>⚠️ {promoError}</div>}
                     {promoSuccess && <div className="promo-success">✓ {promoSuccess}</div>}
                   </div>

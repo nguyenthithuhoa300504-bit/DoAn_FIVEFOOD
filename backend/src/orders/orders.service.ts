@@ -222,6 +222,19 @@ export class OrdersService {
   }
 
   /**
+   * Lấy danh sách các khuyến mãi đang hiệu lực
+   */
+  async getActivePromotions() {
+    const result = await this.dbService.query(
+      `SELECT PromotionID, PromoCode, Description, DiscountPercentage, MaxDiscountAmount, MinOrderValue, UsageLimit, UsedCount, StartDate, EndDate
+       FROM Promotions
+       WHERE GETDATE() BETWEEN StartDate AND EndDate
+         AND UsedCount < UsageLimit`
+    );
+    return result.recordset;
+  }
+
+  /**
    * Kiểm tra nhanh voucher khuyến mãi từ phía Client
    */
   async validatePromotion(code: string, orderTotal: number) {

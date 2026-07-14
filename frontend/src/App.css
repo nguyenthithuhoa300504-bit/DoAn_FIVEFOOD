@@ -593,10 +593,89 @@
   }
 }
 
-.promo-input-group {
+.promo-list {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 5px; /* Để chừa không gian cho thanh cuộn */
+}
+
+/* Custom scrollbar cho danh sách mã giảm giá */
+.promo-list::-webkit-scrollbar {
+  width: 6px;
+}
+.promo-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+.promo-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 168, 255, 0.3);
+  border-radius: 4px;
+}
+.promo-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+.promo-card {
+  display: block;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel-bg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.promo-card input[type="radio"] {
+  display: none;
+}
+
+.promo-card:hover {
+  border-color: var(--primary-color);
+  background: rgba(0, 168, 255, 0.05);
+}
+
+.promo-card.selected {
+  border-color: var(--primary-color);
+  background: rgba(0, 168, 255, 0.1);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.promo-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.promo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.promo-code-badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.promo-discount-text {
+  color: var(--success-color);
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.promo-desc {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .promo-success {

@@ -51,6 +51,15 @@ export class OrdersController {
   }
 
   /**
+   * Lấy danh sách khuyến mãi active
+   * GET /api/orders/promotions/active
+   */
+  @Get('promotions/active')
+  async getActivePromotions() {
+    return await this.ordersService.getActivePromotions();
+  }
+
+  /**
    * Kiểm tra nhanh voucher khuyến mãi
    * POST /api/orders/validate-promo
    */
