@@ -74,7 +74,7 @@ function LeafletMap({ onLocationSelected }) {
 
   return (
     <div style={{ margin: '10px 0' }}>
-      <label style={{ display: 'block', fontSize: '12px', color: '#ff5722', marginBottom: '5px', fontWeight: 'bold' }}>
+      <label style={{ display: 'block', fontSize: '12px', color: '#00a8ff', marginBottom: '5px', fontWeight: 'bold' }}>
         🗺️ Click vào bản đồ để chọn vị trí giao hàng:
       </label>
       <div 
@@ -139,7 +139,7 @@ function DeliveryTrackingMap({ customerLat, customerLng, shipperLat, shipperLng 
 
   return (
     <div style={{ margin: '15px 0' }}>
-      <label style={{ display: 'block', fontSize: '14px', color: '#ff5722', marginBottom: '10px', fontWeight: 'bold' }}>
+      <label style={{ display: 'block', fontSize: '14px', color: '#00a8ff', marginBottom: '10px', fontWeight: 'bold' }}>
         🛵 Bản đồ theo dõi Shipper trực tiếp:
       </label>
       <div 
@@ -1830,10 +1830,10 @@ function App() {
 
       {/* Floating Hotline */}
       <div className="floating-hotline">
-        <span className="hotline-text">Gọi ngay 1900 1234</span>
         <a href="tel:19001234" className="hotline-btn">
           📞
         </a>
+        <span className="hotline-text">Gọi ngay 1900 1234</span>
       </div>
 
       <Chatbot />
