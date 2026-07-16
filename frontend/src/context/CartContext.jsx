@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiFetch } from '../utils/apiFetch';
+import { apiFetch, logUserAction } from '../utils/apiFetch';
 
 const CartContext = createContext();
 
@@ -130,6 +130,7 @@ export const CartProvider = ({ children }) => {
           })
         });
         setCart(data);
+        logUserAction('ADD_TO_CART', product.ProductID);
       } catch (err) {
         console.error('Lỗi khi thêm giỏ hàng lên server:', err.message);
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from './context/CartContext';
-import { apiFetch } from './utils/apiFetch';
+import { apiFetch, logUserAction } from './utils/apiFetch';
 import L from 'leaflet';
 import io from 'socket.io-client';
 import Chatbot from './components/AIChatbot/Chatbot';
@@ -180,6 +180,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
+  const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
   
   // States cho Form Auth
   const [email, setEmail] = useState('');
@@ -604,6 +605,7 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ productId })
       });
+      logUserAction('FAVORITE_PRODUCT', productId);
       alert('💖 Đã thêm vào danh sách yêu thích!');
     } catch (err) {
       alert(err.message || 'Sản phẩm đã có trong danh sách yêu thích!');
@@ -642,6 +644,32 @@ function App() {
       verifyPayment();
     }
   }, []);
+
+  // Theo dõi hành vi VIEW_PRODUCT (debounce 3s)
+  useEffect(() => {
+    let timer;
+    if (selectedProductDetails && isLoggedIn) {
+      timer = setTimeout(() => {
+        logUserAction('VIEW_PRODUCT', selectedProductDetails.ProductID);
+      }, 3000); // Ở lại xem > 3s
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [selectedProductDetails, isLoggedIn]);
+
+  // Theo dõi hành vi SEARCH (debounce 2s)
+  useEffect(() => {
+    let timer;
+    if (searchQuery.trim().length > 0 && isLoggedIn) {
+      timer = setTimeout(() => {
+        logUserAction('SEARCH', null, searchQuery.trim());
+      }, 2000); // Gõ xong dừng lại 2s
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [searchQuery, isLoggedIn]);
 
   // Tính tổng số lượng và tổng tiền trong giỏ hàng
   const totalItems = cart.reduce((sum, item) => sum + item.Quantity, 0);
@@ -794,10 +822,20 @@ function App() {
             />
           )}
         </div>
-        <div className="floating-actions" onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn heart-btn">❤️</button>
-          <button className="icon-btn cart-btn" onClick={() => addToCart(product, 1)}>🛒</button>
-        </div>
+        <button 
+          className="float-btn heart-btn floating-left" 
+          onClick={(e) => { e.stopPropagation(); handleAddFavorite(product.ProductID); }}
+          title="Thêm vào yêu thích"
+        >
+          ❤️
+        </button>
+        <button 
+          className="float-btn cart-btn floating-right" 
+          onClick={(e) => { e.stopPropagation(); addToCart(product, 1); }}
+          title="Thêm giỏ hàng"
+        >
+          🛒
+        </button>
       </div>
       <div className="product-info" onClick={() => setSelectedProductDetails(product)}>
         <h3>{product.ProductName}</h3>
@@ -888,6 +926,23 @@ function App() {
             </button>
           )}
 
+          {/* Thanh tìm kiếm */}
+          <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '20px', padding: '5px 15px', marginLeft: '10px' }}>
+            <span style={{ marginRight: '8px', cursor: 'pointer' }}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Tìm món ăn..." 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (activeTab !== 'menu' && e.target.value.trim() !== '') {
+                  setActiveTab('menu');
+                }
+              }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', width: '130px', fontSize: '14px' }}
+            />
+          </div>
+
           {isLoggedIn ? (
             <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: '10px' }}>
               <NotificationDropdown socket={socket} />
@@ -977,6 +1032,45 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* PHẦN: TẠI SAO NÊN ĂN TẠI ĐÂY */}
+            <div className="why-eat-here-section full-width fade-in" style={{ paddingTop: '60px', paddingBottom: '40px', textAlign: 'center' }}>
+              <div className="section-header" style={{ marginBottom: '40px' }}>
+                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tại sao nên ăn tại đây</h2>
+                <p style={{ color: '#666', marginTop: '15px', maxWidth: '700px', margin: '15px auto 0', lineHeight: '1.6' }}>
+                  Hãy đến với chúng tôi và tận hưởng những món ăn tươi ngon, được chế biến từ nguyên liệu chất lượng, mang đến cho bạn trải nghiệm ẩm thực đích thực mà bạn sẽ không thể quên
+                </p>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+                {/* Feature 1 */}
+                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>🌿</div>
+                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Nguyên Liệu Tươi Sạch</h3>
+                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
+                    Cam kết sử dụng 100% thực phẩm tươi mới mỗi ngày, nguồn gốc rõ ràng, đảm bảo an toàn sức khỏe và mang đến hương vị tự nhiên nhất.
+                  </p>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>👨‍🍳</div>
+                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Hương Vị Tuyệt Hảo</h3>
+                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
+                    Sự kết hợp hoàn hảo giữa công thức độc quyền và tâm huyết của những đầu bếp chuyên nghiệp, mang đến trải nghiệm ẩm thực khó quên.
+                  </p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>🚀</div>
+                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Giao Hàng Siêu Tốc</h3>
+                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
+                    Đội ngũ shipper thần tốc đảm bảo món ăn đến tay bạn luôn trong trạng thái nóng hổi, giữ trọn vẹn hương vị như vừa mới ra lò.
+                  </p>
+                </div>
+              </div>
+            </div>
           </>
         )}
 
@@ -988,7 +1082,10 @@ function App() {
             </div>
 
             <div className="product-cards-container" style={{ gap: '30px' }}>
-              {products.filter(p => p.IsActive || p.IsActive === undefined).map(renderProductCard)}
+              {products
+                .filter(p => p.IsActive || p.IsActive === undefined)
+                .filter(p => p.ProductName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(renderProductCard)}
             </div>
           </div>
         )}

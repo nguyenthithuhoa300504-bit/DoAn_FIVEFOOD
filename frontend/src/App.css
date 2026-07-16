@@ -1091,13 +1091,18 @@
   font-size: 70px;
 }
 
-.floating-actions {
+.floating-left {
   position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  top: 5px;
+  left: 5px;
+  z-index: 10;
+}
+
+.floating-right {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
 }
 
 .float-btn {

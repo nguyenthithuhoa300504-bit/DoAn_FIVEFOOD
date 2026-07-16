@@ -53,3 +53,20 @@ export async function apiFetch(url, options = {}) {
     throw error;
   }
 }
+
+/**
+ * Hàm gửi log hành vi người dùng lên server
+ */
+export async function logUserAction(actionType, productId = null, searchQuery = null) {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return; // Chỉ log khi đã đăng nhập
+    
+    await apiFetch('http://localhost:3000/api/user-actions/log', {
+      method: 'POST',
+      body: JSON.stringify({ actionType, productId, searchQuery })
+    });
+  } catch (err) {
+    console.error('Lỗi khi ghi log hành vi:', err);
+  }
+}

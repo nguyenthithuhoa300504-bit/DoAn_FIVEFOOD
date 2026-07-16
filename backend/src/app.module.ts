@@ -15,6 +15,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
 import { FavoritesModule } from './favorites/favorites.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ChatModule } from './chat/chat.module';
+import { UserActionsModule } from './user-actions/user-actions.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ChatModule } from './chat/chat.module';
     FavoritesModule,
     ReviewsModule,
     ChatModule,
+    UserActionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
