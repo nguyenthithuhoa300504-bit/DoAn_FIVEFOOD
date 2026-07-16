@@ -265,7 +265,7 @@ function App() {
   const [viewReviewsProduct, setViewReviewsProduct] = useState(null);
 
   // States cho Phân hệ 9: Thông báo & Chat Realtime
-  const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
+  // Live chat will now use activeTab === 'contact' instead of a separate state
 
   // Realtime Delivery Socket State
   const [socket, setSocket] = useState(null);
@@ -979,9 +979,9 @@ function App() {
             if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
             setActiveTab('favorites');
           }}>Yêu thích</button>
-          <button className="nav-btn" onClick={() => {
+          <button className={`nav-btn ${activeTab === 'contact' ? 'active' : ''}`} onClick={() => {
             if(!isLoggedIn) { alert('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
-            setIsLiveChatOpen(true);
+            setActiveTab('contact');
           }}>Liên hệ</button>
           {isLoggedIn && user?.role === 'Admin' && (
             <button className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}>Quản trị</button>
@@ -989,10 +989,19 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="main-content">
         {activeTab === 'favorites' && isLoggedIn && (
           <FavoriteList onAddToCart={addToCart} />
+        )}
+
+        {activeTab === 'contact' && isLoggedIn && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <LiveChatModal 
+              socket={socket} 
+              user={user} 
+              onClose={() => setActiveTab('home')} 
+            />
+          </div>
         )}
 
         {activeTab === 'home' && (
@@ -2177,7 +2186,7 @@ function App() {
                         setActiveTab('login');
                       } else {
                         setSelectedProductDetails(null);
-                        setIsLiveChatOpen(true);
+                        setActiveTab('contact');
                       }
                     }}
                   >
@@ -2190,13 +2199,7 @@ function App() {
         </div>
       )}
 
-      {isLiveChatOpen && (
-        <LiveChatModal 
-          socket={socket} 
-          user={user} 
-          onClose={() => setIsLiveChatOpen(false)} 
-        />
-      )}
+
 
       {/* Floating Hotline */}
       <div className="floating-hotline">
