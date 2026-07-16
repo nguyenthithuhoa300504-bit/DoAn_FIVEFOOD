@@ -1,0 +1,8 @@
+TypeError: Cannot read properties of undefined (reading 'request')
+    at DatabaseService.query (C:\Users\Admin\Desktop\DoAn\backend\src\database\database.service.ts:49:33)
+    at RecommendationsService.getRecommendations (C:\Users\Admin\Desktop\DoAn\backend\src\recommendations\recommendations.service.ts:93:61)
+    at RecommendationsController.getRecommendations (C:\Users\Admin\Desktop\DoAn\backend\src\recommendations\recommendations.controller.ts:24:52)
+    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-execution-context.js:47:62
+    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17

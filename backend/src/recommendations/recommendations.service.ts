@@ -94,9 +94,23 @@ export class RecommendationsService {
         recommendedProducts = topSellingResult.recordset;
       }
 
+      // 3. Fallback: Nếu hệ thống chưa có đủ dữ liệu đơn hàng, lấy ngẫu nhiên 10 món
+      if (recommendedProducts.length === 0) {
+        const randomQuery = `
+          SELECT TOP 10 p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName
+          FROM Products p
+          INNER JOIN Categories c ON p.CategoryID = c.CategoryID
+          WHERE p.IsActive = 1
+          ORDER BY NEWID()
+        `;
+        const randomResult = await this.databaseService.query(randomQuery);
+        recommendedProducts = randomResult.recordset;
+      }
+
       return recommendedProducts;
     } catch (error) {
       this.logger.error('Error fetching recommendations', error);
+      require('fs').writeFileSync('recs_error.log', (error ? error.stack : 'Unknown error') + '');
       throw error;
     }
   }

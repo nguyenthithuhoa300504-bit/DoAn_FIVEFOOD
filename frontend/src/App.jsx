@@ -181,6 +181,19 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
   
   // States cho Form Auth
   const [email, setEmail] = useState('');
@@ -831,7 +844,11 @@ function App() {
         </button>
         <button 
           className="float-btn cart-btn floating-right" 
-          onClick={(e) => { e.stopPropagation(); addToCart(product, 1); }}
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            addToCart(product, 1); 
+            alert(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
+          }}
           title="Thêm giỏ hàng"
         >
           🛒
@@ -851,14 +868,9 @@ function App() {
       </div>
       <button 
         className="btn btn-primary btn-buy-now"
-        onClick={() => {
-          addToCart(product, 1);
-          if (!isLoggedIn) {
-            alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
-            setActiveTab('login');
-          } else {
-            setSelectedCheckoutProduct(product);
-          }
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedProductDetails(product);
         }}
       >
         Mua Ngay
@@ -869,69 +881,28 @@ function App() {
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="header-bar fade-in">
-        <div className="logo-section">
-          <h1>STORES</h1>
-        </div>
-
-        <div className="nav-controls">
-          <button 
-            className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`}
-            onClick={() => setActiveTab('home')}
-          >
-            Trang Chủ
-          </button>
+      <header className="header-bar fade-in" style={{ flexDirection: 'column', padding: '15px 40px 10px 40px', gap: '20px' }}>
+        
+        {/* Top Row: Logo, Search, Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           
-          <button 
-            className={`nav-btn ${activeTab === 'menu' ? 'active' : ''}`}
-            onClick={() => setActiveTab('menu')}
-          >
-            Thực đơn
-          </button>
+          {/* Logo */}
+          <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setActiveTab('home')}>
+            <div style={{ background: '#ff7043', color: 'white', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(255,112,67,0.3)' }}>
+              ⚡
+            </div>
+            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' }}>
+              <span style={{ color: '#111' }}>FIVE</span>
+              <span style={{ color: '#ff7043' }}>FOOD</span>
+            </h1>
+          </div>
 
-          <button 
-            className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`}
-            onClick={() => {
-              if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem đơn hàng'); setActiveTab('login'); return; }
-              setActiveTab('orders'); 
-              fetchClientOrders(); 
-            }}
-          >
-            Đặt hàng
-          </button>
-
-          <button 
-            className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-            onClick={() => {
-              if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
-              setActiveTab('favorites');
-            }}
-          >
-            Yêu thích
-          </button>
-
-          <button className="nav-btn" onClick={() => {
-            if(!isLoggedIn) { alert('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
-            setIsLiveChatOpen(true);
-          }}>
-            Liên hệ
-          </button>
-
-          {isLoggedIn && user?.role === 'Admin' && (
-            <button 
-              className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}
-            >
-              Quản trị
-            </button>
-          )}
-
-          {/* Thanh tìm kiếm */}
-          <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '20px', padding: '5px 15px', marginLeft: '10px' }}>
-            <span style={{ marginRight: '8px', cursor: 'pointer' }}>🔍</span>
+          {/* Search Bar */}
+          <div className="header-search-bar" style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '30px', padding: '6px 8px 6px 20px', flex: '0 1 500px', border: '1px solid transparent', transition: 'all 0.3s' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '18px' }}>🔍</span>
             <input 
               type="text" 
-              placeholder="Tìm món ăn..." 
+              placeholder="Tìm kiếm món ăn ngon ngay..." 
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -939,31 +910,82 @@ function App() {
                   setActiveTab('menu');
                 }
               }}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', width: '130px', fontSize: '14px' }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', flex: 1, padding: '0 15px', fontSize: '15px' }}
             />
+            <button 
+              style={{ background: 'transparent', border: 'none', fontWeight: 'bold', cursor: 'pointer', padding: '8px 15px', fontSize: '15px', color: '#111' }}
+              onClick={() => setActiveTab('menu')}
+            >
+              Tìm kiếm
+            </button>
           </div>
 
-          {isLoggedIn ? (
-            <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: '10px' }}>
-              <NotificationDropdown socket={socket} />
-              <div className="user-avatar" title={`Đăng xuất (${user?.fullName})`} onClick={logout}>
-                👤
-              </div>
-            </div>
-          ) : (
-            <div className="user-profile" style={{ marginLeft: '10px' }}>
-               <div className="user-avatar" title="Đăng nhập" onClick={() => setActiveTab('login')}>
-                ?
-              </div>
-            </div>
-          )}
+          {/* Action Icons */}
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              title={isDarkMode ? "Giao diện sáng" : "Giao diện tối"} 
+              style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+              onClick={() => setIsDarkMode(!isDarkMode)}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+            <button title="Yêu thích" style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252', transition: 'all 0.2s' }}
+              onClick={() => {
+                if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
+                setActiveTab('favorites');
+              }}
+            >
+              ❤️
+            </button>
+            
+            <button title="Giỏ hàng" style={{ position: 'relative', width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+              onClick={() => setActiveTab('cart')}
+            >
+              🛍️
+              {totalItems > 0 && (
+                <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: '#ff7043', color: 'white', fontSize: '12px', fontWeight: 'bold', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
+                  {totalItems}
+                </span>
+              )}
+            </button>
 
-          <button 
-            className="cart-pill"
-            onClick={() => setActiveTab('cart')}
-          >
-            🛒 {totalItems}
-          </button>
+            {isLoggedIn ? (
+              <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '5px' }}>
+                <NotificationDropdown socket={socket} />
+                <div className="user-avatar" style={{ border: '2px solid #ff7043', width: '42px', height: '42px', cursor: 'pointer', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} title={`Đăng xuất (${user?.fullName})`} onClick={logout}>
+                  👤
+                </div>
+              </div>
+            ) : (
+              <div className="user-profile" style={{ marginLeft: '5px' }}>
+                <div className="user-avatar" style={{ width: '42px', height: '42px', cursor: 'pointer', border: '1px solid var(--panel-border)', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} title="Đăng nhập" onClick={() => setActiveTab('login')}>
+                  👤
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Row: Navigation Tabs */}
+        <div className="header-nav-tabs" style={{ display: 'flex', gap: '30px', width: '100%', justifyContent: 'center' }}>
+          <button className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>Trang Chủ</button>
+          <button className={`nav-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Thực đơn</button>
+          <button className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => {
+            if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem đơn hàng'); setActiveTab('login'); return; }
+            setActiveTab('orders'); 
+            fetchClientOrders(); 
+          }}>Đặt hàng</button>
+          <button className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => {
+            if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
+            setActiveTab('favorites');
+          }}>Yêu thích</button>
+          <button className="nav-btn" onClick={() => {
+            if(!isLoggedIn) { alert('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
+            setIsLiveChatOpen(true);
+          }}>Liên hệ</button>
+          {isLoggedIn && user?.role === 'Admin' && (
+            <button className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}>Quản trị</button>
+          )}
         </div>
       </header>
 
@@ -2090,47 +2112,39 @@ function App() {
       {/* --- PHÂN HỆ: PRODUCT DETAIL MODAL --- */}
       {selectedProductDetails && (
         <div className="checkout-modal-overlay" style={{ zIndex: 4000 }} onClick={() => setSelectedProductDetails(null)}>
-          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px', maxWidth: '500px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            <div style={{ background: 'var(--panel-bg)', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <button 
-                className="close-btn" 
-                style={{ position: 'absolute', top: '15px', right: '15px', color: 'var(--text-main)', background: 'rgba(0,0,0,0.1)', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }} 
-                onClick={() => setSelectedProductDetails(null)}
-              >
-                ✕
-              </button>
+          <div className="premium-detail-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-btn-premium" onClick={() => setSelectedProductDetails(null)}>✕</button>
+            
+            <div className="premium-modal-left">
               {selectedProductDetails.ImageURL && selectedProductDetails.ImageURL.length < 5 ? (
-                <span style={{ fontSize: '100px' }}>{selectedProductDetails.ImageURL}</span>
+                <span className="premium-modal-img">{selectedProductDetails.ImageURL}</span>
               ) : (
-                <span style={{ fontSize: '100px' }}>🍔</span>
+                <span className="premium-modal-img">🍔</span>
               )}
             </div>
             
-            <div style={{ padding: '25px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '28px', margin: '0 0 10px 0', color: 'var(--primary-color)' }}>{selectedProductDetails.ProductName}</h2>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
-                <span className="tag" style={{ background: 'var(--panel-border)', padding: '4px 10px', borderRadius: '15px', fontSize: '12px' }}>Việt Nam</span>
-                <span className="tag" style={{ background: 'var(--panel-border)', padding: '4px 10px', borderRadius: '15px', fontSize: '12px' }}>Đồ ăn</span>
+            <div className="premium-modal-right">
+              <h2 className="premium-title">{selectedProductDetails.ProductName}</h2>
+              
+              <div className="premium-tags">
+                <span className="premium-tag">Việt Nam</span>
+                <span className="premium-tag">Đồ ăn</span>
               </div>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.5' }}>
+              
+              <p className="premium-desc">
                 Món {selectedProductDetails.ProductName} được chế biến từ những nguyên liệu tươi ngon nhất, mang lại hương vị hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác.
               </p>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--panel-border)', paddingTop: '20px', marginBottom: '20px' }}>
-                <div style={{ textAlign: 'left' }}>
-                  <span style={{ display: 'block', fontSize: '14px', color: 'var(--text-muted)' }}>Giá bán:</span>
-                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff5252' }}>{selectedProductDetails.Price.toLocaleString('vi-VN')} đ</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ display: 'block', fontSize: '14px', color: 'var(--text-muted)' }}>Kho:</span>
-                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{selectedProductDetails.Inventory} món</span>
+              <div className="premium-price-row">
+                <div>
+                  <span className="premium-price-label">Giá bán</span>
+                  <span className="premium-price-value">{selectedProductDetails.Price.toLocaleString('vi-VN')} đ</span>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+              <div className="premium-actions">
                 <button 
-                  className="btn btn-primary" 
-                  style={{ padding: '15px', fontSize: '16px', borderRadius: '30px' }}
+                  className="premium-btn-buy"
                   onClick={() => {
                     addToCart(selectedProductDetails, 1);
                     setSelectedProductDetails(null);
@@ -2144,20 +2158,19 @@ function App() {
                 >
                   Mua Hàng Ngay 💳
                 </button>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div className="premium-btn-group">
                   <button 
-                    className="btn btn-secondary" 
-                    style={{ flex: 1, padding: '12px', borderRadius: '30px' }}
+                    className="premium-btn-secondary"
                     onClick={() => {
                       addToCart(selectedProductDetails, 1);
                       setSelectedProductDetails(null);
+                      alert(`Đã thêm ${selectedProductDetails.ProductName} vào giỏ hàng!`);
                     }}
                   >
                     🛒 Thêm Giỏ Hàng
                   </button>
                   <button 
-                    className="btn btn-secondary" 
-                    style={{ flex: 1, padding: '12px', borderRadius: '30px', background: 'transparent', border: '1px solid var(--primary-color)', color: 'var(--primary-color)' }}
+                    className="premium-btn-secondary premium-btn-chat"
                     onClick={() => {
                       if (!isLoggedIn) {
                         alert('Vui lòng đăng nhập để sử dụng tính năng Chat.');
