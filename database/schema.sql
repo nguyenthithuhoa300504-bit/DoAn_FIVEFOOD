@@ -202,6 +202,7 @@ CREATE TABLE Reviews (
     OrderID INT NOT NULL,
     Rating INT NOT NULL CHECK (Rating BETWEEN 1 AND 5),
     Comment NVARCHAR(MAX) NULL,
+    IsHidden BIT DEFAULT 0,
     CreatedAt DATETIME DEFAULT GETDATE(),
     CONSTRAINT FK_Reviews_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
     CONSTRAINT FK_Reviews_Products FOREIGN KEY (ProductID) REFERENCES Products(ProductID),

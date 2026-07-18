@@ -74,7 +74,13 @@ export class ProductsService {
     const offset = (page - 1) * limit;
     
     let queryStr = `
-      SELECT p.*, c.CategoryName, COUNT(*) OVER() as TotalCount
+      SELECT p.*, c.CategoryName, COUNT(*) OVER() as TotalCount,
+             ISNULL((
+                SELECT SUM(od.Quantity) 
+                FROM OrderDetails od 
+                INNER JOIN Orders o ON od.OrderID = o.OrderID 
+                WHERE od.ProductID = p.ProductID AND o.Status <> N'Đã hủy'
+             ), 0) AS SoldCount
       FROM Products p
       INNER JOIN Categories c ON p.CategoryID = c.CategoryID
       WHERE p.IsActive = 1

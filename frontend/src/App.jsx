@@ -11,6 +11,7 @@ import ProductReviewsModal from './components/Reviews/ProductReviewsModal';
 import NotificationDropdown from './components/Notifications/NotificationDropdown';
 import LiveChatModal from './components/LiveChat/LiveChatModal';
 import AdminLiveChat from './components/LiveChat/AdminLiveChat';
+import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
@@ -181,6 +182,7 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
+  const [selectedCategory, setSelectedCategory] = useState('All'); // Thêm state bộ lọc danh mục
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -253,7 +255,8 @@ function App() {
   const [clientOrders, setClientOrders] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
-  const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders
+  const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders, reviews
+  const [adminReviews, setAdminReviews] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   
   // Product Detail Modal State
@@ -277,25 +280,25 @@ function App() {
     {
       title: "Khám phá ẩm thực <br/><span class='text-highlight'>TIN-STORES</span>",
       subtitle: "Hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác chỉ có tại cửa hàng của chúng tôi.",
-      img: "🍲"
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f35c/512.gif" alt="Món ăn ngon" style={{ filter: 'drop-shadow(0 20px 30px rgba(255,87,34,0.3))' }} />
     },
     {
       title: "Món Mới <br/><span class='text-highlight'>Bùng Nổ</span>",
       subtitle: "Thưởng thức hương vị hoàn toàn mới lạ. Đặt ngay kẻo lỡ!",
-      img: "🍕"
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f355/512.gif" alt="Pizza" style={{ filter: 'drop-shadow(0 20px 30px rgba(255,152,0,0.3))' }} />
     },
     {
       title: "Giao Hàng <br/><span class='text-highlight'>Siêu Tốc</span>",
       subtitle: "Nóng hổi vừa thổi vừa ăn, giao ngay đến tận cửa nhà bạn.",
-      img: "🚀"
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f69a/512.gif" alt="Giao hàng" style={{ filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.2))' }} />
     }
   ];
 
   useEffect(() => {
-    if (activeTab === 'menu') {
+    if (activeTab === 'home') {
       const timer = setInterval(() => {
         setCurrentBanner(prev => (prev + 1) % banners.length);
-      }, 5000);
+      }, 4000); // Tự động chuyển sau 4 giây
       return () => clearInterval(timer);
     }
   }, [activeTab, banners.length]);
@@ -364,6 +367,27 @@ function App() {
       setAdminOrders(data);
     } catch (err) {
       console.error('Lỗi khi tải đơn hàng admin', err);
+    }
+  };
+
+  const fetchAdminReviews = async () => {
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/reviews/admin/all`);
+      setAdminReviews(data || []);
+    } catch (err) {
+      console.error('Lỗi khi tải đánh giá admin', err);
+      setAdminError('Lỗi khi tải danh sách đánh giá');
+    }
+  };
+
+  const toggleReviewVisibility = async (reviewId) => {
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/reviews/${reviewId}/toggle-hide`, { method: 'PATCH' });
+      setAdminSuccess(res.message);
+      fetchAdminReviews();
+    } catch (err) {
+      console.error(err);
+      setAdminError('Lỗi khi thay đổi trạng thái đánh giá');
     }
   };
 
@@ -818,65 +842,101 @@ function App() {
     }
   };
 
-  const renderProductCard = (product) => (
-    <div key={product.ProductID} className="product-card new-design">
-      <div className="product-card-top" onClick={() => setSelectedProductDetails(product)}>
-        <div className="product-img-wrapper">
-          {product.ImageURL && product.ImageURL.length < 5 ? (
-            <div className="emoji-placeholder">{product.ImageURL}</div>
-          ) : (
-            <img 
-              src={product.ImageURL || 'https://via.placeholder.com/200?text=No+Image'} 
-              alt={product.ProductName} 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-              }}
-            />
-          )}
+  const renderProductCard = (product) => {
+    const isSuspended = product.IsActive === false || product.Inventory <= 0;
+    
+    return (
+      <div key={product.ProductID} className="product-card new-design">
+        <div className="product-card-top" onClick={() => setSelectedProductDetails(product)}>
+          <div className="product-img-wrapper">
+            <span className="card-badge category-badge">{product.CategoryName}</span>
+            {isSuspended && (
+              <span className="card-badge status-badge suspended">Tạm ngưng</span>
+            )}
+            
+            {product.ImageURL && product.ImageURL.length < 5 ? (
+              <div className="emoji-placeholder">{product.ImageURL}</div>
+            ) : (
+              <img 
+                src={product.ImageURL || 'https://via.placeholder.com/300?text=No+Image'} 
+                alt={product.ProductName} 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                }}
+              />
+            )}
+          </div>
+          <button 
+            className="float-btn heart-btn" 
+            onClick={(e) => { e.stopPropagation(); handleAddFavorite(product.ProductID); }}
+            title="Thêm vào yêu thích"
+          >
+            ❤️
+          </button>
         </div>
-        <button 
-          className="float-btn heart-btn floating-left" 
-          onClick={(e) => { e.stopPropagation(); handleAddFavorite(product.ProductID); }}
-          title="Thêm vào yêu thích"
-        >
-          ❤️
-        </button>
-        <button 
-          className="float-btn cart-btn floating-right" 
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            addToCart(product, 1); 
-            alert(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
-          }}
-          title="Thêm giỏ hàng"
-        >
-          🛒
-        </button>
-      </div>
-      <div className="product-info" onClick={() => setSelectedProductDetails(product)}>
-        <h3>{product.ProductName}</h3>
-        <div className="product-tags">
-          <span className="tag">Việt Nam</span>
-          <span className="tag">Đồ ăn</span>
-        </div>
-        <p className="product-desc">Hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác.</p>
         
-        <div className="price-row">
-          <span className="price">{product.Price.toLocaleString('vi-VN')} đ</span>
+        <div className="product-info" onClick={() => setSelectedProductDetails(product)}>
+          <div className="title-row">
+            <h3>{product.ProductName}</h3>
+          </div>
+          
+          <div className="meta-row">
+            <button 
+              className="rating-badge"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedProductDetails(product);
+              }}
+            >
+              ⭐ Đánh giá
+            </button>
+            <span className="dot-divider">•</span>
+            <span className="sold-count">Đã bán {product.SoldCount || 0}</span>
+          </div>
+          
+          <p className="product-desc">{product.Description || 'Món ăn đặc biệt thơm ngon và kích thích vị giác'}</p>
+          
+          <div className="price-row">
+            <span className="price">{product.Price.toLocaleString('vi-VN')} đ</span>
+          </div>
+        </div>
+        
+        <div className="product-actions-row">
+          <button 
+            className="action-btn buy-btn"
+            disabled={isSuspended}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSuspended) return;
+              addToCart(product, 1);
+              if (!isLoggedIn) {
+                alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                setActiveTab('login');
+              } else {
+                setIsCheckoutOpen(true);
+              }
+            }}
+          >
+            Mua Ngay
+          </button>
+          <button 
+            className="action-btn cart-btn-new"
+            disabled={isSuspended}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSuspended) return;
+              addToCart(product, 1);
+              alert(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
+            }}
+            title="Thêm vào giỏ hàng"
+          >
+            🛒
+          </button>
         </div>
       </div>
-      <button 
-        className="btn btn-primary btn-buy-now"
-        onClick={(e) => {
-          e.stopPropagation();
-          setSelectedProductDetails(product);
-        }}
-      >
-        Mua Ngay
-      </button>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="app-container">
@@ -1011,10 +1071,10 @@ function App() {
                 <h1 className="hero-title" dangerouslySetInnerHTML={{ __html: banners[currentBanner].title }}></h1>
                 <p className="hero-subtitle">{banners[currentBanner].subtitle}</p>
                 <div className="hero-buttons">
-                  <button className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '16px', borderRadius: '30px' }} onClick={() => setActiveTab('menu')}>
+                  <button className="btn btn-primary" style={{ padding: '14px 35px', fontSize: '16px', borderRadius: '30px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
                     Chọn món ngay
                   </button>
-                  <button className="btn btn-secondary" style={{ padding: '12px 30px', fontSize: '16px', borderRadius: '30px', marginLeft: '15px', background: 'transparent', border: '1px solid var(--primary-color)', color: 'var(--text-main)' }} onClick={() => setActiveTab('menu')}>
+                  <button className="btn btn-secondary" style={{ padding: '14px 35px', fontSize: '16px', borderRadius: '30px', marginLeft: '15px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
                     Khám phá tại đây
                   </button>
                 </div>
@@ -1112,10 +1172,40 @@ function App() {
               <p style={{ color: '#666', marginTop: '10px' }}>Khám phá thực đơn đa dạng và phong phú</p>
             </div>
 
+            {/* Category Filter Bar */}
+            <div className="category-filter-bar" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '30px', flexWrap: 'wrap' }}>
+              <button 
+                style={{ 
+                  borderRadius: '25px', padding: '10px 24px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.3s',
+                  background: selectedCategory === 'All' ? 'linear-gradient(135deg, #ff5722 0%, #ff8a65 100%)' : '#fff',
+                  color: selectedCategory === 'All' ? '#fff' : '#333',
+                  boxShadow: selectedCategory === 'All' ? '0 4px 15px rgba(255, 87, 34, 0.3)' : '0 4px 10px rgba(0,0,0,0.05)'
+                }}
+                onClick={() => setSelectedCategory('All')}
+              >
+                Tất Cả Món
+              </button>
+              {categories.map(cat => (
+                <button 
+                  key={cat.CategoryID}
+                  style={{ 
+                    borderRadius: '25px', padding: '10px 24px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.3s',
+                    background: selectedCategory === cat.CategoryName ? 'linear-gradient(135deg, #ff5722 0%, #ff8a65 100%)' : '#fff',
+                    color: selectedCategory === cat.CategoryName ? '#fff' : '#333',
+                    boxShadow: selectedCategory === cat.CategoryName ? '0 4px 15px rgba(255, 87, 34, 0.3)' : '0 4px 10px rgba(0,0,0,0.05)'
+                  }}
+                  onClick={() => setSelectedCategory(cat.CategoryName)}
+                >
+                  {cat.CategoryName}
+                </button>
+              ))}
+            </div>
+
             <div className="product-cards-container" style={{ gap: '30px' }}>
               {products
                 .filter(p => p.IsActive || p.IsActive === undefined)
                 .filter(p => p.ProductName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .filter(p => selectedCategory === 'All' || p.CategoryName === selectedCategory)
                 .map(renderProductCard)}
             </div>
           </div>
@@ -1239,6 +1329,12 @@ function App() {
                 onClick={() => setAdminSubtab('liveChat')}
               >
                 💬 Hỗ trợ trực tuyến
+              </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'reviews' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('reviews'); fetchAdminReviews(); }}
+              >
+                ⭐ Quản lý Đánh Giá
               </button>
             </div>
 
@@ -1628,6 +1724,68 @@ function App() {
             {adminSubtab === 'liveChat' && (
               <div style={{ marginTop: '20px' }}>
                 <AdminLiveChat socket={socket} user={user} />
+              </div>
+            )}
+
+            {/* Quản lý Đánh Giá Admin */}
+            {adminSubtab === 'reviews' && (
+              <div className="admin-section fade-in">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ color: '#00e5ff', margin: 0 }}>Quản lý Đánh Giá & Bình Luận</h3>
+                  <button className="btn btn-secondary" onClick={fetchAdminReviews}>Làm mới</button>
+                </div>
+                
+                <div className="admin-products-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '120px' }}>Ngày</th>
+                        <th style={{ width: '150px' }}>Khách Hàng</th>
+                        <th style={{ width: '180px' }}>Món Ăn</th>
+                        <th style={{ width: '100px' }}>Đánh Giá</th>
+                        <th>Bình Luận</th>
+                        <th style={{ width: '100px', textAlign: 'center' }}>Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminReviews.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>
+                            Chưa có đánh giá nào.
+                          </td>
+                        </tr>
+                      ) : (
+                        adminReviews.map(review => (
+                          <tr key={review.ReviewID} style={{ opacity: review.IsHidden ? 0.6 : 1, background: review.IsHidden ? 'rgba(255,0,0,0.05)' : 'transparent' }}>
+                            <td>{new Date(review.CreatedAt).toLocaleDateString('vi-VN')}</td>
+                            <td><strong>{review.FullName}</strong></td>
+                            <td><span style={{ color: '#00e5ff', fontWeight: 'bold' }}>{review.ProductName}</span></td>
+                            <td>
+                              <div style={{ color: '#f59e0b', fontSize: '16px' }}>
+                                {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', wordBreak: 'break-word', color: review.IsHidden ? '#999' : 'inherit', textDecoration: review.IsHidden ? 'line-through' : 'none' }}>
+                                {review.Comment || <span style={{ fontStyle: 'italic', color: '#888' }}>Không có bình luận</span>}
+                              </div>
+                              {review.IsHidden && <div style={{ fontSize: '12px', color: '#ff4d4f', marginTop: '4px', fontWeight: 'bold' }}>(Đã bị ẩn khỏi trang sản phẩm)</div>}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button 
+                                className={`btn ${review.IsHidden ? 'btn-primary' : 'btn-danger'}`}
+                                style={{ padding: '6px 12px', fontSize: '13px' }}
+                                onClick={() => toggleReviewVisibility(review.ReviewID)}
+                              >
+                                {review.IsHidden ? 'Hiển thị' : 'Ẩn'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -2111,92 +2269,18 @@ function App() {
         />
       )}
 
-      {viewReviewsProduct && (
-        <ProductReviewsModal 
-          product={viewReviewsProduct}
-          onClose={() => setViewReviewsProduct(null)}
-        />
-      )}
+      {/* Old ProductReviewsModal removed to use unified ProductDetailOverlay */}
 
       {/* --- PHÂN HỆ: PRODUCT DETAIL MODAL --- */}
       {selectedProductDetails && (
-        <div className="checkout-modal-overlay" style={{ zIndex: 4000 }} onClick={() => setSelectedProductDetails(null)}>
-          <div className="premium-detail-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-btn-premium" onClick={() => setSelectedProductDetails(null)}>✕</button>
-            
-            <div className="premium-modal-left">
-              {selectedProductDetails.ImageURL && selectedProductDetails.ImageURL.length < 5 ? (
-                <span className="premium-modal-img">{selectedProductDetails.ImageURL}</span>
-              ) : (
-                <span className="premium-modal-img">🍔</span>
-              )}
-            </div>
-            
-            <div className="premium-modal-right">
-              <h2 className="premium-title">{selectedProductDetails.ProductName}</h2>
-              
-              <div className="premium-tags">
-                <span className="premium-tag">Việt Nam</span>
-                <span className="premium-tag">Đồ ăn</span>
-              </div>
-              
-              <p className="premium-desc">
-                Món {selectedProductDetails.ProductName} được chế biến từ những nguyên liệu tươi ngon nhất, mang lại hương vị hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác.
-              </p>
-              
-              <div className="premium-price-row">
-                <div>
-                  <span className="premium-price-label">Giá bán</span>
-                  <span className="premium-price-value">{selectedProductDetails.Price.toLocaleString('vi-VN')} đ</span>
-                </div>
-              </div>
-              
-              <div className="premium-actions">
-                <button 
-                  className="premium-btn-buy"
-                  onClick={() => {
-                    addToCart(selectedProductDetails, 1);
-                    setSelectedProductDetails(null);
-                    if (!isLoggedIn) {
-                      alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
-                      setActiveTab('login');
-                    } else {
-                      setIsCheckoutOpen(true);
-                    }
-                  }}
-                >
-                  Mua Hàng Ngay 💳
-                </button>
-                <div className="premium-btn-group">
-                  <button 
-                    className="premium-btn-secondary"
-                    onClick={() => {
-                      addToCart(selectedProductDetails, 1);
-                      setSelectedProductDetails(null);
-                      alert(`Đã thêm ${selectedProductDetails.ProductName} vào giỏ hàng!`);
-                    }}
-                  >
-                    🛒 Thêm Giỏ Hàng
-                  </button>
-                  <button 
-                    className="premium-btn-secondary premium-btn-chat"
-                    onClick={() => {
-                      if (!isLoggedIn) {
-                        alert('Vui lòng đăng nhập để sử dụng tính năng Chat.');
-                        setActiveTab('login');
-                      } else {
-                        setSelectedProductDetails(null);
-                        setActiveTab('contact');
-                      }
-                    }}
-                  >
-                    💬 Chat Cửa Hàng
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductDetailOverlay 
+          product={selectedProductDetails}
+          onClose={() => setSelectedProductDetails(null)}
+          addToCart={addToCart}
+          isLoggedIn={isLoggedIn}
+          setActiveTab={setActiveTab}
+          setIsCheckoutOpen={setIsCheckoutOpen}
+        />
       )}
 
 

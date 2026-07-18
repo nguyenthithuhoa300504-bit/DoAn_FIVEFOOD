@@ -5,8 +5,8 @@
   --bg-gradient: linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 50%, #f8fafc 100%);
   --panel-bg: rgba(255, 255, 255, 0.85);
   --panel-border: rgba(0, 0, 0, 0.08);
-  --primary-color: #00a8ff; /* Blue accent */
-  --primary-hover: #33b8ff;
+  --primary-color: #ff5722; /* Spicy Orange */
+  --primary-hover: #e64a19;
   --success-color: #4caf50;
   --text-main: #1e293b;
   --text-muted: #64748b;
@@ -76,20 +76,20 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #00a8ff 0%, #4dc3ff 100%);
-  box-shadow: 0 4px 15px rgba(0, 168, 255, 0.3);
+  background: linear-gradient(135deg, var(--primary-color) 0%, #ff8a65 100%);
+  box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 168, 255, 0.5);
-  background: linear-gradient(135deg, #33b8ff 0%, #66ccff 100%);
+  box-shadow: 0 6px 20px rgba(255, 87, 34, 0.5);
+  background: linear-gradient(135deg, var(--primary-hover) 0%, #ff7043 100%);
 }
 
 .btn-secondary {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  color: var(--text-main);
+  background: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
 }
 
 .btn-secondary:hover {

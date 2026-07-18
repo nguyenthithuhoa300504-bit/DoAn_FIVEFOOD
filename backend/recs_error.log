@@ -1,8 +1,8 @@
-TypeError: Cannot read properties of undefined (reading 'request')
-    at DatabaseService.query (C:\Users\Admin\Desktop\DoAn\backend\src\database\database.service.ts:49:33)
-    at RecommendationsService.getRecommendations (C:\Users\Admin\Desktop\DoAn\backend\src\recommendations\recommendations.service.ts:93:61)
-    at RecommendationsController.getRecommendations (C:\Users\Admin\Desktop\DoAn\backend\src\recommendations\recommendations.controller.ts:24:52)
-    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-execution-context.js:38:29
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-execution-context.js:47:62
-    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17
+ConnectionError: Failed to connect to 127.0.0.1:1433 in 15000ms
+    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\mssql\lib\tedious\connection-pool.js:86:17
+    at err (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1823:9)
+    at Object.onceWrapper (node:events:639:26)
+    at Connection.emit (node:events:524:28)
+    at emit (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1985:18)
+    at <anonymous> (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1845:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)

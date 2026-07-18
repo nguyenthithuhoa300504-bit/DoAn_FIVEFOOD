@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Request, ParseIntPipe, Patch } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -23,5 +23,23 @@ export class ReviewsController {
   ) {
     const userId = req.user.userId;
     return await this.reviewsService.addReview(userId, productId, orderId, rating, comment);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('admin/all')
+  async getAllReviewsForAdmin(@Request() req: any) {
+    if (req.user.role !== 'Admin') {
+      throw new Error('Unauthorized');
+    }
+    return await this.reviewsService.getAllReviewsForAdmin();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/toggle-hide')
+  async toggleReviewVisibility(@Request() req: any, @Param('id', ParseIntPipe) id: number) {
+    if (req.user.role !== 'Admin') {
+      throw new Error('Unauthorized');
+    }
+    return await this.reviewsService.toggleReviewVisibility(id);
   }
 }

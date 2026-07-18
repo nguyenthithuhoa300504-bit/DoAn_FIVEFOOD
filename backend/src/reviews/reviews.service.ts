@@ -15,7 +15,7 @@ export class ReviewsService {
         SELECT r.ReviewID, r.Rating, r.Comment, r.CreatedAt, u.FullName 
         FROM Reviews r
         INNER JOIN Users u ON r.UserID = u.UserID
-        WHERE r.ProductID = @ProductID
+        WHERE r.ProductID = @ProductID AND r.IsHidden = 0
         ORDER BY r.CreatedAt DESC
       `;
       const reviewsResult = await this.databaseService.query(queryReviews, [
@@ -28,7 +28,7 @@ export class ReviewsService {
           ISNULL(AVG(CAST(Rating AS FLOAT)), 0) AS AvgRating, 
           COUNT(*) AS TotalReviews 
         FROM Reviews 
-        WHERE ProductID = @ProductID
+        WHERE ProductID = @ProductID AND IsHidden = 0
       `;
       const statsResult = await this.databaseService.query(queryStats, [
         { name: 'ProductID', type: sql.Int, value: productId },
@@ -100,6 +100,55 @@ export class ReviewsService {
       return { success: true, message: 'Cảm ơn bạn đã gửi đánh giá!' };
     } catch (error) {
       this.logger.error('Error adding review', error);
+      throw error;
+    }
+  }
+
+  async getAllReviewsForAdmin() {
+    try {
+      const query = `
+        SELECT r.ReviewID, r.Rating, r.Comment, r.CreatedAt, r.IsHidden, 
+               u.FullName, p.ProductName
+        FROM Reviews r
+        INNER JOIN Users u ON r.UserID = u.UserID
+        INNER JOIN Products p ON r.ProductID = p.ProductID
+        ORDER BY r.CreatedAt DESC
+      `;
+      const result = await this.databaseService.query(query);
+      return result.recordset;
+    } catch (error) {
+      this.logger.error('Error fetching all reviews for admin', error);
+      throw error;
+    }
+  }
+
+  async toggleReviewVisibility(reviewId: number) {
+    try {
+      const checkQuery = `SELECT IsHidden FROM Reviews WHERE ReviewID = @ReviewID`;
+      const checkResult = await this.databaseService.query(checkQuery, [
+        { name: 'ReviewID', type: sql.Int, value: reviewId }
+      ]);
+      
+      if (checkResult.recordset.length === 0) {
+        throw new BadRequestException('Đánh giá không tồn tại');
+      }
+      
+      const currentStatus = checkResult.recordset[0].IsHidden;
+      const newStatus = currentStatus ? 0 : 1;
+      
+      const updateQuery = `
+        UPDATE Reviews 
+        SET IsHidden = @NewStatus 
+        WHERE ReviewID = @ReviewID
+      `;
+      await this.databaseService.query(updateQuery, [
+        { name: 'NewStatus', type: sql.Bit, value: newStatus },
+        { name: 'ReviewID', type: sql.Int, value: reviewId }
+      ]);
+      
+      return { success: true, isHidden: newStatus === 1, message: newStatus ? 'Đã ẩn đánh giá' : 'Đã hiển thị đánh giá' };
+    } catch (error) {
+      this.logger.error('Error toggling review visibility', error);
       throw error;
     }
   }
