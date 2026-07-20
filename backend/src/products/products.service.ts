@@ -32,14 +32,15 @@ export class ProductsService {
   /**
    * Tạo danh mục mới (Chỉ dành cho Admin)
    */
-  async createCategory(categoryName: string, description: string) {
+  async createCategory(categoryName: string, description: string, imageUrl?: string) {
     const result = await this.dbService.query(
-      `INSERT INTO Categories (CategoryName, Description) 
+      `INSERT INTO Categories (CategoryName, Description, ImageURL) 
        OUTPUT inserted.* 
-       VALUES (@CategoryName, @Description)`,
+       VALUES (@CategoryName, @Description, @ImageURL)`,
       [
         { name: 'CategoryName', type: sql.NVarChar(100), value: categoryName },
-        { name: 'Description', type: sql.NVarChar(255), value: description }
+        { name: 'Description', type: sql.NVarChar(255), value: description },
+        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl || null }
       ]
     );
     return result.recordset[0];
@@ -48,16 +49,17 @@ export class ProductsService {
   /**
    * Cập nhật thông tin danh mục (Chỉ dành cho Admin)
    */
-  async updateCategory(id: number, categoryName: string, description: string) {
+  async updateCategory(id: number, categoryName: string, description: string, imageUrl?: string) {
     const result = await this.dbService.query(
       `UPDATE Categories 
-       SET CategoryName = @CategoryName, Description = @Description 
+       SET CategoryName = @CategoryName, Description = @Description, ImageURL = @ImageURL 
        OUTPUT inserted.* 
        WHERE CategoryID = @CategoryID`,
       [
         { name: 'CategoryID', type: sql.Int, value: id },
         { name: 'CategoryName', type: sql.NVarChar(100), value: categoryName },
-        { name: 'Description', type: sql.NVarChar(255), value: description }
+        { name: 'Description', type: sql.NVarChar(255), value: description },
+        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl || null }
       ]
     );
     return result.recordset[0] || null;
@@ -80,7 +82,9 @@ export class ProductsService {
                 FROM OrderDetails od 
                 INNER JOIN Orders o ON od.OrderID = o.OrderID 
                 WHERE od.ProductID = p.ProductID AND o.Status <> N'Đã hủy'
-             ), 0) AS SoldCount
+             ), 0) AS SoldCount,
+             ISNULL((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
+             ISNULL((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
       FROM Products p
       INNER JOIN Categories c ON p.CategoryID = c.CategoryID
       WHERE p.IsActive = 1
@@ -128,7 +132,9 @@ export class ProductsService {
    */
   async getProductById(id: number) {
     const result = await this.dbService.query(
-      `SELECT p.*, c.CategoryName 
+      `SELECT p.*, c.CategoryName,
+              ISNULL((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
+              ISNULL((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
        FROM Products p 
        INNER JOIN Categories c ON p.CategoryID = c.CategoryID 
        WHERE p.ProductID = @ProductID`,
@@ -140,17 +146,18 @@ export class ProductsService {
   /**
    * Tạo món ăn mới (Chỉ dành cho Admin)
    */
-  async createProduct(productName: string, categoryId: number, price: number, inventory: number, imageUrl: string) {
+  async createProduct(productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string) {
     const result = await this.dbService.query(
-      `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, IsActive) 
+      `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, Ingredients, IsActive) 
        OUTPUT inserted.* 
-       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, 1)`,
+       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, 1)`,
       [
         { name: 'ProductName', type: sql.NVarChar(150), value: productName },
         { name: 'CategoryID', type: sql.Int, value: categoryId },
         { name: 'Price', type: sql.Decimal(18, 2), value: price },
         { name: 'Inventory', type: sql.Int, value: inventory },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl }
+        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
+        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null }
       ]
     );
     return result.recordset[0];
@@ -159,10 +166,10 @@ export class ProductsService {
   /**
    * Cập nhật món ăn (Chỉ dành cho Admin)
    */
-  async updateProduct(id: number, productName: string, categoryId: number, price: number, inventory: number, imageUrl: string) {
+  async updateProduct(id: number, productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string) {
     const result = await this.dbService.query(
       `UPDATE Products 
-       SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL 
+       SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL, Ingredients = @Ingredients
        OUTPUT inserted.* 
        WHERE ProductID = @ProductID`,
       [
@@ -171,7 +178,8 @@ export class ProductsService {
         { name: 'CategoryID', type: sql.Int, value: categoryId },
         { name: 'Price', type: sql.Decimal(18, 2), value: price },
         { name: 'Inventory', type: sql.Int, value: inventory },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl }
+        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
+        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null }
       ]
     );
     return result.recordset[0] || null;

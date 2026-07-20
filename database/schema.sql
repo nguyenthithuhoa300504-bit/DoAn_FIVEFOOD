@@ -72,7 +72,8 @@ CREATE TABLE Users (
 CREATE TABLE Categories (
     CategoryID INT IDENTITY(1,1) PRIMARY KEY,
     CategoryName NVARCHAR(100) NOT NULL UNIQUE,
-    Description NVARCHAR(255) NULL
+    Description NVARCHAR(255) NULL,
+    ImageURL VARCHAR(255) NULL
 );
 
 -- Bảng Products (System-Versioned Temporal Table - SQL Server 2022)
@@ -84,6 +85,7 @@ CREATE TABLE Products (
     Price DECIMAL(18,2) NOT NULL,
     Inventory INT NOT NULL DEFAULT 0,
     ImageURL VARCHAR(255) NULL,
+    Ingredients NVARCHAR(500) NULL,
     IsActive BIT DEFAULT 1,
     SysStartTime DATETIME2 GENERATED ALWAYS AS ROW START HIDDEN NOT NULL,
     SysEndTime DATETIME2 GENERATED ALWAYS AS ROW END HIDDEN NOT NULL,

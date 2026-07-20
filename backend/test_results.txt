@@ -1,0 +1,33 @@
+=== BẮT ĐẦU CHẠY THỬ 10 PHÂN HỆ (SIMULATION) ===
+
+[1] Phân hệ 1: Xác thực (Auth)
+- API Đăng ký (Register): HTTP 201
+- API Đăng nhập (Login): HTTP 200 (Sinh JWT Token: true)
+
+[2] Phân hệ 2: Thực đơn (Products)
+- API Lấy thực đơn (Get Products): HTTP 200 (Số món ăn: 0)
+
+[3] Phân hệ 3: Giỏ hàng (Cart)
+- API Thêm vào giỏ (Add to Cart): HTTP 200
+- API Xem giỏ hàng (View Cart): HTTP 200
+
+[4] Phân hệ 10: Theo dõi hành vi (User Actions)
+- API Log VIEW_PRODUCT: HTTP 201
+- API Log SEARCH (Pizza): HTTP 201
+
+[5] Phân hệ 7: AI Chatbot & Gợi ý (Recommendations)
+- API Lấy gợi ý món ăn (Get Recommendations): HTTP 200
+- API Hỏi AI Chatbot: HTTP 201
+
+[6] Phân hệ 8: Yêu thích & Đánh giá (Favorites & Reviews)
+- API Thêm món Yêu thích (Add Favorite): HTTP 201
+
+[7] Phân hệ 4, 5 & 6: Đặt hàng, Cổng thanh toán, Vận chuyển
+- API Tạo đơn hàng (Create Order): HTTP 201
+- API Tạo Link VNPay (Payment Gateway): HTTP 400
+
+[8] Phân hệ 9: Thông báo & Socket.io (Simulated via Order Status)
+- Socket.io Client: Đã kích hoạt room 'room_user_ID'
+
+=== TỔNG KẾT KIỂM TRA ===
+Tất cả API đã phản hồi. Log chi tiết đã lưu.

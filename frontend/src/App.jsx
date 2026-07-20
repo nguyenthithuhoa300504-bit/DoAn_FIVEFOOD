@@ -17,8 +17,20 @@ import './App.css';
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-// Tọa độ cửa hàng cố định (Hà Nội làm trung tâm)
-const STORE_COORDS = [21.0285, 105.8542];
+// Tọa độ cửa hàng cố định (Phan Thiết làm trung tâm)
+const STORE_COORDS = [10.9333, 108.1000];
+
+// Giới hạn hiển thị của bản đồ (nới rộng một chút để tránh lỗi giật hình của Leaflet)
+const VIEW_BOUNDS = [
+  [10.2, 107.0], // Tây Nam
+  [12.2, 109.2]  // Đông Bắc
+];
+
+// Giới hạn khu vực Bình Thuận hợp lệ khi click
+const VALID_BOUNDS = [
+  [10.5, 107.4], // Tây Nam
+  [11.9, 108.9]  // Đông Bắc
+];
 
 // Component bản đồ Leaflet tích hợp trực tiếp không qua react-leaflet để tránh conflict React 19
 function LeafletMap({ onLocationSelected }) {
@@ -28,8 +40,12 @@ function LeafletMap({ onLocationSelected }) {
 
   useEffect(() => {
     if (!mapInstance.current && mapRef.current) {
-      // Khởi tạo bản đồ tại Hà Nội
-      mapInstance.current = L.map(mapRef.current).setView(STORE_COORDS, 13);
+      // Khởi tạo bản đồ tại Phan Thiết, giới hạn Lâm Đồng & Bình Thuận
+      mapInstance.current = L.map(mapRef.current, {
+        maxBounds: VIEW_BOUNDS,
+        maxBoundsViscosity: 0.8,
+        minZoom: 8
+      }).setView(STORE_COORDS, 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -42,10 +58,16 @@ function LeafletMap({ onLocationSelected }) {
           className: 'store-emoji-icon',
           iconAnchor: [15, 15]
         })
-      }).addTo(mapInstance.current).bindPopup('<b>Cửa hàng FIVEFOOD</b><br/>Tọa độ: Hanoi Center').openPopup();
+      }).addTo(mapInstance.current).bindPopup('<b>Cửa hàng FIVEFOOD</b><br/>Tọa độ: Phan Thiết Center').openPopup();
 
       // Sự kiện click trên bản đồ để chọn tọa độ giao hàng
       mapInstance.current.on('click', (e) => {
+        // Cảnh báo nếu cố tình click ra ngoài khu vực giới hạn (vùng xám)
+        if (!L.latLngBounds(VALID_BOUNDS).contains(e.latlng)) {
+          alert('Vui lòng chọn vị trí giao hàng nằm trong khu vực Bình Thuận.');
+          return;
+        }
+
         const { lat, lng } = e.latlng;
         
         if (markerInstance.current) {
@@ -100,7 +122,11 @@ function DeliveryTrackingMap({ customerLat, customerLng, shipperLat, shipperLng 
 
   useEffect(() => {
     if (!mapInstance.current && mapRef.current) {
-      mapInstance.current = L.map(mapRef.current).setView(STORE_COORDS, 13);
+      mapInstance.current = L.map(mapRef.current, {
+        maxBounds: VIEW_BOUNDS,
+        maxBoundsViscosity: 0.8,
+        minZoom: 8
+      }).setView(STORE_COORDS, 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
 
       // Điểm Cửa hàng
@@ -183,6 +209,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
   const [selectedCategory, setSelectedCategory] = useState('All'); // Thêm state bộ lọc danh mục
+  const [sortBy, setSortBy] = useState('all'); // 'all', 'priceAsc', 'priceDesc', 'newest'
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -212,7 +239,8 @@ function App() {
     categoryId: '',
     price: '',
     inventory: '',
-    imageUrl: '🍔'
+    imageUrl: '🍔',
+    ingredients: ''
   });
   const [categoryForm, setCategoryForm] = useState({
     categoryName: '',
@@ -278,8 +306,8 @@ function App() {
   const [currentBanner, setCurrentBanner] = useState(0);
   const banners = [
     {
-      title: "Khám phá ẩm thực <br/><span class='text-highlight'>TIN-STORES</span>",
-      subtitle: "Hấp dẫn, bắt mắt, thơm ngon, kích thích vị giác chỉ có tại cửa hàng của chúng tôi.",
+      title: "Đập tan cơn đói với món ăn <br/><span class='text-highlight'>Nóng Hổi & Thơm Ngon!</span>",
+      subtitle: "Đặt món dễ dàng từ danh mục đa dạng phong phú, áp dụng ngập tràn mã giảm giá và giao tận tay bạn chỉ trong một nốt nhạc.",
       img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f35c/512.gif" alt="Món ăn ngon" style={{ filter: 'drop-shadow(0 20px 30px rgba(255,87,34,0.3))' }} />
     },
     {
@@ -469,7 +497,7 @@ function App() {
     setCheckoutError('');
     try {
       // OSRM format: lon,lat
-      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/105.8542,21.0285;${lng},${lat}?overview=false`);
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${STORE_COORDS[1]},${STORE_COORDS[0]};${lng},${lat}?overview=false`);
       const data = await res.json();
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
@@ -489,15 +517,16 @@ function App() {
   };
 
   // Kiểm tra & áp dụng Voucher
-  const handleApplyPromo = async () => {
+  const handleApplyPromo = async (codeToApply = promoCodeInput) => {
     setPromoError('');
     setPromoSuccess('');
-    if (!promoCodeInput.trim()) return;
+    const finalCode = codeToApply?.trim();
+    if (!finalCode) return;
     try {
       const data = await apiFetch(`${API_BASE_URL}/orders/validate-promo`, {
         method: 'POST',
         body: JSON.stringify({
-          code: promoCodeInput.trim().toUpperCase(),
+          code: finalCode.toUpperCase(),
           totalAmount: totalPrice
         })
       });
@@ -889,7 +918,7 @@ function App() {
                 setSelectedProductDetails(product);
               }}
             >
-              ⭐ Đánh giá
+              ⭐ {product.AverageRating ? parseFloat(product.AverageRating).toFixed(1) : '5.0'} ({product.ReviewCount || 0})
             </button>
             <span className="dot-divider">•</span>
             <span className="sold-count">Đã bán {product.SoldCount || 0}</span>
@@ -909,16 +938,10 @@ function App() {
             onClick={(e) => {
               e.stopPropagation();
               if (isSuspended) return;
-              addToCart(product, 1);
-              if (!isLoggedIn) {
-                alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
-                setActiveTab('login');
-              } else {
-                setIsCheckoutOpen(true);
-              }
+              setSelectedProductDetails(product);
             }}
           >
-            Mua Ngay
+            Chọn món
           </button>
           <button 
             className="action-btn cart-btn-new"
@@ -1069,14 +1092,30 @@ function App() {
             <div className="hero-banner glass-panel">
               <div className="hero-content" key={currentBanner} style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
                 <h1 className="hero-title" dangerouslySetInnerHTML={{ __html: banners[currentBanner].title }}></h1>
-                <p className="hero-subtitle">{banners[currentBanner].subtitle}</p>
-                <div className="hero-buttons">
-                  <button className="btn btn-primary" style={{ padding: '14px 35px', fontSize: '16px', borderRadius: '30px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
-                    Chọn món ngay
+                <p className="hero-subtitle" style={{ fontSize: '16px', lineHeight: '1.6', marginBottom: '30px', color: 'var(--text-muted)' }}>{banners[currentBanner].subtitle}</p>
+                <div className="hero-buttons" style={{ marginBottom: '35px' }}>
+                  <button className="btn btn-primary" style={{ padding: '14px 30px', fontSize: '15px', borderRadius: '30px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
+                    🍴 Khám Phá Menu
                   </button>
-                  <button className="btn btn-secondary" style={{ padding: '14px 35px', fontSize: '16px', borderRadius: '30px', marginLeft: '15px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
-                    Khám phá tại đây
+                  <button className="btn btn-secondary" style={{ padding: '14px 30px', fontSize: '15px', borderRadius: '30px', marginLeft: '15px', fontWeight: 'bold', border: '1px solid var(--primary-color)' }} onClick={() => setActiveTab('menu')}>
+                    % Xem Khuyến Mãi
                   </button>
+                </div>
+
+                {/* Stats Section */}
+                <div style={{ display: 'flex', gap: '30px', borderTop: '1px solid var(--panel-border)', paddingTop: '25px' }}>
+                  <div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>500+</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Món ăn ngon</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>10K+</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Khách hàng tin dùng</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>4.9 <span style={{ color: '#FFD700' }}>⭐</span></div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Đánh giá chất lượng</div>
+                  </div>
                 </div>
               </div>
               <div className="hero-shapes">
@@ -1105,22 +1144,125 @@ function App() {
               </div>
             </div>
 
+            {/* PHẦN GỢI Ý MÓN ĂN DỰA TRÊN HÀNH VI (RECOMMENDATION SYSTEM) */}
             <RecommendationSection isLoggedIn={isLoggedIn} />
 
-            <div id="home-featured-products" className="products-section full-width fade-in" style={{ paddingTop: '20px' }}>
-              <div className="section-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>Món Ngon Nổi Bật</h2>
-                <p style={{ color: '#666', marginTop: '10px' }}>Khám phá các món ăn được yêu thích nhất hôm nay</p>
-              </div>
-
-              <div className="product-cards-container" style={{ gap: '30px' }}>
-                {products.filter(p => p.IsActive || p.IsActive === undefined).slice(0, 8).map(renderProductCard)}
+            {/* PHẦN MỚI: DANH MỤC NỔI BẬT */}
+            <div className="featured-categories-section full-width fade-in">
+              <div className="fc-header">
+                <h2>Danh mục nổi bật</h2>
+                <div className="fc-quick-links">
+                </div>
               </div>
               
-              <div style={{ textAlign: 'center', marginTop: '40px' }}>
-                <button className="btn btn-secondary" style={{ padding: '12px 40px', fontSize: '16px', borderRadius: '30px', border: '2px solid var(--primary-color)', color: 'var(--primary-color)', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
-                  Xem Toàn Bộ Thực Đơn &rarr;
-                </button>
+              <div className="fc-scroll-container">
+                <div className="fc-row">
+                  {categories.map(cat => {
+                    const productCount = products.filter(p => p.CategoryID === cat.CategoryID && (p.IsActive || p.IsActive === undefined)).length;
+                    
+                    let fallbackEmoji = '🥬';
+                    const nameL = cat.CategoryName.toLowerCase();
+                    if(nameL.includes('trái cây') || nameL.includes('hoa quả')) fallbackEmoji = '🍎';
+                    else if(nameL.includes('thịt')) fallbackEmoji = '🥩';
+                    else if(nameL.includes('trứng')) fallbackEmoji = '🥚';
+                    else if(nameL.includes('đồ uống') || nameL.includes('nước')) fallbackEmoji = '🥤';
+                    else if(nameL.includes('bánh')) fallbackEmoji = '🍔';
+                    else if(nameL.includes('hải sản')) fallbackEmoji = '🦐';
+                    else if(nameL.includes('salad')) fallbackEmoji = '🥗';
+
+                    return (
+                      <div key={cat.CategoryID} className="fc-card" onClick={() => { setSelectedCategory(cat.CategoryName); setActiveTab('menu'); }}>
+                        <div className="fc-img-wrapper">
+                          {cat.ImageURL ? <img src={cat.ImageURL} alt={cat.CategoryName} className="fc-real-img" /> : <div className="fc-emoji">{fallbackEmoji}</div>}
+                        </div>
+                        <h4>{cat.CategoryName}</h4>
+                        <p>{productCount} sản phẩm</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* PHẦN MỚI: BÁN CHẠY NHẤT HÀNG NGÀY */}
+            <div className="daily-best-sellers-section full-width fade-in">
+              <div className="dbs-container">
+                
+                {/* Banner bên trái */}
+                <div className="dbs-banner">
+                  <h3>Bán chạy nhất<br/>hàng ngày</h3>
+                  <p className="dbs-subtitle">Ưu đãi độc quyền - Giảm giá 20%</p>
+                  <div className="dbs-promo-text">
+                    Mua sắm thoải mái chỉ từ<br/><strong>20.000 VNĐ</strong>
+                  </div>
+                  <p className="dbs-note">Chỉ trong tuần này. Đừng bỏ lỡ...</p>
+                  <button className="dbs-banner-btn" onClick={() => setActiveTab('menu')}>Đặt ngay</button>
+                  <div className="dbs-banner-bg-pattern">🍔🍕</div>
+                </div>
+
+                {/* Danh sách sản phẩm cuộn ngang */}
+                <div className="dbs-products-wrapper">
+                  <div className="dbs-products-header">
+                  </div>
+                  
+                  <div className="dbs-scroll-container">
+                    {(() => {
+                      // Thiết kế lại cấu trúc: Ưu tiên sản phẩm có lượt mua/đánh giá cao.
+                      // Để danh sách đổi mới "hàng ngày", kết hợp thêm thuật toán random theo ngày.
+                      // Như vậy khi thêm sản phẩm mới, nó không bị đẩy thẳng lên đây gây trùng lặp với Thực Đơn.
+                      const todaySeed = new Date().getDate();
+                      const bestSellers = [...products]
+                        .filter(p => p.IsActive || p.IsActive === undefined)
+                        .sort((a, b) => {
+                          const scoreA = (a.ReviewCount || 0) * 100 + ((a.ProductID * todaySeed) % 20);
+                          const scoreB = (b.ReviewCount || 0) * 100 + ((b.ProductID * todaySeed) % 20);
+                          return scoreB - scoreA; // Sắp xếp giảm dần
+                        })
+                        .slice(0, 8);
+
+                      return bestSellers.map(p => {
+                        return (
+                          <div key={p.ProductID} className="dbs-product-card" onClick={() => { setSelectedProduct(p); setIsDetailModalOpen(true); }}>
+                          {/* Tag Placeholder cho thiết kế (nếu cần sau này có thể logic giảm giá vào đây) */}
+                          {p.Price < 30000 && <div className="dbs-discount-tag">Giá tốt</div>}
+                          
+                          <div className="dbs-img-container">
+                            {p.ImageURL ? <img src={p.ImageURL} alt={p.ProductName} className="dbs-real-img" /> : <div className="dbs-emoji">🥑</div>}
+                          </div>
+                          
+                          <div className="dbs-product-info">
+                            <h4 className="dbs-product-name">{p.ProductName}</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '8px', fontSize: '12px', color: '#666' }}>
+                              <span style={{ color: '#faad14' }}>★ {p.AverageRating ? parseFloat(p.AverageRating).toFixed(1) : '5.0'}</span>
+                              <span>({p.ReviewCount || 0} đánh giá)</span>
+                            </div>
+                            <div className="dbs-price-row">
+                              <span className="dbs-new-price">{p.Price.toLocaleString('vi-VN')}đ</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                              <button className="dbs-add-btn" onClick={(e) => { e.stopPropagation(); setSelectedProductDetails(p); }}>
+                                Đặt ngay
+                              </button>
+                              <button 
+                                className="dbs-add-btn" 
+                                style={{ width: '40px', padding: '8px 0' }}
+                                onClick={(e) => { e.stopPropagation(); addToCart(p); }}
+                                title="Thêm vào giỏ"
+                              >
+                                🛒
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })})()}
+                  </div>
+                  
+                  <div className="dbs-view-all-container">
+                    <button className="dbs-view-all-btn" onClick={() => setActiveTab('menu')}>Xem tất cả</button>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -1136,7 +1278,9 @@ function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
                 {/* Feature 1 */}
                 <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>🌿</div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <img src="/ingredients.png" alt="Nguyên liệu tươi sạch" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
+                  </div>
                   <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Nguyên Liệu Tươi Sạch</h3>
                   <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
                     Cam kết sử dụng 100% thực phẩm tươi mới mỗi ngày, nguồn gốc rõ ràng, đảm bảo an toàn sức khỏe và mang đến hương vị tự nhiên nhất.
@@ -1145,7 +1289,9 @@ function App() {
 
                 {/* Feature 2 */}
                 <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>👨‍🍳</div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <img src="/chef.png" alt="Đầu bếp" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
+                  </div>
                   <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Hương Vị Tuyệt Hảo</h3>
                   <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
                     Sự kết hợp hoàn hảo giữa công thức độc quyền và tâm huyết của những đầu bếp chuyên nghiệp, mang đến trải nghiệm ẩm thực khó quên.
@@ -1154,7 +1300,9 @@ function App() {
 
                 {/* Feature 3 */}
                 <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ fontSize: '45px', color: 'var(--primary-color)', marginBottom: '20px' }}>🚀</div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <img src="/shipper.png" alt="Shipper" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
+                  </div>
                   <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Giao Hàng Siêu Tốc</h3>
                   <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
                     Đội ngũ shipper thần tốc đảm bảo món ăn đến tay bạn luôn trong trạng thái nóng hổi, giữ trọn vẹn hương vị như vừa mới ra lò.
@@ -1162,13 +1310,92 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {/* PHẦN MỚI: QUY TRÌNH ĐẶT HÀNG */}
+            <div className="order-process-section full-width fade-in">
+              <div className="section-header text-center">
+                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cách Thức Hoạt Động</h2>
+                <p style={{ color: '#666', marginTop: '15px' }}>Chỉ với 4 bước đơn giản để thưởng thức món ngon</p>
+              </div>
+              <div className="process-steps-container">
+                <div className="process-step">
+                  <div className="step-icon">📱</div>
+                  <h4>1. Chọn Món</h4>
+                  <p>Khám phá thực đơn đa dạng và chọn món yêu thích</p>
+                </div>
+                <div className="process-arrow">➔</div>
+                <div className="process-step">
+                  <div className="step-icon">💳</div>
+                  <h4>2. Thanh Toán</h4>
+                  <p>Thanh toán an toàn qua COD hoặc VNPAY</p>
+                </div>
+                <div className="process-arrow">➔</div>
+                <div className="process-step">
+                  <div className="step-icon">🛵</div>
+                  <h4>3. Giao Hàng</h4>
+                  <p>Theo dõi shipper giao hàng siêu tốc đến tận nhà</p>
+                </div>
+                <div className="process-arrow">➔</div>
+                <div className="process-step">
+                  <div className="step-icon">🍽️</div>
+                  <h4>4. Thưởng Thức</h4>
+                  <p>Nhận đồ ăn nóng hổi và ngon miệng</p>
+                </div>
+              </div>
+            </div>
+
+            {/* PHẦN MỚI: ĐÁNH GIÁ TỪ KHÁCH HÀNG */}
+            <div className="testimonials-section full-width fade-in">
+              <div className="section-header text-center">
+                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Khách Hàng Nói Gì Về Chúng Tôi</h2>
+                <p style={{ color: '#666', marginTop: '15px' }}>Hàng ngàn đánh giá tích cực từ thực khách hài lòng</p>
+              </div>
+              <div className="testimonials-grid">
+                <div className="testimonial-card glass-panel">
+                  <div className="quote-icon">❝</div>
+                  <p className="testimonial-text">"Đồ ăn giao đến rất nhanh, vẫn còn nóng hổi. Phở bò đặc biệt nước dùng cực kỳ đậm đà. Chắc chắn sẽ quay lại ủng hộ tiếp!"</p>
+                  <div className="testimonial-author">
+                    <div className="author-avatar">👩</div>
+                    <div className="author-info">
+                      <h4>Nguyễn Thu Hà</h4>
+                      <div className="stars">⭐⭐⭐⭐⭐</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="testimonial-card glass-panel">
+                  <div className="quote-icon">❝</div>
+                  <p className="testimonial-text">"Giao diện dễ sử dụng, đặt hàng nhanh chóng. Mình rất thích tính năng theo dõi shipper trên bản đồ, rất tiện lợi và an tâm!"</p>
+                  <div className="testimonial-author">
+                    <div className="author-avatar">👨</div>
+                    <div className="author-info">
+                      <h4>Trần Văn Minh</h4>
+                      <div className="stars">⭐⭐⭐⭐⭐</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="testimonial-card glass-panel">
+                  <div className="quote-icon">❝</div>
+                  <p className="testimonial-text">"Pizza hải sản viền phô mai quá đỉnh. Trà sữa cũng rất ngon, vị ngọt vừa phải. Sẽ giới thiệu cho bạn bè cùng thưởng thức."</p>
+                  <div className="testimonial-author">
+                    <div className="author-avatar">👧</div>
+                    <div className="author-info">
+                      <h4>Lê Mai Trang</h4>
+                      <div className="stars">⭐⭐⭐⭐⭐</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </>
         )}
 
         {activeTab === 'menu' && (
           <div id="products-grid" className="products-section full-width fade-in" style={{ paddingTop: '20px' }}>
             <div className="section-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>Tất Cả Sản Phẩm Của Chúng Tôi</h2>
+              <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>
+                {selectedCategory === 'All' ? 'Tất Cả Sản Phẩm Của Chúng Tôi' : `Thực đơn: ${selectedCategory}`}
+              </h2>
               <p style={{ color: '#666', marginTop: '10px' }}>Khám phá thực đơn đa dạng và phong phú</p>
             </div>
 
@@ -1201,11 +1428,68 @@ function App() {
               ))}
             </div>
 
+            {/* Sort Filter Bar (Segmented Control Style) */}
+            <div className="sort-filter-bar" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginBottom: '30px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: '600', color: '#555', fontSize: '15px' }}>Sắp xếp:</span>
+              <div style={{ display: 'flex', background: '#f1f3f5', padding: '4px', borderRadius: '30px', gap: '2px' }}>
+                <button 
+                  style={{ 
+                    borderRadius: '25px', padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'all 0.3s ease',
+                    background: sortBy === 'all' ? '#fff' : 'transparent', 
+                    color: sortBy === 'all' ? 'var(--primary-color)' : '#666', 
+                    boxShadow: sortBy === 'all' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' 
+                  }}
+                  onClick={() => setSortBy('all')}
+                >
+                  ⚡ Tất cả
+                </button>
+                <button 
+                  style={{ 
+                    borderRadius: '25px', padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'all 0.3s ease',
+                    background: sortBy === 'priceAsc' ? '#fff' : 'transparent', 
+                    color: sortBy === 'priceAsc' ? 'var(--primary-color)' : '#666', 
+                    boxShadow: sortBy === 'priceAsc' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' 
+                  }}
+                  onClick={() => setSortBy('priceAsc')}
+                >
+                  📉 Giá thấp
+                </button>
+                <button 
+                  style={{ 
+                    borderRadius: '25px', padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'all 0.3s ease',
+                    background: sortBy === 'priceDesc' ? '#fff' : 'transparent', 
+                    color: sortBy === 'priceDesc' ? 'var(--primary-color)' : '#666', 
+                    boxShadow: sortBy === 'priceDesc' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' 
+                  }}
+                  onClick={() => setSortBy('priceDesc')}
+                >
+                  📈 Giá cao
+                </button>
+                <button 
+                  style={{ 
+                    borderRadius: '25px', padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'all 0.3s ease',
+                    background: sortBy === 'newest' ? '#fff' : 'transparent', 
+                    color: sortBy === 'newest' ? 'var(--primary-color)' : '#666', 
+                    boxShadow: sortBy === 'newest' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' 
+                  }}
+                  onClick={() => setSortBy('newest')}
+                >
+                  ✨ Mới nhất
+                </button>
+              </div>
+            </div>
+
             <div className="product-cards-container" style={{ gap: '30px' }}>
-              {products
+              {[...products]
                 .filter(p => p.IsActive || p.IsActive === undefined)
                 .filter(p => p.ProductName.toLowerCase().includes(searchQuery.toLowerCase()))
                 .filter(p => selectedCategory === 'All' || p.CategoryName === selectedCategory)
+                .sort((a, b) => {
+                  if (sortBy === 'priceAsc') return a.Price - b.Price;
+                  if (sortBy === 'priceDesc') return b.Price - a.Price;
+                  if (sortBy === 'newest') return b.ProductID - a.ProductID;
+                  return 0; // 'all'
+                })
                 .map(renderProductCard)}
             </div>
           </div>
@@ -1416,13 +1700,24 @@ function App() {
                         </div>
                       </div>
 
+                      <div className="form-group">
+                        <label>Nguyên liệu làm món ăn</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          value={productForm.ingredients || ''}
+                          onChange={(e) => setProductForm({...productForm, ingredients: e.target.value})}
+                          placeholder="Ví dụ: Bánh phở, thịt bò nạc, hành lá..." 
+                        />
+                      </div>
+
                       <div className="btn-group-admin">
                         <button type="submit" className="btn btn-primary">{productForm.id ? 'Cập Nhật' : 'Thêm Mới'}</button>
                         {productForm.id && (
                           <button 
                             type="button" 
                             className="btn btn-secondary"
-                            onClick={() => setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔' })}
+                            onClick={() => setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔', ingredients: '' })}
                           >
                             Hủy
                           </button>
@@ -1505,7 +1800,8 @@ function App() {
                                     categoryId: prod.CategoryID,
                                     price: prod.Price,
                                     inventory: prod.Inventory,
-                                    imageUrl: prod.ImageURL || '🍔'
+                                    imageUrl: prod.ImageURL || '🍔',
+                                    ingredients: prod.Ingredients || ''
                                   })}
                                 >
                                   ✏️
@@ -2042,6 +2338,7 @@ function App() {
                               onChange={() => {
                                 if (isEligible) {
                                   setPromoCodeInput(promo.PromoCode);
+                                  handleApplyPromo(promo.PromoCode);
                                 }
                               }}
                               disabled={!isEligible}
@@ -2068,7 +2365,7 @@ function App() {
                       })}
                       {activePromotions.length === 0 && <div style={{ fontSize: '13px', color: '#666', padding: '10px 0' }}>Không có mã giảm giá khả dụng.</div>}
                     </div>
-                    <button type="button" className="btn btn-secondary" onClick={handleApplyPromo} style={{ marginTop: '10px', width: '100%' }}>Áp dụng Khuyến mãi</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => handleApplyPromo()} style={{ marginTop: '10px', width: '100%' }}>Áp dụng Khuyến mãi</button>
                     {promoError && <div style={{ color: '#ff5252', fontSize: '13px', marginTop: '5px' }}>⚠️ {promoError}</div>}
                     {promoSuccess && <div className="promo-success">✓ {promoSuccess}</div>}
                   </div>
@@ -2292,6 +2589,53 @@ function App() {
         </a>
         <span className="hotline-text">Gọi ngay 1900 1234</span>
       </div>
+
+      {/* GLOBAL FOOTER */}
+      <footer className="global-footer full-width">
+        <div className="footer-container">
+          <div className="footer-col brand-col">
+            <h2 className="footer-logo"><span style={{ color: '#fff' }}>FIVE</span><span style={{ color: '#ff7043' }}>FOOD</span></h2>
+            <p>Hệ thống giao đồ ăn nhanh chóng, tiện lợi với hàng ngàn món ngon đang chờ bạn khám phá. Đặt món ngay để trải nghiệm!</p>
+            <div className="social-links">
+              <a href="#" className="social-icon">🌐</a>
+              <a href="#" className="social-icon">📱</a>
+              <a href="#" className="social-icon">✉️</a>
+            </div>
+          </div>
+          <div className="footer-col">
+            <h3>Liên Kết Nhanh</h3>
+            <ul>
+              <li onClick={() => setActiveTab('home')}>Trang Chủ</li>
+              <li onClick={() => setActiveTab('menu')}>Thực Đơn</li>
+              <li onClick={() => {
+                if(!isLoggedIn) { alert('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('orders');
+              }}>Đơn Hàng</li>
+              <li onClick={() => {
+                if(!isLoggedIn) { alert('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('favorites');
+              }}>Yêu Thích</li>
+            </ul>
+          </div>
+          <div className="footer-col">
+            <h3>Hỗ Trợ Khách Hàng</h3>
+            <ul>
+              <li>Trung tâm trợ giúp</li>
+              <li>Hướng dẫn đặt hàng</li>
+              <li>Chính sách bảo mật</li>
+              <li>Điều khoản dịch vụ</li>
+            </ul>
+          </div>
+          <div className="footer-col contact-col">
+            <h3>Thông Tin Liên Hệ</h3>
+            <p>📍 123 Đường Ẩm Thực, Cầu Giấy, Hà Nội</p>
+            <p>📞 Hotline: 1900 1234</p>
+            <p>✉️ Email: support@fivefood.vn</p>
+            <p>⏰ Giờ mở cửa: 08:00 - 22:00 hàng ngày</p>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} FIVEFOOD. Tất cả các quyền được bảo lưu.</p>
+        </div>
+      </footer>
 
       <Chatbot />
     </div>

@@ -102,6 +102,15 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
             <div className="premium-divider"></div>
 
             <div className="premium-section">
+              <h3 className="premium-section-title">Nguyên liệu làm nên món ăn</h3>
+              <p className="premium-desc-text" style={{ fontStyle: 'italic', color: '#666' }}>
+                {product.Ingredients || 'Chưa có thông tin nguyên liệu.'}
+              </p>
+            </div>
+
+            <div className="premium-divider"></div>
+
+            <div className="premium-section">
               <div className="premium-reviews-header">
                 <h3 className="premium-section-title" style={{ margin: 0 }}>Đánh giá từ thực khách</h3>
                 <span className="premium-view-all">Xem tất cả ({stats ? stats.TotalReviews : 0})</span>
@@ -181,7 +190,7 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
                 }
               }}
             >
-              Mua ngay
+              Đặt ngay
             </button>
           </div>
         </div>

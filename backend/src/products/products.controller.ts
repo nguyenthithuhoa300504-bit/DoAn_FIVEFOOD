@@ -77,8 +77,8 @@ export class ProductsController {
   @Post('admin/categories')
   @HttpCode(HttpStatus.CREATED)
   async createCategory(@Body() body: any) {
-    const { categoryName, description } = body;
-    return await this.productsService.createCategory(categoryName, description);
+    const { categoryName, description, imageUrl } = body;
+    return await this.productsService.createCategory(categoryName, description, imageUrl);
   }
 
   /**
@@ -88,8 +88,8 @@ export class ProductsController {
   @Roles('Admin')
   @Put('admin/categories/:id')
   async updateCategory(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    const { categoryName, description } = body;
-    const updated = await this.productsService.updateCategory(id, categoryName, description);
+    const { categoryName, description, imageUrl } = body;
+    const updated = await this.productsService.updateCategory(id, categoryName, description, imageUrl);
     if (!updated) {
       throw new NotFoundException(`Không tìm thấy danh mục với ID ${id} để cập nhật.`);
     }
@@ -107,8 +107,8 @@ export class ProductsController {
   @Post('admin/products')
   @HttpCode(HttpStatus.CREATED)
   async createProduct(@Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl } = body;
-    return await this.productsService.createProduct(productName, categoryId, price, inventory, imageUrl);
+    const { productName, categoryId, price, inventory, imageUrl, ingredients } = body;
+    return await this.productsService.createProduct(productName, categoryId, price, inventory, imageUrl, ingredients);
   }
 
   /**
@@ -118,8 +118,8 @@ export class ProductsController {
   @Roles('Admin')
   @Put('admin/products/:id')
   async updateProduct(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl } = body;
-    const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl);
+    const { productName, categoryId, price, inventory, imageUrl, ingredients } = body;
+    const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl, ingredients);
     if (!updated) {
       throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để cập nhật.`);
     }
