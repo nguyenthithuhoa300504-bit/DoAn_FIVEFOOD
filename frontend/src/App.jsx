@@ -223,6 +223,10 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
   
   // States cho Form Auth
   const [email, setEmail] = useState('');
@@ -308,17 +312,17 @@ function App() {
     {
       title: "Đập tan cơn đói với món ăn <br/><span class='text-highlight'>Nóng Hổi & Thơm Ngon!</span>",
       subtitle: "Đặt món dễ dàng từ danh mục đa dạng phong phú, áp dụng ngập tràn mã giảm giá và giao tận tay bạn chỉ trong một nốt nhạc.",
-      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f35c/512.gif" alt="Món ăn ngon" style={{ filter: 'drop-shadow(0 20px 30px rgba(255,87,34,0.3))' }} />
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f35c/512.webp" alt="Món ăn ngon" className="banner-img-food" />
     },
     {
       title: "Món Mới <br/><span class='text-highlight'>Bùng Nổ</span>",
       subtitle: "Thưởng thức hương vị hoàn toàn mới lạ. Đặt ngay kẻo lỡ!",
-      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f355/512.gif" alt="Pizza" style={{ filter: 'drop-shadow(0 20px 30px rgba(255,152,0,0.3))' }} />
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f355/512.webp" alt="Pizza" className="banner-img-pizza" />
     },
     {
       title: "Giao Hàng <br/><span class='text-highlight'>Siêu Tốc</span>",
       subtitle: "Nóng hổi vừa thổi vừa ăn, giao ngay đến tận cửa nhà bạn.",
-      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f69a/512.gif" alt="Giao hàng" style={{ filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.2))' }} />
+      img: <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f69a/512.webp" alt="Giao hàng" className="banner-img-truck" />
     }
   ];
 
@@ -883,15 +887,17 @@ function App() {
               <span className="card-badge status-badge suspended">Tạm ngưng</span>
             )}
             
-            {product.ImageURL && product.ImageURL.length < 5 ? (
-              <div className="emoji-placeholder">{product.ImageURL}</div>
+            {!product.ImageURL || product.ImageURL === '??' || product.ImageURL.length < 5 ? (
+              <div className="emoji-placeholder" style={{ fontSize: '60px', width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '15px' }}>
+                {product.ImageURL && product.ImageURL !== '??' ? product.ImageURL : '🥑'}
+              </div>
             ) : (
               <img 
-                src={product.ImageURL || 'https://via.placeholder.com/300?text=No+Image'} 
+                src={product.ImageURL} 
                 alt={product.ProductName} 
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                  e.target.outerHTML = '<div style="font-size: 60px; width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.03); border-radius: 15px;">🥑</div>';
                 }}
               />
             )}
@@ -996,7 +1002,9 @@ function App() {
               style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', flex: 1, padding: '0 15px', fontSize: '15px' }}
             />
             <button 
-              style={{ background: 'transparent', border: 'none', fontWeight: 'bold', cursor: 'pointer', padding: '8px 15px', fontSize: '15px', color: '#111' }}
+              style={{ background: 'transparent', border: 'none', fontWeight: 'bold', cursor: 'pointer', padding: '8px 15px', fontSize: '15px', color: 'var(--text-main)', transition: 'color 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-color)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-main)'}
               onClick={() => setActiveTab('menu')}
             >
               Tìm kiếm
@@ -1090,31 +1098,31 @@ function App() {
         {activeTab === 'home' && (
           <>
             <div className="hero-banner glass-panel">
-              <div className="hero-content" key={currentBanner} style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
+              <div className="hero-content" key={currentBanner} style={{ animation: 'slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
                 <h1 className="hero-title" dangerouslySetInnerHTML={{ __html: banners[currentBanner].title }}></h1>
-                <p className="hero-subtitle" style={{ fontSize: '16px', lineHeight: '1.6', marginBottom: '30px', color: 'var(--text-muted)' }}>{banners[currentBanner].subtitle}</p>
-                <div className="hero-buttons" style={{ marginBottom: '35px' }}>
-                  <button className="btn btn-primary" style={{ padding: '14px 30px', fontSize: '15px', borderRadius: '30px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
+                <p className="hero-subtitle" style={{ fontSize: '15px', lineHeight: '1.5', marginBottom: '20px', color: 'var(--text-muted)' }}>{banners[currentBanner].subtitle}</p>
+                <div className="hero-buttons" style={{ marginBottom: '25px' }}>
+                  <button className="btn btn-primary" style={{ padding: '12px 25px', fontSize: '14px', borderRadius: '30px', fontWeight: 'bold' }} onClick={() => setActiveTab('menu')}>
                     🍴 Khám Phá Menu
                   </button>
-                  <button className="btn btn-secondary" style={{ padding: '14px 30px', fontSize: '15px', borderRadius: '30px', marginLeft: '15px', fontWeight: 'bold', border: '1px solid var(--primary-color)' }} onClick={() => setActiveTab('menu')}>
+                  <button className="btn btn-secondary" style={{ padding: '12px 25px', fontSize: '14px', borderRadius: '30px', marginLeft: '12px', fontWeight: 'bold', border: '1px solid var(--primary-color)' }} onClick={() => setActiveTab('menu')}>
                     % Xem Khuyến Mãi
                   </button>
                 </div>
 
                 {/* Stats Section */}
-                <div style={{ display: 'flex', gap: '30px', borderTop: '1px solid var(--panel-border)', paddingTop: '25px' }}>
+                <div style={{ display: 'flex', gap: '20px', borderTop: '1px solid var(--panel-border)', paddingTop: '15px' }}>
                   <div>
-                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>500+</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Món ăn ngon</div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '24px', fontWeight: '900', marginBottom: '2px' }}>500+</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>Món ăn ngon</div>
                   </div>
                   <div>
-                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>10K+</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Khách hàng tin dùng</div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '24px', fontWeight: '900', marginBottom: '2px' }}>10K+</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>Khách hàng tin dùng</div>
                   </div>
                   <div>
-                    <div style={{ color: 'var(--primary-color)', fontSize: '28px', fontWeight: '900', marginBottom: '4px' }}>4.9 <span style={{ color: '#FFD700' }}>⭐</span></div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>Đánh giá chất lượng</div>
+                    <div style={{ color: 'var(--primary-color)', fontSize: '24px', fontWeight: '900', marginBottom: '2px' }}>4.9 <span style={{ color: '#FFD700' }}>⭐</span></div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>Đánh giá chất lượng</div>
                   </div>
                 </div>
               </div>
@@ -1169,6 +1177,8 @@ function App() {
                     else if(nameL.includes('bánh')) fallbackEmoji = '🍔';
                     else if(nameL.includes('hải sản')) fallbackEmoji = '🦐';
                     else if(nameL.includes('salad')) fallbackEmoji = '🥗';
+                    else if(nameL.includes('bún') || nameL.includes('phở') || nameL.includes('mì')) fallbackEmoji = '🍜';
+                    else if(nameL.includes('pizza')) fallbackEmoji = '🍕';
 
                     return (
                       <div key={cat.CategoryID} className="fc-card" onClick={() => { setSelectedCategory(cat.CategoryName); setActiveTab('menu'); }}>
@@ -1391,7 +1401,7 @@ function App() {
         )}
 
         {activeTab === 'menu' && (
-          <div id="products-grid" className="products-section full-width fade-in" style={{ paddingTop: '20px' }}>
+          <div id="products-grid" className="products-section full-width fade-in" style={{ paddingTop: '20px', maxWidth: '100%', margin: 0, width: '100%' }}>
             <div className="section-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
               <h2 style={{ fontSize: '32px', color: 'var(--primary-color)' }}>
                 {selectedCategory === 'All' ? 'Tất Cả Sản Phẩm Của Chúng Tôi' : `Thực đơn: ${selectedCategory}`}
@@ -2089,7 +2099,14 @@ function App() {
 
         {/* Tab Đăng nhập */}
         {activeTab === 'login' && (
-          <div className="auth-container glass-panel fade-in">
+          <div className="auth-container glass-panel fade-in" style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setActiveTab('home')}
+              style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}
+              title="Đóng"
+            >
+              ✕
+            </button>
             <h2>Đăng Nhập</h2>
             <p className="text-muted">Đăng nhập để tự động đồng bộ giỏ hàng lên hệ thống</p>
 
@@ -2132,7 +2149,14 @@ function App() {
 
         {/* Tab Đăng ký */}
         {activeTab === 'register' && (
-          <div className="auth-container glass-panel fade-in">
+          <div className="auth-container glass-panel fade-in" style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setActiveTab('home')}
+              style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}
+              title="Đóng"
+            >
+              ✕
+            </button>
             <h2>Đăng Ký Tài Khoản</h2>
             <p className="text-muted">Tạo tài khoản mới để trải nghiệm đặt đồ ăn tiện lợi nhất</p>
 

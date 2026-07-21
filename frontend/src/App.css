@@ -8,10 +8,13 @@
 }
 
 .main-content {
-  padding: 20px 40px;
+  padding: 40px 40px 20px 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* Header Bar styling */
@@ -950,10 +953,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 60px 70px;
-  min-height: 420px;
-  width: calc(100% + 40px);
-  margin-left: -20px;
+  padding: 40px 70px;
+  min-height: 360px;
+  width: 100%;
+  margin-left: 0;
   background-color: var(--panel-bg);
   background-image: 
     radial-gradient(circle at 90% 10%, rgba(255, 87, 34, 0.15) 0%, transparent 50%),
@@ -976,15 +979,15 @@
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--panel-border);
-  padding: 35px;
+  padding: 25px; /* Reduced from 35px */
   border-radius: 20px;
   box-shadow: var(--shadow);
 }
 
 .hero-title {
-  font-size: 42px;
+  font-size: 34px; /* Reduced from 42px to prevent 3-line wrap */
   font-weight: 800;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   color: var(--text-main);
   line-height: 1.3;
 }
@@ -1003,6 +1006,7 @@
   margin-bottom: 30px;
   line-height: 1.6;
   font-weight: 500;
+  min-height: 80px; /* Pre-allocate space for 3 lines of text to prevent banner resizing */
 }
 
 .hero-shapes {
@@ -1016,15 +1020,30 @@
 
 .shape-1 {
   position: absolute;
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
+  top: -20px;
+  right: 20px;
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
   border-radius: 50%;
-  animation: glowPulse 4s infinite alternate;
+  filter: blur(40px);
+  opacity: 0.4;
+  animation: float 8s ease-in-out infinite;
+  z-index: 1;
+}
+
+.shape-2 {
+  position: absolute;
+  bottom: -30px;
+  left: 30px;
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #00a8ff 0%, #007bb5 100%);
+  border-radius: 50%;
+  filter: blur(35px);
+  opacity: 0.3;
+  animation: float 10s ease-in-out infinite reverse;
+  z-index: 1;
 }
 
 @keyframes glowPulse {
@@ -1032,16 +1051,16 @@
   100% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
 }
 
-.shape-2 {
-  display: none;
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .hero-main-img {
-  width: 450px;
-  height: 450px;
+  width: 380px;
+  height: 380px;
   z-index: 2;
   filter: drop-shadow(0 30px 50px rgba(0,0,0,0.25));
-  animation: float 6s ease-in-out infinite;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1052,13 +1071,36 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform: scale(1.1);
 }
 
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-  100% { transform: translateY(0px); }
+/* Animations for each banner image */
+.banner-img-food {
+  animation: float-rotate 6s ease-in-out infinite;
+}
+
+.banner-img-pizza {
+  animation: pulse-spin 8s linear infinite;
+}
+
+.banner-img-truck {
+  animation: drive-across 4s linear infinite;
+}
+
+@keyframes float-rotate {
+  0% { transform: translateY(0px) rotate(0deg) scale(1.1); }
+  50% { transform: translateY(-20px) rotate(5deg) scale(1.1); }
+  100% { transform: translateY(0px) rotate(0deg) scale(1.1); }
+}
+
+@keyframes pulse-spin {
+  0% { transform: scale(1.1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1.1) rotate(0deg); }
+}
+
+@keyframes drive-across {
+  0% { transform: translateX(150%) scale(1.1); }
+  100% { transform: translateX(-150%) scale(1.1); }
 }
 
 /* --- NEW PREMIUM PRODUCT CARD DESIGN --- */
@@ -1816,9 +1858,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto 20px;
-  padding: 0 20px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 20px 0;
+  padding: 0;
 }
 .fc-header h2 {
   font-size: 22px;
@@ -1860,10 +1903,11 @@
   background: var(--panel-border);
 }
 .fc-scroll-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   overflow-x: auto;
-  padding: 5px 20px 15px;
+  padding: 5px 0 15px;
   scrollbar-width: thin;
 }
 .fc-scroll-container::-webkit-scrollbar {
@@ -1946,11 +1990,12 @@
   padding: 40px 0;
 }
 .dbs-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   gap: 20px;
-  padding: 0 20px;
+  padding: 0;
 }
 
 /* Banner Left */
@@ -2050,6 +2095,7 @@
   gap: 15px;
   overflow-x: auto;
   padding-bottom: 15px;
+  padding-right: 40px; /* Thêm padding-right để không bị cắt xén */
   scrollbar-width: none; /* Hide scrollbar */
 }
 .dbs-scroll-container::-webkit-scrollbar {

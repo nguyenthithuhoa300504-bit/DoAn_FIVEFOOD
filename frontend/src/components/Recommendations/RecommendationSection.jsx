@@ -37,7 +37,9 @@ const RecommendationSection = ({ isLoggedIn }) => {
 
   return (
     <div className="recommendations-section fade-in" style={{ 
-      marginBottom: '40px', 
+      maxWidth: '100%',
+      margin: '0 0 40px 0',
+      width: '100%',
       padding: '35px', 
       background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', // Vibrant warm amber background
       borderRadius: '24px',
