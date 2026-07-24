@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { useCart } from './context/CartContext';
 import { apiFetch, logUserAction } from './utils/apiFetch';
 import L from 'leaflet';
@@ -14,6 +15,8 @@ import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import './App.css';
+import { renderToString } from 'react-dom/server';
+import { Store, MapPin } from 'lucide-react';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -55,7 +58,7 @@ function LeafletMap({ onLocationSelected }) {
       // Thêm marker cửa hàng
       L.marker(STORE_COORDS, {
         icon: L.divIcon({
-          html: '<span style="font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🏪</span>',
+          html: renderToString(<Store color="#FF7A00" size={30} strokeWidth={2.5} />),
           className: 'store-emoji-icon',
           iconAnchor: [15, 15]
         })
@@ -65,7 +68,7 @@ function LeafletMap({ onLocationSelected }) {
       mapInstance.current.on('click', (e) => {
         // Cảnh báo nếu cố tình click ra ngoài khu vực giới hạn (vùng xám)
         if (!L.latLngBounds(VALID_BOUNDS).contains(e.latlng)) {
-          alert('Vui lòng chọn vị trí giao hàng nằm trong khu vực Bình Thuận.');
+          toast('Vui lòng chọn vị trí giao hàng nằm trong khu vực Bình Thuận.');
           return;
         }
 
@@ -76,7 +79,7 @@ function LeafletMap({ onLocationSelected }) {
         } else {
           markerInstance.current = L.marker(e.latlng, {
             icon: L.divIcon({
-              html: '<span style="font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">📍</span>',
+              html: renderToString(<MapPin color="#f44336" size={30} strokeWidth={2.5} />),
               className: 'user-emoji-icon',
               iconAnchor: [15, 15]
             })
@@ -103,13 +106,7 @@ function LeafletMap({ onLocationSelected }) {
       </label>
       <div 
         ref={mapRef} 
-        style={{ 
-          width: '100%', 
-          height: '220px', 
-          borderRadius: '12px', 
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)'
-        }} 
+        className="leaflet-map-container" 
       />
     </div>
   );
@@ -133,7 +130,7 @@ function DeliveryTrackingMap({ customerLat, customerLng, shipperLat, shipperLng 
       // Điểm Cửa hàng
       L.marker(STORE_COORDS, {
         icon: L.divIcon({
-          html: '<span style="font-size: 30px;">🏪</span>',
+          html: renderToString(<Store color="#FF7A00" size={30} strokeWidth={2.5} />),
           className: 'store-emoji-icon',
           iconAnchor: [15, 15]
         })
@@ -142,7 +139,7 @@ function DeliveryTrackingMap({ customerLat, customerLng, shipperLat, shipperLng 
       // Điểm Khách hàng
       L.marker([customerLat, customerLng], {
         icon: L.divIcon({
-          html: '<span style="font-size: 30px;">📍</span>',
+          html: renderToString(<MapPin color="#f44336" size={30} strokeWidth={2.5} />),
           className: 'user-emoji-icon',
           iconAnchor: [15, 15]
         })
@@ -380,11 +377,11 @@ function App() {
 
       newSocket.on('deliveryCompleted', (data) => {
         setShipperLocation(null);
-        alert(`🎉 Đơn hàng #${data.orderId} của bạn đã được giao thành công!`);
+        toast(`🎉 Đơn hàng #${data.orderId} của bạn đã được giao thành công!`);
       });
 
       newSocket.on('shipperCalling', (data) => {
-        alert(`📞 Shipper đang gọi cho bạn (Lần ${data.callCount}/3) để giao đơn hàng #${data.orderId}. Vui lòng nghe máy!`);
+        toast(`📞 Shipper đang gọi cho bạn (Lần ${data.callCount}/3) để giao đơn hàng #${data.orderId}. Vui lòng nghe máy!`);
       });
 
       setSocket(newSocket);
@@ -464,7 +461,7 @@ function App() {
       const data = await apiFetch(url);
       setSelectedOrderDetails(data);
     } catch (err) {
-      alert('Lỗi tải chi tiết đơn hàng: ' + err.message);
+      toast('Lỗi tải chi tiết đơn hàng: ' + err.message);
     }
   };
 
@@ -480,7 +477,7 @@ function App() {
         loadOrderDetails(orderId, true);
       }
     } catch (err) {
-      alert('Lỗi cập nhật trạng thái: ' + err.message);
+      toast('Lỗi cập nhật trạng thái: ' + err.message);
     }
   };
 
@@ -490,13 +487,13 @@ function App() {
       const res = await apiFetch(`${API_BASE_URL}/admin/orders/${orderId}/shipper-call`, {
         method: 'POST'
       });
-      alert(res.message);
+      toast(res.message);
       fetchAdminOrders();
       if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
         loadOrderDetails(orderId, true);
       }
     } catch (err) {
-      alert('Lỗi gọi điện: ' + err.message);
+      toast('Lỗi gọi điện: ' + err.message);
     }
   };
 
@@ -507,13 +504,13 @@ function App() {
       await apiFetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
         method: 'PUT'
       });
-      alert('Đã hủy đơn hàng thành công.');
+      toast('Đã hủy đơn hàng thành công.');
       fetchClientOrders();
       if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
         setSelectedOrderDetails(null); // Đóng modal chi tiết
       }
     } catch (err) {
-      alert('Hủy đơn hàng thất bại: ' + err.message);
+      toast('Hủy đơn hàng thất bại: ' + err.message);
     }
   };
 
@@ -624,7 +621,7 @@ function App() {
         }
       }
 
-      alert(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
+      toast(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
       
       // Xóa các state tạm
       setIsCheckoutOpen(false);
@@ -689,7 +686,7 @@ function App() {
   // Thêm vào danh sách yêu thích
   const handleAddFavorite = async (productId) => {
     if (!isLoggedIn) {
-      alert('Vui lòng đăng nhập để lưu món yêu thích.');
+      toast('Vui lòng đăng nhập để lưu món yêu thích.');
       setActiveTab('login');
       return;
     }
@@ -699,9 +696,9 @@ function App() {
         body: JSON.stringify({ productId })
       });
       logUserAction('FAVORITE_PRODUCT', productId);
-      alert('💖 Đã thêm vào danh sách yêu thích!');
+      toast('💖 Đã thêm vào danh sách yêu thích!');
     } catch (err) {
-      alert(err.message || 'Sản phẩm đã có trong danh sách yêu thích!');
+      toast(err.message || 'Sản phẩm đã có trong danh sách yêu thích!');
     }
   };
 
@@ -866,7 +863,7 @@ function App() {
       const data = await apiFetch(`${API_BASE_URL}/admin/products/${productId}/history`);
       setSelectedHistory(data);
     } catch (err) {
-      alert('Lỗi khi tải lịch sử: ' + err.message);
+      toast('Lỗi khi tải lịch sử: ' + err.message);
     }
   };
 
@@ -987,7 +984,7 @@ function App() {
               e.stopPropagation();
               if (isSuspended) return;
               addToCart(product, 1);
-              alert(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
+              toast(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
             }}
             title="Thêm vào giỏ hàng"
           >
@@ -1000,6 +997,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <Toaster position="bottom-right" />
       {/* Header */}
       <header className="header-bar fade-in">
         
@@ -1053,7 +1051,7 @@ function App() {
             </button>
             <button title="Yêu thích" style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252', transition: 'all 0.2s' }}
               onClick={() => {
-                if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
+                if(!isLoggedIn) { toast('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
                 setActiveTab('favorites');
               }}
             >
@@ -1093,16 +1091,16 @@ function App() {
           <button className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>Trang Chủ</button>
           <button className={`nav-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Thực đơn</button>
           <button className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => {
-            if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem đơn hàng'); setActiveTab('login'); return; }
+            if(!isLoggedIn) { toast('Vui lòng đăng nhập để xem đơn hàng'); setActiveTab('login'); return; }
             setActiveTab('orders'); 
             fetchClientOrders(); 
           }}>Đặt hàng</button>
           <button className={`nav-btn ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => {
-            if(!isLoggedIn) { alert('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
+            if(!isLoggedIn) { toast('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
             setActiveTab('favorites');
           }}>Yêu thích</button>
           <button className={`nav-btn ${activeTab === 'contact' ? 'active' : ''}`} onClick={() => {
-            if(!isLoggedIn) { alert('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
+            if(!isLoggedIn) { toast('Vui lòng đăng nhập để chat với cửa hàng'); setActiveTab('login'); return; }
             setActiveTab('contact');
           }}>Liên hệ</button>
           {isLoggedIn && user?.role === 'Admin' && (
@@ -1764,7 +1762,7 @@ function App() {
                         style={{ flex: 2, padding: '15px', fontSize: '18px' }}
                         onClick={() => {
                           if (!isLoggedIn) {
-                            alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                            toast('Vui lòng đăng nhập để tiến hành đặt hàng.');
                             setActiveTab('login');
                           } else {
                             setIsCheckoutOpen(true);
@@ -2527,7 +2525,7 @@ function App() {
               {/* Cột Trái: Nhập địa chỉ & Bản đồ số */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div className="form-group">
-                  <label style={{ fontWeight: 'bold' }}>📍 Địa chỉ giao hàng</label>
+                  <label style={{ fontWeight: 'bold' }}><MapPin size={18} style={{marginRight: 4}}/> Địa chỉ giao hàng</label>
                   <input 
                     type="text"
                     className="form-control"
@@ -2692,7 +2690,7 @@ function App() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
               <div>👤 <strong>Khách hàng:</strong> {selectedOrderDetails.FullName} ({selectedOrderDetails.Phone})</div>
-              <div>📍 <strong>Địa chỉ giao:</strong> {selectedOrderDetails.ShippingAddress}</div>
+              <div><MapPin size={16} style={{marginRight: 4, display: "inline"}}/> <strong>Địa chỉ giao:</strong> {selectedOrderDetails.ShippingAddress}</div>
               <div>📅 <strong>Thời gian đặt:</strong> {new Date(selectedOrderDetails.OrderDate).toLocaleString('vi-VN')}</div>
               <div>💳 <strong>Phương thức thanh toán:</strong> {selectedOrderDetails.PaymentMethod} ({selectedOrderDetails.PaymentStatus})</div>
               <div>📊 <strong>Trạng thái đơn:</strong> <span className={`status-pill status-${selectedOrderDetails.Status}`}>{selectedOrderDetails.Status}</span></div>
@@ -2801,7 +2799,7 @@ function App() {
           onClose={() => setReviewProductData(null)}
           onSuccess={() => {
             setReviewProductData(null);
-            alert('Cảm ơn bạn đã gửi đánh giá!');
+            toast('Cảm ơn bạn đã gửi đánh giá!');
           }}
         />
       )}
@@ -2848,10 +2846,10 @@ function App() {
               <li onClick={() => setActiveTab('home')}>Trang Chủ</li>
               <li onClick={() => setActiveTab('menu')}>Thực Đơn</li>
               <li onClick={() => {
-                if(!isLoggedIn) { alert('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('orders');
+                if(!isLoggedIn) { toast('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('orders');
               }}>Đơn Hàng</li>
               <li onClick={() => {
-                if(!isLoggedIn) { alert('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('favorites');
+                if(!isLoggedIn) { toast('Vui lòng đăng nhập'); setActiveTab('login'); } else setActiveTab('favorites');
               }}>Yêu Thích</li>
             </ul>
           </div>
@@ -2866,7 +2864,7 @@ function App() {
           </div>
           <div className="footer-col contact-col">
             <h3>Thông Tin Liên Hệ</h3>
-            <p>📍 123 Đường Ẩm Thực, Cầu Giấy, Hà Nội</p>
+            <p><MapPin size={16} style={{marginRight: 4, display: "inline"}}/> 123 Đường Ẩm Thực, Cầu Giấy, Hà Nội</p>
             <p>📞 Hotline: 1900 1234</p>
             <p>✉️ Email: support@fivefood.vn</p>
             <p>⏰ Giờ mở cửa: 08:00 - 22:00 hàng ngày</p>

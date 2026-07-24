@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
+import { MapPin } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -299,7 +300,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
       {/* Leaflet Map Section */}
       <div className="chart-container" style={{ ...styles.card, padding: '30px', borderTop: 'none', gridColumn: '1 / -1' }}>
-        <h3 style={{ marginTop: 0, color: '#e2e8f0', marginBottom: '20px', fontSize: '18px', fontWeight: 'bold' }}>📍 BẢN ĐỒ VÙNG GIAO HÀNG & PHÂN BỔ ĐƠN</h3>
+        <h3 style={{ marginTop: 0, color: '#e2e8f0', marginBottom: '20px', fontSize: '18px', fontWeight: 'bold' }}><MapPin size={24} style={{ marginRight: "8px", verticalAlign: "bottom" }} /> BẢN ĐỒ VÙNG GIAO HÀNG & PHÂN BỔ ĐƠN</h3>
         <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
           * Di chuột vào khu vực có viền xanh dương (Cyan) để thấy hiệu ứng đổi màu cảnh báo (Đỏ rực).
         </p>

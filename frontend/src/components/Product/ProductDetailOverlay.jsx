@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { apiFetch } from '../../utils/apiFetch';
 
 export default function ProductDetailOverlay({ product, onClose, addToCart, isLoggedIn, setActiveTab, setIsCheckoutOpen }) {
@@ -152,7 +153,7 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
           
           <button className="premium-dock-icon-btn" onClick={() => {
             if (!isLoggedIn) {
-              alert('Vui lòng đăng nhập để chat.');
+              toast('Vui lòng đăng nhập để chat.');
               setActiveTab('login');
             } else {
               onClose();
@@ -170,7 +171,7 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
               onClick={() => {
                 if (isSuspended) return;
                 addToCart(product, 1);
-                alert(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
+                toast(`Đã thêm ${product.ProductName} vào giỏ hàng!`);
               }}
             >
               Thêm vào giỏ
@@ -183,7 +184,7 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
                 addToCart(product, 1);
                 onClose();
                 if (!isLoggedIn) {
-                  alert('Vui lòng đăng nhập để tiến hành đặt hàng.');
+                  toast('Vui lòng đăng nhập để tiến hành đặt hàng.');
                   setActiveTab('login');
                 } else {
                   setIsCheckoutOpen(true);

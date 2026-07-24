@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Store } from 'lucide-react';
+//, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../../utils/apiFetch';
 
 export default function LiveChatModal({ socket, user, onClose }) {
@@ -99,7 +101,7 @@ export default function LiveChatModal({ socket, user, onClose }) {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative', zIndex: 1 }}>
             <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '15px 20px', background: '#fff', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <div style={{ width: '55px', height: '55px', borderRadius: '16px', background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', boxShadow: '0 4px 10px rgba(255, 154, 158, 0.3)' }}>🏪</div>
+              <div style={{ width: '55px', height: '55px', borderRadius: '16px', background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', boxShadow: '0 4px 10px rgba(255, 154, 158, 0.3)' }}><Store color="#FF7A00" size={28} /></div>
               <div>
                 <h4 style={{ margin: '0 0 4px 0', color: '#2d3436', fontSize: '16px', fontWeight: '700' }}>Nhà Hàng Chính</h4>
                 <p style={{ margin: 0, color: '#636e72', fontSize: '14px' }}>123 Đường Ẩm Thực, Quận 1, TP. HCM</p>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { apiFetch } from '../../utils/apiFetch';
 
 export default function FavoriteList({ onAddToCart }) {
@@ -27,7 +28,7 @@ export default function FavoriteList({ onAddToCart }) {
       });
       setFavorites(favorites.filter((fav) => fav.ProductID !== productId));
     } catch (error) {
-      alert('Lỗi khi xóa yêu thích: ' + error.message);
+      toast('Lỗi khi xóa yêu thích: ' + error.message);
     }
   };
 
