@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/apiFetch';
 import { useCart } from '../../context/CartContext';
+import { getDiscountForPrice } from '../../App';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -106,24 +107,35 @@ const RecommendationSection = ({ isLoggedIn }) => {
             <div style={{ position: 'absolute', top: '15px', left: '15px', background: 'linear-gradient(135deg, #ff3d00, #ff9100)', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '900', zIndex: 2, boxShadow: '0 4px 12px rgba(255,61,0,0.4)', border: '1px solid rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
               🌟 Đề Xuất
             </div>
+            
+            {/* Discount Badge */}
+            <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#ff3d00', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '900', zIndex: 2, boxShadow: '0 4px 12px rgba(255,61,0,0.4)', textTransform: 'uppercase' }}>
+              -{getDiscountForPrice(product.Price)}%
+            </div>
 
             {/* Product Image */}
             <div style={{ 
               width: '100%', 
               height: '180px', 
+              minHeight: '180px',
+              flexShrink: 0,
               borderRadius: '20px', 
-              background: 'radial-gradient(circle at center, #fff9c4 0%, #ffcc80 100%)', // Vibrant glowing image background
+              background: 'radial-gradient(circle at center, #fff9c4 0%, #ffcc80 100%)',
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
-              fontSize: '90px',
               boxShadow: 'inset 0 0 20px rgba(255,152,0,0.2)',
               position: 'relative',
-              border: '1px solid rgba(255,152,0,0.1)'
+              border: '1px solid rgba(255,152,0,0.1)',
+              overflow: 'hidden'
             }}>
-              <div style={{ filter: 'drop-shadow(0 15px 15px rgba(0,0,0,0.2))', transform: 'scale(1.1)' }}>
-                {product.ImageURL || '🍔'}
-              </div>
+              {product.ImageURL && (product.ImageURL.includes('/') || product.ImageURL.includes('http') || product.ImageURL.length > 5) ? (
+                <img src={product.ImageURL} alt={product.ProductName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ filter: 'drop-shadow(0 15px 15px rgba(0,0,0,0.2))', transform: 'scale(1.1)', fontSize: '90px' }}>
+                  {product.ImageURL || '🍔'}
+                </div>
+              )}
             </div>
             
             {/* Product Info & Action */}
@@ -133,9 +145,14 @@ const RecommendationSection = ({ isLoggedIn }) => {
               </h3>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                <p style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--primary-color)' }}>
-                  {product.Price.toLocaleString('vi-VN')} đ
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ textDecoration: 'line-through', color: '#999', fontSize: '13px' }}>
+                    {Math.round(product.Price / (1 - getDiscountForPrice(product.Price) / 100)).toLocaleString('vi-VN')} đ
+                  </span>
+                  <span style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--primary-color)' }}>
+                    {product.Price.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
 
                 {/* Circular Add Button */}
                 <button 

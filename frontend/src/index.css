@@ -2,29 +2,32 @@
 
 :root {
   --font-primary: 'Nunito', sans-serif;
-  --bg-gradient: linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 50%, #f8fafc 100%);
-  --panel-bg: rgba(255, 255, 255, 0.85);
-  --panel-border: rgba(0, 0, 0, 0.08);
-  --primary-color: #ff5722; /* Spicy Orange */
-  --primary-hover: #e64a19;
+  --bg-gradient: #FFF8F2;
+  --panel-bg: #FFFFFF;
+  --panel-border: #ECECEC;
+  --input-bg: #FFFFFF;
+  --parallax-overlay: linear-gradient(to bottom, rgba(255,255,255,0.92) 0%, rgba(255,230,200,0.7) 50%, rgba(255,255,255,0.92) 100%);
+  --primary-color: #FF7A00;
+  --primary-hover: #E06B00;
   --success-color: #4caf50;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
+  --text-main: #222222;
+  --text-muted: #666666;
   --text-white: #ffffff;
-  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
-  --glass-blur: blur(12px);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 10px 25px rgba(255, 122, 0, 0.12);
+  --glass-blur: blur(16px);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.dark-theme {
-  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(255, 87, 34, 0.08), transparent 25%),
-                 radial-gradient(circle at 85% 30%, rgba(0, 168, 255, 0.08), transparent 25%),
-                 linear-gradient(135deg, #0f172a 0%, #172033 50%, #0b1120 100%);
-  --panel-bg: rgba(25, 33, 44, 0.65);
-  --panel-border: rgba(255, 255, 255, 0.05);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  --bg-gradient: #141414;
+  --panel-bg: #1f1f1f;
+  --panel-border: #333333;
+  --input-bg: #2a2a2a;
+  --parallax-overlay: linear-gradient(to bottom, rgba(31,31,31,0.9) 0%, rgba(31,31,31,0.7) 50%, rgba(31,31,31,0.95) 100%);
+  --text-main: #f0f0f0;
+  --text-muted: #aaaaaa;
+  --shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
   --glass-blur: blur(16px);
 }
 
@@ -36,7 +39,8 @@ body.dark-theme {
 
 body {
   font-family: var(--font-primary);
-  background: var(--bg-gradient);
+  background-color: #FFF8F2;
+  background: #FFF8F2;
   color: var(--text-main);
   min-height: 100vh;
   padding: 0;
@@ -57,7 +61,7 @@ body {
 }
 
 .glass-panel:hover {
-  border-color: rgba(0, 168, 255, 0.2);
+  border-color: rgba(255, 87, 34, 0.3);
 }
 
 /* Buttons */
@@ -127,7 +131,7 @@ body {
   width: 100%;
   padding: 12px 16px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--input-bg);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
   font-family: var(--font-primary);
@@ -138,7 +142,7 @@ body {
 .form-control:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 168, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.15);
 }
 
 /* Animations */
@@ -150,3 +154,80 @@ body {
 .fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
+
+/* ==========================================================
+   DARK MODE — Safety overrides: ensure all text is visible
+   ========================================================== */
+body.dark-theme input,
+body.dark-theme textarea,
+body.dark-theme select {
+  color: var(--text-main);
+  background: var(--input-bg);
+}
+
+body.dark-theme input::placeholder,
+body.dark-theme textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Ensure any hardcoded light-mode text (#333, #555, #666, #999 etc.)
+   gets overridden in dark mode so it's always readable */
+body.dark-theme p,
+body.dark-theme span:not([class*="badge"]):not([class*="tag"]),
+body.dark-theme li,
+body.dark-theme td,
+body.dark-theme th,
+body.dark-theme label {
+  color: inherit;
+}
+
+/* Product cards, modals and panels in dark mode */
+body.dark-theme .product-card,
+body.dark-theme .dbs-product-card,
+body.dark-theme .glass-card,
+body.dark-theme .testimonial-card,
+body.dark-theme .fc-card {
+  background: var(--panel-bg);
+  border-color: var(--panel-border);
+}
+
+body.dark-theme .product-name,
+body.dark-theme .product-category,
+body.dark-theme .dbs-product-name,
+body.dark-theme .fc-card h4,
+body.dark-theme .glass-card h3,
+body.dark-theme .glass-card p,
+body.dark-theme .testimonial-text,
+body.dark-theme .author-info h4 {
+  color: var(--text-main);
+}
+
+body.dark-theme .product-price,
+body.dark-theme .dbs-new-price {
+  color: var(--primary-color);
+}
+
+body.dark-theme .dbs-old-price {
+  color: var(--text-muted);
+}
+
+/* Sort filter buttons and category filter buttons */
+body.dark-theme [style*="background: #fff"]:not(.phone-mockup),
+body.dark-theme [style*="background: rgb(255, 255, 255)"]:not(.phone-mockup) {
+  background: var(--panel-bg) !important;
+  color: var(--text-main) !important;
+}
+
+body.dark-theme [style*="#f1f3f5"],
+body.dark-theme [style*="#f5f5f5"] {
+  background: rgba(255,255,255,0.05) !important;
+}
+
+/* Review & user name components */
+body.dark-theme .premium-user-name,
+body.dark-theme .premium-review-comment,
+body.dark-theme .premium-user-date,
+body.dark-theme .premium-empty-text {
+  color: var(--text-main);
+}
+

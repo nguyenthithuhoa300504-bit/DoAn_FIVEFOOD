@@ -1,8 +1,11 @@
-ConnectionError: Failed to connect to 127.0.0.1:1433 in 15000ms
-    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\mssql\lib\tedious\connection-pool.js:86:17
-    at err (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1823:9)
-    at Object.onceWrapper (node:events:639:26)
-    at Connection.emit (node:events:524:28)
-    at emit (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1985:18)
-    at <anonymous> (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:1845:14)
-    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+RequestError: Failed to cancel request in 5000ms
+    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\mssql\lib\tedious\request.js:460:19
+    at Array.forEach (<anonymous>)
+    at Request.userCallback (C:\Users\Admin\Desktop\DoAn\backend\node_modules\mssql\lib\tedious\request.js:457:46)
+    at Request.Request.callback (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\request.ts:379:14)
+    at apply (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:3830:20)
+    at dispatchEvent (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:2379:15)
+    at cancelTimeout (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:2304:10)
+    at Timeout.<anonymous> (C:\Users\Admin\Desktop\DoAn\backend\node_modules\tedious\src\connection.ts:2279:14)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7)

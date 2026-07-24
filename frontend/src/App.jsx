@@ -12,6 +12,7 @@ import NotificationDropdown from './components/Notifications/NotificationDropdow
 import LiveChatModal from './components/LiveChat/LiveChatModal';
 import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
+import AdminDashboard from './components/Admin/AdminDashboard';
 import './App.css';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
@@ -191,6 +192,13 @@ const MOCK_PRODUCTS = [
   { ProductID: 4, ProductName: 'Trà Sữa Thái Xanh Trân Châu', CategoryID: 4, CategoryName: 'Đồ uống', Price: 30000, Inventory: 20, ImageURL: '🥤', IsActive: true }
 ];
 
+export const getDiscountForPrice = (price) => {
+  if (price >= 100000) return 25;
+  if (price >= 60000) return 20;
+  if (price >= 30000) return 15;
+  return 10;
+};
+
 function App() {
   const {
     cart,
@@ -210,6 +218,12 @@ function App() {
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
   const [selectedCategory, setSelectedCategory] = useState('All'); // Thêm state bộ lọc danh mục
   const [sortBy, setSortBy] = useState('all'); // 'all', 'priceAsc', 'priceDesc', 'newest'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, sortBy]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -246,10 +260,7 @@ function App() {
     imageUrl: '🍔',
     ingredients: ''
   });
-  const [categoryForm, setCategoryForm] = useState({
-    categoryName: '',
-    description: ''
-  });
+  const [categoryForm, setCategoryForm] = useState({ categoryName: '', description: '', imageUrl: '' });
   const [adminSuccess, setAdminSuccess] = useState('');
   const [adminError, setAdminError] = useState('');
   const [selectedHistory, setSelectedHistory] = useState(null); // Lịch sử Temporal Table của sản phẩm được chọn
@@ -286,8 +297,9 @@ function App() {
   
   const [clientOrders, setClientOrders] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
+  const [adminUsersCount, setAdminUsersCount] = useState(0);
   const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
-  const [adminSubtab, setAdminSubtab] = useState('products'); // products, orders, reviews
+  const [adminSubtab, setAdminSubtab] = useState('dashboard'); // dashboard, products, orders, reviews
   const [adminReviews, setAdminReviews] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   
@@ -399,6 +411,17 @@ function App() {
       setAdminOrders(data);
     } catch (err) {
       console.error('Lỗi khi tải đơn hàng admin', err);
+    }
+  };
+
+  const fetchAdminUsersCount = async () => {
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/admin/users?limit=1`);
+      if (data && data.pagination) {
+        setAdminUsersCount(data.pagination.totalItems);
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy số lượng users:', err);
     }
   };
 
@@ -830,7 +853,7 @@ function App() {
         body: JSON.stringify(categoryForm)
       });
       setAdminSuccess('Tạo danh mục mới thành công!');
-      setCategoryForm({ categoryName: '', description: '' });
+      setCategoryForm({ categoryName: '', description: '', imageUrl: '' });
       fetchCategories();
     } catch (err) {
       setAdminError(err.message || 'Lỗi khi lưu danh mục.');
@@ -883,6 +906,9 @@ function App() {
         <div className="product-card-top" onClick={() => setSelectedProductDetails(product)}>
           <div className="product-img-wrapper">
             <span className="card-badge category-badge">{product.CategoryName}</span>
+            {!isSuspended && (
+              <span className="card-badge discount-badge" style={{ background: '#ff3d00', color: 'white', position: 'absolute', top: '10px', right: '10px', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', zIndex: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>-{getDiscountForPrice(product.Price)}%</span>
+            )}
             {isSuspended && (
               <span className="card-badge status-badge suspended">Tạm ngưng</span>
             )}
@@ -933,7 +959,12 @@ function App() {
           <p className="product-desc">{product.Description || 'Món ăn đặc biệt thơm ngon và kích thích vị giác'}</p>
           
           <div className="price-row">
-            <span className="price">{product.Price.toLocaleString('vi-VN')} đ</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="original-price" style={{ textDecoration: 'line-through', color: '#999', fontSize: '14px' }}>
+                {Math.round(product.Price / (1 - getDiscountForPrice(product.Price) / 100)).toLocaleString('vi-VN')} đ
+              </span>
+              <span className="price" style={{ color: '#ff3d00' }}>{product.Price.toLocaleString('vi-VN')} đ</span>
+            </div>
           </div>
         </div>
         
@@ -970,10 +1001,10 @@ function App() {
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="header-bar fade-in" style={{ flexDirection: 'column', padding: '15px 40px 10px 40px', gap: '20px' }}>
+      <header className="header-bar fade-in">
         
         {/* Top Row: Logo, Search, Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div className="header-top">
           
           {/* Logo */}
           <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setActiveTab('home')}>
@@ -987,7 +1018,7 @@ function App() {
           </div>
 
           {/* Search Bar */}
-          <div className="header-search-bar" style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '30px', padding: '6px 8px 6px 20px', flex: '0 1 500px', border: '1px solid transparent', transition: 'all 0.3s' }}>
+          <div className="header-search-bar">
             <span style={{ color: 'var(--text-muted)', fontSize: '18px' }}>🔍</span>
             <input 
               type="text" 
@@ -1012,7 +1043,7 @@ function App() {
           </div>
 
           {/* Action Icons */}
-          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="header-actions">
             <button 
               title={isDarkMode ? "Giao diện sáng" : "Giao diện tối"} 
               style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
@@ -1058,7 +1089,7 @@ function App() {
         </div>
 
         {/* Bottom Row: Navigation Tabs */}
-        <div className="header-nav-tabs" style={{ display: 'flex', gap: '30px', width: '100%', justifyContent: 'center' }}>
+        <div className="header-nav-tabs">
           <button className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>Trang Chủ</button>
           <button className={`nav-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Thực đơn</button>
           <button className={`nav-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => {
@@ -1183,7 +1214,11 @@ function App() {
                     return (
                       <div key={cat.CategoryID} className="fc-card" onClick={() => { setSelectedCategory(cat.CategoryName); setActiveTab('menu'); }}>
                         <div className="fc-img-wrapper">
-                          {cat.ImageURL ? <img src={cat.ImageURL} alt={cat.CategoryName} className="fc-real-img" /> : <div className="fc-emoji">{fallbackEmoji}</div>}
+                          {cat.ImageURL && (cat.ImageURL.includes('/') || cat.ImageURL.includes('http') || cat.ImageURL.length > 5) ? (
+                            <img src={cat.ImageURL} alt={cat.CategoryName} className="fc-real-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div className="fc-emoji" style={{ fontSize: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>{cat.ImageURL || fallbackEmoji}</div>
+                          )}
                         </div>
                         <h4>{cat.CategoryName}</h4>
                         <p>{productCount} sản phẩm</p>
@@ -1234,29 +1269,38 @@ function App() {
                         return (
                           <div key={p.ProductID} className="dbs-product-card" onClick={() => { setSelectedProduct(p); setIsDetailModalOpen(true); }}>
                           {/* Tag Placeholder cho thiết kế (nếu cần sau này có thể logic giảm giá vào đây) */}
-                          {p.Price < 30000 && <div className="dbs-discount-tag">Giá tốt</div>}
+                          <div className="dbs-discount-tag" style={{ background: '#ff3d00', color: '#fff', fontWeight: 'bold' }}>-{getDiscountForPrice(p.Price)}%</div>
                           
                           <div className="dbs-img-container">
-                            {p.ImageURL ? <img src={p.ImageURL} alt={p.ProductName} className="dbs-real-img" /> : <div className="dbs-emoji">🥑</div>}
+                            {p.ImageURL && (p.ImageURL.startsWith('http') || p.ImageURL.startsWith('/')) ? (
+                              <img src={p.ImageURL} alt={p.ProductName} className="dbs-real-img" />
+                            ) : (
+                              <div className="dbs-emoji" style={{ fontSize: '70px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>{p.ImageURL || '🥑'}</div>
+                            )}
                           </div>
                           
-                          <div className="dbs-product-info">
+                          <div className="dbs-product-info" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                             <h4 className="dbs-product-name">{p.ProductName}</h4>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '8px', fontSize: '12px', color: '#666' }}>
                               <span style={{ color: '#faad14' }}>★ {p.AverageRating ? parseFloat(p.AverageRating).toFixed(1) : '5.0'}</span>
                               <span>({p.ReviewCount || 0} đánh giá)</span>
                             </div>
                             <div className="dbs-price-row">
-                              <span className="dbs-new-price">{p.Price.toLocaleString('vi-VN')}đ</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span className="dbs-old-price" style={{ textDecoration: 'line-through', color: '#999', fontSize: '13px' }}>
+                                  {Math.round(p.Price / (1 - getDiscountForPrice(p.Price) / 100)).toLocaleString('vi-VN')}đ
+                                </span>
+                                <span className="dbs-new-price" style={{ color: '#ff3d00' }}>{p.Price.toLocaleString('vi-VN')}đ</span>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '5px' }}>
+                            <div style={{ display: 'flex', gap: '5px', marginTop: 'auto' }}>
                               <button className="dbs-add-btn" onClick={(e) => { e.stopPropagation(); setSelectedProductDetails(p); }}>
                                 Đặt ngay
                               </button>
                               <button 
                                 className="dbs-add-btn" 
                                 style={{ width: '40px', padding: '8px 0' }}
-                                onClick={(e) => { e.stopPropagation(); addToCart(p); }}
+                                onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }}
                                 title="Thêm vào giỏ"
                               >
                                 🛒
@@ -1276,123 +1320,195 @@ function App() {
               </div>
             </div>
 
-            {/* PHẦN: TẠI SAO NÊN ĂN TẠI ĐÂY */}
-            <div className="why-eat-here-section full-width fade-in" style={{ paddingTop: '60px', paddingBottom: '40px', textAlign: 'center' }}>
-              <div className="section-header" style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tại sao nên ăn tại đây</h2>
-                <p style={{ color: '#666', marginTop: '15px', maxWidth: '700px', margin: '15px auto 0', lineHeight: '1.6' }}>
-                  Hãy đến với chúng tôi và tận hưởng những món ăn tươi ngon, được chế biến từ nguyên liệu chất lượng, mang đến cho bạn trải nghiệm ẩm thực đích thực mà bạn sẽ không thể quên
+            {/* PHẦN 1: TRẢI NGHIỆM ẨM THỰC (Parallax Storytelling) */}
+            <div className="premium-parallax-section">
+              <div className="parallax-content">
+                <h2>Trải Nghiệm Ẩm Thực Đỉnh Cao</h2>
+                <p>Khám phá sự kết hợp tinh tế giữa nguyên liệu tươi ngon nhất và nghệ thuật chế biến bậc thầy. Mỗi món ăn là một câu chuyện, mỗi hương vị là một kiệt tác.</p>
+                <div className="parallax-stats">
+                  <div className="stat-item">
+                    <span className="stat-number">10K+</span>
+                    <span className="stat-label">Khách hàng hài lòng</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">100%</span>
+                    <span className="stat-label">Nguyên liệu tươi</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">50+</span>
+                    <span className="stat-label">Món ăn đa dạng</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PHẦN 2: MÓN NGON ĐẶC TRƯNG (Signature Dish Split-screen) */}
+            <div className="signature-dish-section">
+              <div className="signature-container">
+                <div className="signature-content">
+                  <span className="signature-badge">⭐ Món Ngon Nổi Bật</span>
+                  <h2>Phở Bò Thố Đá<br/>Đặc Biệt</h2>
+                  <p>Hương vị truyền thống được nâng tầm. Nước dùng hầm từ xương bò nguyên chất trong 24 giờ, hòa quyện cùng các loại thảo mộc cung đình, phục vụ sôi sùng sục trong thố đá núi lửa giữ nhiệt hoàn hảo.</p>
+                  <button className="signature-btn" onClick={() => setActiveTab('menu')}>Khám phá ngay</button>
+                </div>
+                <div className="signature-image-wrapper">
+                  <div className="signature-glow"></div>
+                  <div style={{ fontSize: '250px', textAlign: 'center', position: 'relative', zIndex: 2, animation: 'float 6s ease-in-out infinite', filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.5))' }}>🍜</div>
+                </div>
+              </div>
+            </div>
+
+            {/* PHẦN 2.5: LINH HỒN THƯƠNG HIỆU (Brand Story) */}
+            <div className="brand-story-section fade-in">
+              <div className="story-bg-video"></div>
+              <div className="story-content">
+                <h2 className="story-title">Tâm Huyết Trong Từng Món Ăn</h2>
+                <p className="story-text">
+                  "Chúng tôi tin rằng, một món ăn ngon không chỉ làm no bụng mà còn phải chạm đến cảm xúc. 
+                  Đó là lý do mỗi bát phở, mỗi chiếc bánh tại FIVEFOOD đều được chăm chút từ khâu chọn lựa nguyên liệu khắt khe nhất, 
+                  cho đến ngọn lửa rực hồng nêm nếm gia vị của những người thợ lành nghề."
                 </p>
+                <div className="chef-signature">Master Chef - FIVEFOOD</div>
               </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-                {/* Feature 1 */}
-                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ marginBottom: '20px' }}>
-                    <img src="/ingredients.png" alt="Nguyên liệu tươi sạch" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
-                  </div>
-                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Nguyên Liệu Tươi Sạch</h3>
-                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
-                    Cam kết sử dụng 100% thực phẩm tươi mới mỗi ngày, nguồn gốc rõ ràng, đảm bảo an toàn sức khỏe và mang đến hương vị tự nhiên nhất.
-                  </p>
-                </div>
+            </div>
 
-                {/* Feature 2 */}
-                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ marginBottom: '20px' }}>
-                    <img src="/chef.png" alt="Đầu bếp" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
-                  </div>
-                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Hương Vị Tuyệt Hảo</h3>
-                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
-                    Sự kết hợp hoàn hảo giữa công thức độc quyền và tâm huyết của những đầu bếp chuyên nghiệp, mang đến trải nghiệm ẩm thực khó quên.
-                  </p>
+            {/* PHẦN 3: GIÁ TRỊ CỐT LÕI (Modern Glassmorphism) */}
+            <div className="glass-features-section">
+              <div className="section-header text-center" style={{ marginBottom: '50px', position: 'relative', zIndex: 1 }}>
+                <h2 style={{ fontSize: '36px', fontWeight: '900', color: 'var(--text-main)', marginBottom: '15px' }}>Tinh Hoa Hội Tụ</h2>
+                <p style={{ color: 'var(--text-muted)', maxWidth: '600px', margin: '0 auto', fontSize: '1.1rem' }}>Chúng tôi không chỉ phục vụ thức ăn, chúng tôi mang đến cho bạn trải nghiệm và giá trị đích thực.</p>
+              </div>
+              <div className="features-grid">
+                <div className="glass-card">
+                  <div className="glass-icon">🥬</div>
+                  <h3>Nguyên Liệu Tuyển Chọn</h3>
+                  <p>100% thực phẩm tươi sống nhập mới mỗi sáng từ các nông trại hữu cơ đạt chuẩn quốc tế.</p>
                 </div>
-
-                {/* Feature 3 */}
-                <div className="feature-card glass-panel" style={{ padding: '40px 20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                  <div style={{ marginBottom: '20px' }}>
-                    <img src="/shipper.png" alt="Shipper" style={{ width: '120px', height: '120px', objectFit: 'contain', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }} />
-                  </div>
-                  <h3 style={{ fontSize: '20px', marginBottom: '15px', color: 'var(--text-main)' }}>Giao Hàng Siêu Tốc</h3>
-                  <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
-                    Đội ngũ shipper thần tốc đảm bảo món ăn đến tay bạn luôn trong trạng thái nóng hổi, giữ trọn vẹn hương vị như vừa mới ra lò.
-                  </p>
+                <div className="glass-card">
+                  <div className="glass-icon">👨‍🍳</div>
+                  <h3>Đầu Bếp Trứ Danh</h3>
+                  <p>Đội ngũ đầu bếp hơn 10 năm kinh nghiệm tại các nhà hàng 5 sao, chế biến với cả trái tim.</p>
+                </div>
+                <div className="glass-card">
+                  <div className="glass-icon">🚀</div>
+                  <h3>Giao Hàng Thần Tốc</h3>
+                  <p>Công nghệ điều phối thông minh giúp đồ ăn đến tay bạn luôn nóng hổi chỉ trong 20 phút.</p>
                 </div>
               </div>
             </div>
 
-            {/* PHẦN MỚI: QUY TRÌNH ĐẶT HÀNG */}
-            <div className="order-process-section full-width fade-in">
-              <div className="section-header text-center">
-                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cách Thức Hoạt Động</h2>
-                <p style={{ color: '#666', marginTop: '15px' }}>Chỉ với 4 bước đơn giản để thưởng thức món ngon</p>
-              </div>
-              <div className="process-steps-container">
-                <div className="process-step">
-                  <div className="step-icon">📱</div>
-                  <h4>1. Chọn Món</h4>
-                  <p>Khám phá thực đơn đa dạng và chọn món yêu thích</p>
+            {/* PHẦN 4: TẢI ỨNG DỤNG (App Promo) */}
+            <div className="app-promo-section">
+              <div className="app-promo-container">
+                <div className="app-promo-text">
+                  <h2>Chạm Trải Nghiệm<br/>Nhận Ngàn Ưu Đãi</h2>
+                  <p>Tải ngay ứng dụng FIVEFOOD để dễ dàng đặt món, tích điểm thành viên và nhận các khuyến mãi độc quyền chỉ có trên mobile app.</p>
+                  <div className="app-buttons">
+                    <button className="app-btn">
+                      <div className="app-btn-icon">🍏</div>
+                      <div className="app-btn-text">
+                        <span>Tải trên</span>
+                        <strong>App Store</strong>
+                      </div>
+                    </button>
+                    <button className="app-btn">
+                      <div className="app-btn-icon">▶️</div>
+                      <div className="app-btn-text">
+                        <span>Tải trên</span>
+                        <strong>Google Play</strong>
+                      </div>
+                    </button>
+                  </div>
                 </div>
-                <div className="process-arrow">➔</div>
-                <div className="process-step">
-                  <div className="step-icon">💳</div>
-                  <h4>2. Thanh Toán</h4>
-                  <p>Thanh toán an toàn qua COD hoặc VNPAY</p>
-                </div>
-                <div className="process-arrow">➔</div>
-                <div className="process-step">
-                  <div className="step-icon">🛵</div>
-                  <h4>3. Giao Hàng</h4>
-                  <p>Theo dõi shipper giao hàng siêu tốc đến tận nhà</p>
-                </div>
-                <div className="process-arrow">➔</div>
-                <div className="process-step">
-                  <div className="step-icon">🍽️</div>
-                  <h4>4. Thưởng Thức</h4>
-                  <p>Nhận đồ ăn nóng hổi và ngon miệng</p>
+                <div className="app-promo-mockup">
+                  <div className="mockup-glow"></div>
+                  <div className="phone-mockup">
+                    <div className="mockup-header">
+                      <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>FIVEFOOD</h3>
+                      <div className="mockup-search"></div>
+                    </div>
+                    <div className="mockup-body">
+                      <div className="mockup-content-wrapper">
+                        <div className="mockup-card">
+                          <div className="mockup-card-img" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?q=80&w=200&auto=format&fit=crop')" }}></div>
+                          <div className="mockup-card-info">
+                            <h4 className="mockup-food-name">Phở Bò Đặc Biệt</h4>
+                            <span className="mockup-food-price">55.000đ</span>
+                            <button className="mockup-order-btn">Đặt ngay</button>
+                          </div>
+                        </div>
+                        <div className="mockup-card">
+                          <div className="mockup-card-img" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=200&auto=format&fit=crop')" }}></div>
+                          <div className="mockup-card-info">
+                            <h4 className="mockup-food-name">Pizza Hải Sản</h4>
+                            <span className="mockup-food-price">120.000đ</span>
+                            <button className="mockup-order-btn">Đặt ngay</button>
+                          </div>
+                        </div>
+                        <div className="mockup-card">
+                          <div className="mockup-card-img" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&auto=format&fit=crop')" }}></div>
+                          <div className="mockup-card-info">
+                            <h4 className="mockup-food-name">Burger Phô Mai</h4>
+                            <span className="mockup-food-price">65.000đ</span>
+                            <button className="mockup-order-btn">Đặt ngay</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mockup-finger"></div>
+                      
+                      {/* Giao diện Thanh toán mô phỏng */}
+                      <div className="mockup-order-screen">
+                        <div className="order-screen-header">
+                          <span className="order-back">←</span>
+                          <span>Thanh toán</span>
+                          <span style={{color: 'transparent'}}>←</span>
+                        </div>
+                        <div className="order-screen-item">
+                          <div className="order-item-img" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=200&auto=format&fit=crop')" }}></div>
+                          <div className="order-item-info">
+                            <h5>Pizza Hải Sản</h5>
+                            <span>120.000đ</span>
+                          </div>
+                        </div>
+                        <div className="order-screen-details">
+                          <div className="order-row"><span>Giao đến:</span> <strong>123 Nguyễn Văn Cừ</strong></div>
+                          <div className="order-row"><span>Phí giao:</span> <strong>15.000đ</strong></div>
+                          <div className="order-total"><span>Tổng:</span> <strong>135.000đ</strong></div>
+                        </div>
+                        <button className="order-screen-btn">Xác nhận đặt hàng</button>
+                      </div>
+
+                      <div className="mockup-success-toast">
+                        <span className="toast-icon">✓</span>
+                        Thanh toán thành công
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* PHẦN MỚI: ĐÁNH GIÁ TỪ KHÁCH HÀNG */}
-            <div className="testimonials-section full-width fade-in">
-              <div className="section-header text-center">
-                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '1px' }}>Khách Hàng Nói Gì Về Chúng Tôi</h2>
-                <p style={{ color: '#666', marginTop: '15px' }}>Hàng ngàn đánh giá tích cực từ thực khách hài lòng</p>
+            {/* PHẦN 5: ĐÁNH GIÁ & ĐĂNG KÝ (Elegant CTA) */}
+            <div className="elegant-cta-section">
+              <div className="testimonial-elegant">
+                <div className="giant-quote">"</div>
+                <p className="testimonial-elegant-text">
+                  Mọi thứ quá hoàn hảo! Không gian ứng dụng đẹp mắt, giao hàng nhanh chóng và chất lượng món ăn thực sự vượt xa sự mong đợi của tôi. FIVEFOOD là lựa chọn số 1.
+                </p>
+                <div className="testimonial-elegant-author">
+                  <div className="author-elegant-avatar">👩</div>
+                  <div className="author-elegant-info">
+                    <h4>Nguyễn Thu Hà</h4>
+                    <span>Khách hàng thân thiết</span>
+                  </div>
+                </div>
               </div>
-              <div className="testimonials-grid">
-                <div className="testimonial-card glass-panel">
-                  <div className="quote-icon">❝</div>
-                  <p className="testimonial-text">"Đồ ăn giao đến rất nhanh, vẫn còn nóng hổi. Phở bò đặc biệt nước dùng cực kỳ đậm đà. Chắc chắn sẽ quay lại ủng hộ tiếp!"</p>
-                  <div className="testimonial-author">
-                    <div className="author-avatar">👩</div>
-                    <div className="author-info">
-                      <h4>Nguyễn Thu Hà</h4>
-                      <div className="stars">⭐⭐⭐⭐⭐</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="testimonial-card glass-panel">
-                  <div className="quote-icon">❝</div>
-                  <p className="testimonial-text">"Giao diện dễ sử dụng, đặt hàng nhanh chóng. Mình rất thích tính năng theo dõi shipper trên bản đồ, rất tiện lợi và an tâm!"</p>
-                  <div className="testimonial-author">
-                    <div className="author-avatar">👨</div>
-                    <div className="author-info">
-                      <h4>Trần Văn Minh</h4>
-                      <div className="stars">⭐⭐⭐⭐⭐</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="testimonial-card glass-panel">
-                  <div className="quote-icon">❝</div>
-                  <p className="testimonial-text">"Pizza hải sản viền phô mai quá đỉnh. Trà sữa cũng rất ngon, vị ngọt vừa phải. Sẽ giới thiệu cho bạn bè cùng thưởng thức."</p>
-                  <div className="testimonial-author">
-                    <div className="author-avatar">👧</div>
-                    <div className="author-info">
-                      <h4>Lê Mai Trang</h4>
-                      <div className="stars">⭐⭐⭐⭐⭐</div>
-                    </div>
-                  </div>
+              <div className="cta-elegant">
+                <h2>Không Bỏ Lỡ<br/>Hương Vị Mới</h2>
+                <p>Đăng ký nhận bản tin để là người đầu tiên biết về các món ăn mới, ưu đãi sốc và các sự kiện ẩm thực hấp dẫn của chúng tôi.</p>
+                <div className="cta-input-group">
+                  <input type="email" placeholder="Nhập địa chỉ email của bạn..." />
+                  <button>Đăng ký</button>
                 </div>
               </div>
             </div>
@@ -1490,18 +1606,87 @@ function App() {
             </div>
 
             <div className="product-cards-container" style={{ gap: '30px' }}>
-              {[...products]
+              {(() => {
+                const filteredProducts = [...products]
+                  .filter(p => p.IsActive || p.IsActive === undefined)
+                  .filter(p => p.ProductName.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(p => selectedCategory === 'All' || p.CategoryName === selectedCategory)
+                  .sort((a, b) => {
+                    if (sortBy === 'priceAsc') return a.Price - b.Price;
+                    if (sortBy === 'priceDesc') return b.Price - a.Price;
+                    if (sortBy === 'newest') return b.ProductID - a.ProductID;
+                    return 0; // 'all'
+                  });
+
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+                return (
+                  <>
+                    {paginatedProducts.map(renderProductCard)}
+                  </>
+                );
+              })()}
+            </div>
+            
+            {/* Pagination Controls */}
+            {(() => {
+              const filteredProducts = [...products]
                 .filter(p => p.IsActive || p.IsActive === undefined)
                 .filter(p => p.ProductName.toLowerCase().includes(searchQuery.toLowerCase()))
-                .filter(p => selectedCategory === 'All' || p.CategoryName === selectedCategory)
-                .sort((a, b) => {
-                  if (sortBy === 'priceAsc') return a.Price - b.Price;
-                  if (sortBy === 'priceDesc') return b.Price - a.Price;
-                  if (sortBy === 'newest') return b.ProductID - a.ProductID;
-                  return 0; // 'all'
-                })
-                .map(renderProductCard)}
-            </div>
+                .filter(p => selectedCategory === 'All' || p.CategoryName === selectedCategory);
+              
+              const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+              if (totalPages <= 1) return null;
+
+              return (
+                <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '40px', flexWrap: 'wrap' }}>
+                  <button 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    style={{ 
+                      padding: '8px 16px', borderRadius: '25px', border: '1px solid #ddd', 
+                      background: currentPage === 1 ? '#f5f5f5' : '#fff', 
+                      color: currentPage === 1 ? '#999' : '#333',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontWeight: '500', transition: 'all 0.2s'
+                    }}
+                  >
+                    Trước
+                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          width: '38px', height: '38px', borderRadius: '50%', border: 'none',
+                          background: currentPage === page ? 'linear-gradient(135deg, #ff5722 0%, #ff8a65 100%)' : '#f1f3f5',
+                          color: currentPage === page ? '#fff' : '#444',
+                          fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s',
+                          boxShadow: currentPage === page ? '0 4px 10px rgba(255, 87, 34, 0.3)' : 'none'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    style={{ 
+                      padding: '8px 16px', borderRadius: '25px', border: '1px solid #ddd', 
+                      background: currentPage === totalPages ? '#f5f5f5' : '#fff', 
+                      color: currentPage === totalPages ? '#999' : '#333',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontWeight: '500', transition: 'all 0.2s'
+                    }}
+                  >
+                    Sau
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1601,6 +1786,12 @@ function App() {
             {/* Sub-tabs */}
             <div className="admin-subtabs glass-panel" style={{ padding: '10px 20px', borderRadius: '12px', marginBottom: '20px', display: 'flex', gap: '15px' }}>
               <button 
+                className={`subtab-btn ${adminSubtab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('dashboard'); fetchAdminOrders(); fetchAdminUsersCount(); }}
+              >
+                📊 Dashboard Thống kê
+              </button>
+              <button 
                 className={`subtab-btn ${adminSubtab === 'products' ? 'active' : ''}`}
                 onClick={() => setAdminSubtab('products')}
               >
@@ -1631,6 +1822,15 @@ function App() {
                 ⭐ Quản lý Đánh Giá
               </button>
             </div>
+
+            {adminSubtab === 'dashboard' && (
+              <AdminDashboard 
+                orders={adminOrders} 
+                products={products} 
+                categories={categories} 
+                usersCount={adminUsersCount} 
+              />
+            )}
 
             {adminSubtab === 'products' && (
               <div className="admin-grid fade-in">
@@ -1672,13 +1872,13 @@ function App() {
                         </div>
 
                         <div className="form-group">
-                          <label>Biểu tượng emoji</label>
+                          <label>Link ảnh (URL) hoặc Emoji</label>
                           <input 
                             type="text" 
                             className="form-control"
                             value={productForm.imageUrl}
                             onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
-                            placeholder="🍔" 
+                            placeholder="Ví dụ: /images/banh-mi.jpg hoặc 🍔" 
                             required 
                           />
                         </div>
@@ -1761,6 +1961,16 @@ function App() {
                           placeholder="Các món ăn vặt giòn ngon" 
                         />
                       </div>
+                      <div className="form-group">
+                        <label>Link ảnh (URL) hoặc Emoji</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          value={categoryForm.imageUrl || ''}
+                          onChange={(e) => setCategoryForm({...categoryForm, imageUrl: e.target.value})}
+                          placeholder="Ví dụ: /images/banner.jpg hoặc 🍕" 
+                        />
+                      </div>
                       <button type="submit" className="btn btn-secondary w-full">Tạo Danh Mục</button>
                     </form>
                   </div>
@@ -1789,7 +1999,13 @@ function App() {
                       <tbody>
                         {products.map(prod => (
                           <tr key={prod.ProductID}>
-                            <td><span className="table-emoji">{prod.ImageURL || '🍔'}</span></td>
+                            <td>
+                              {prod.ImageURL && (prod.ImageURL.startsWith('http') || prod.ImageURL.startsWith('/')) ? (
+                                <img src={prod.ImageURL} alt={prod.ProductName} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }} />
+                              ) : (
+                                <span className="table-emoji">{prod.ImageURL || '🍔'}</span>
+                              )}
+                            </td>
                             <td><strong>{prod.ProductName}</strong></td>
                             <td>{prod.CategoryName}</td>
                             <td className="text-orange">{prod.Price.toLocaleString('vi-VN')} đ</td>
