@@ -181,14 +181,46 @@ body.dark-theme label {
   color: inherit;
 }
 
-/* Product cards, modals and panels in dark mode */
+/* Product cards, modals, panels, admin cards and chatbot in dark mode */
 body.dark-theme .product-card,
 body.dark-theme .dbs-product-card,
 body.dark-theme .glass-card,
 body.dark-theme .testimonial-card,
-body.dark-theme .fc-card {
+body.dark-theme .fc-card,
+body.dark-theme .chatbot-window,
+body.dark-theme .admin-form-card,
+body.dark-theme .admin-list,
+body.dark-theme .admin-products-table-container,
+body.dark-theme .modal-content {
   background: var(--panel-bg);
   border-color: var(--panel-border);
+}
+
+/* Chatbot Specific */
+body.dark-theme .bot .message-content {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+body.dark-theme .chatbot-input-area {
+  background: rgba(0, 0, 0, 0.2);
+  border-top-color: var(--panel-border);
+}
+body.dark-theme .chatbot-input-area input {
+  background: var(--input-bg);
+  color: var(--text-main);
+  border-color: var(--panel-border);
+}
+
+/* Admin Table Specific */
+body.dark-theme .admin-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+body.dark-theme .admin-table td {
+  border-bottom-color: var(--panel-border);
+}
+body.dark-theme .admin-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 body.dark-theme .product-name,

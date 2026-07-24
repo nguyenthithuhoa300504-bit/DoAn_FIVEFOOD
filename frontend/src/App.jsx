@@ -196,6 +196,17 @@ export const getDiscountForPrice = (price) => {
   return 10;
 };
 
+export const getMockProductData = (id) => {
+  const numId = typeof id === 'number' ? id : parseInt(id) || 0;
+  // Rating between 4.2 and 4.9
+  const rating = (4.2 + (numId % 8) * 0.1).toFixed(1);
+  // Reviews between 15 and 214
+  const reviews = (numId * 7 % 200) + 15;
+  // Sold count
+  const rawSold = (numId * 13 % 1500) + 10;
+  const sold = rawSold >= 1000 ? (rawSold / 1000).toFixed(1) + 'k' : rawSold.toString();
+  return { rating, reviews, sold };
+};
 function App() {
   const {
     cart,
@@ -381,7 +392,11 @@ function App() {
       });
 
       newSocket.on('shipperCalling', (data) => {
-        toast(`📞 Shipper đang gọi cho bạn (Lần ${data.callCount}/3) để giao đơn hàng #${data.orderId}. Vui lòng nghe máy!`);
+        if (data.callCount > 3) {
+          toast.error(`⚠️ CẢNH BÁO: Shipper đã gọi cho bạn ${data.callCount} lần để giao đơn hàng #${data.orderId}. Vui lòng nghe máy ngay nếu không đơn hàng sẽ bị xử lý!`, { duration: 6000 });
+        } else {
+          toast(`📞 Shipper đang gọi cho bạn (Lần ${data.callCount}/3) để giao đơn hàng #${data.orderId}. Vui lòng nghe máy!`);
+        }
       });
 
       setSocket(newSocket);
@@ -897,6 +912,12 @@ function App() {
 
   const renderProductCard = (product) => {
     const isSuspended = product.IsActive === false || product.Inventory <= 0;
+    const mockData = getMockProductData(product.ProductID);
+    const displayRating = product.AverageRating ? parseFloat(product.AverageRating).toFixed(1) : mockData.rating;
+    const displayReviews = product.ReviewCount || mockData.reviews;
+    const displaySold = product.SoldCount || mockData.sold;
+    const discountPercent = product.Discount || getDiscountForPrice(product.Price);
+    const originalPrice = product.OriginalPrice || Math.round(product.Price / (1 - discountPercent / 100));
     
     return (
       <div key={product.ProductID} className="product-card new-design">
@@ -904,7 +925,7 @@ function App() {
           <div className="product-img-wrapper">
             <span className="card-badge category-badge">{product.CategoryName}</span>
             {!isSuspended && (
-              <span className="card-badge discount-badge" style={{ background: '#ff3d00', color: 'white', position: 'absolute', top: '10px', right: '10px', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', zIndex: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>-{getDiscountForPrice(product.Price)}%</span>
+              <span className="card-badge discount-badge" style={{ background: '#ff3d00', color: 'white', position: 'absolute', top: '10px', right: '10px', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', zIndex: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>-{discountPercent}%</span>
             )}
             {isSuspended && (
               <span className="card-badge status-badge suspended">Tạm ngưng</span>
@@ -947,10 +968,10 @@ function App() {
                 setSelectedProductDetails(product);
               }}
             >
-              ⭐ {product.AverageRating ? parseFloat(product.AverageRating).toFixed(1) : '5.0'} ({product.ReviewCount || 0})
+              ⭐ {displayRating} ({displayReviews} đánh giá)
             </button>
             <span className="dot-divider">•</span>
-            <span className="sold-count">Đã bán {product.SoldCount || 0}</span>
+            <span className="sold-count">Đã bán {displaySold}</span>
           </div>
           
           <p className="product-desc">{product.Description || 'Món ăn đặc biệt thơm ngon và kích thích vị giác'}</p>
@@ -958,7 +979,7 @@ function App() {
           <div className="price-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="original-price" style={{ textDecoration: 'line-through', color: '#999', fontSize: '14px' }}>
-                {Math.round(product.Price / (1 - getDiscountForPrice(product.Price) / 100)).toLocaleString('vi-VN')} đ
+                {originalPrice.toLocaleString('vi-VN')} đ
               </span>
               <span className="price" style={{ color: '#ff3d00' }}>{product.Price.toLocaleString('vi-VN')} đ</span>
             </div>
@@ -1006,18 +1027,18 @@ function App() {
           
           {/* Logo */}
           <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setActiveTab('home')}>
-            <div style={{ background: '#ff7043', color: 'white', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(255,112,67,0.3)' }}>
+            <div className="logo-icon">
               ⚡
             </div>
-            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' }}>
-              <span style={{ color: '#111' }}>FIVE</span>
-              <span style={{ color: '#ff7043' }}>FOOD</span>
+            <h1>
+              <span className="logo-text-dark">FIVE</span>
+              <span className="logo-text-primary">FOOD</span>
             </h1>
           </div>
 
           {/* Search Bar */}
           <div className="header-search-bar">
-            <span style={{ color: 'var(--text-muted)', fontSize: '18px' }}>🔍</span>
+            <span className="search-icon">🔍</span>
             <input 
               type="text" 
               placeholder="Tìm kiếm món ăn ngon ngay..." 
@@ -1028,12 +1049,10 @@ function App() {
                   setActiveTab('menu');
                 }
               }}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', flex: 1, padding: '0 15px', fontSize: '15px' }}
+              className="search-input"
             />
             <button 
-              style={{ background: 'transparent', border: 'none', fontWeight: 'bold', cursor: 'pointer', padding: '8px 15px', fontSize: '15px', color: 'var(--text-main)', transition: 'color 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-color)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-main)'}
+              className="search-btn"
               onClick={() => setActiveTab('menu')}
             >
               Tìm kiếm
@@ -1043,13 +1062,15 @@ function App() {
           {/* Action Icons */}
           <div className="header-actions">
             <button 
+              className="action-btn"
               title={isDarkMode ? "Giao diện sáng" : "Giao diện tối"} 
-              style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
               onClick={() => setIsDarkMode(!isDarkMode)}
             >
               {isDarkMode ? '☀️' : '🌙'}
             </button>
-            <button title="Yêu thích" style={{ width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252', transition: 'all 0.2s' }}
+            <button 
+              className="action-btn text-red" 
+              title="Yêu thích" 
               onClick={() => {
                 if(!isLoggedIn) { toast('Vui lòng đăng nhập để xem danh sách yêu thích'); setActiveTab('login'); return; }
                 setActiveTab('favorites');
@@ -1058,27 +1079,29 @@ function App() {
               ❤️
             </button>
             
-            <button title="Giỏ hàng" style={{ position: 'relative', width: '42px', height: '42px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.04)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+            <button 
+              className="action-btn cart-btn" 
+              title="Giỏ hàng" 
               onClick={() => setActiveTab('cart')}
             >
               🛍️
               {totalItems > 0 && (
-                <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: '#ff7043', color: 'white', fontSize: '12px', fontWeight: 'bold', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
+                <span className="cart-badge">
                   {totalItems}
                 </span>
               )}
             </button>
 
             {isLoggedIn ? (
-              <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '5px' }}>
+              <div className="user-profile">
                 <NotificationDropdown socket={socket} />
-                <div className="user-avatar" style={{ border: '2px solid #ff7043', width: '42px', height: '42px', cursor: 'pointer', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} title={`Đăng xuất (${user?.fullName})`} onClick={logout}>
+                <div className="user-avatar logged-in" title={`Đăng xuất (${user?.fullName})`} onClick={logout}>
                   👤
                 </div>
               </div>
             ) : (
-              <div className="user-profile" style={{ marginLeft: '5px' }}>
-                <div className="user-avatar" style={{ width: '42px', height: '42px', cursor: 'pointer', border: '1px solid var(--panel-border)', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} title="Đăng nhập" onClick={() => setActiveTab('login')}>
+              <div className="user-profile">
+                <div className="user-avatar" title="Đăng nhập" onClick={() => setActiveTab('login')}>
                   👤
                 </div>
               </div>
@@ -1174,7 +1197,7 @@ function App() {
                       borderRadius: '4px', 
                       background: currentBanner === idx ? 'var(--primary-color)' : 'rgba(0,0,0,0.2)',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease'
+                      transition: 'transform 0.3s ease, opacity 0.3s ease'
                     }}
                   />
                 ))}
@@ -1250,24 +1273,26 @@ function App() {
                   
                   <div className="dbs-scroll-container">
                     {(() => {
-                      // Thiết kế lại cấu trúc: Ưu tiên sản phẩm có lượt mua/đánh giá cao.
-                      // Để danh sách đổi mới "hàng ngày", kết hợp thêm thuật toán random theo ngày.
-                      // Như vậy khi thêm sản phẩm mới, nó không bị đẩy thẳng lên đây gây trùng lặp với Thực Đơn.
                       const todaySeed = new Date().getDate();
                       const bestSellers = [...products]
                         .filter(p => p.IsActive || p.IsActive === undefined)
                         .sort((a, b) => {
                           const scoreA = (a.ReviewCount || 0) * 100 + ((a.ProductID * todaySeed) % 20);
                           const scoreB = (b.ReviewCount || 0) * 100 + ((b.ProductID * todaySeed) % 20);
-                          return scoreB - scoreA; // Sắp xếp giảm dần
+                          return scoreB - scoreA;
                         })
                         .slice(0, 8);
 
                       return bestSellers.map(p => {
+                        const mockData = getMockProductData(p.ProductID);
+                        const displayRating = p.AverageRating ? parseFloat(p.AverageRating).toFixed(1) : mockData.rating;
+                        const displayReviews = p.ReviewCount || mockData.reviews;
+                        const discountPercent = p.Discount || getDiscountForPrice(p.Price);
+                        const originalPrice = p.OriginalPrice || Math.round(p.Price / (1 - discountPercent / 100));
+                        
                         return (
                           <div key={p.ProductID} className="dbs-product-card" onClick={() => { setSelectedProduct(p); setIsDetailModalOpen(true); }}>
-                          {/* Tag Placeholder cho thiết kế (nếu cần sau này có thể logic giảm giá vào đây) */}
-                          <div className="dbs-discount-tag" style={{ background: '#ff3d00', color: '#fff', fontWeight: 'bold' }}>-{getDiscountForPrice(p.Price)}%</div>
+                          <div className="dbs-discount-tag" style={{ background: '#ff3d00', color: '#fff', fontWeight: 'bold' }}>-{discountPercent}%</div>
                           
                           <div className="dbs-img-container">
                             {p.ImageURL && (p.ImageURL.startsWith('http') || p.ImageURL.startsWith('/')) ? (
@@ -1280,13 +1305,13 @@ function App() {
                           <div className="dbs-product-info" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                             <h4 className="dbs-product-name">{p.ProductName}</h4>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '8px', fontSize: '12px', color: '#666' }}>
-                              <span style={{ color: '#faad14' }}>★ {p.AverageRating ? parseFloat(p.AverageRating).toFixed(1) : '5.0'}</span>
-                              <span>({p.ReviewCount || 0} đánh giá)</span>
+                              <span style={{ color: '#faad14' }}>⭐ {displayRating}</span>
+                              <span>({displayReviews} đánh giá)</span>
                             </div>
                             <div className="dbs-price-row">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                 <span className="dbs-old-price" style={{ textDecoration: 'line-through', color: '#999', fontSize: '13px' }}>
-                                  {Math.round(p.Price / (1 - getDiscountForPrice(p.Price) / 100)).toLocaleString('vi-VN')}đ
+                                  {originalPrice.toLocaleString('vi-VN')}đ
                                 </span>
                                 <span className="dbs-new-price" style={{ color: '#ff3d00' }}>{p.Price.toLocaleString('vi-VN')}đ</span>
                               </div>
@@ -1886,11 +1911,14 @@ function App() {
                         <div className="form-group">
                           <label>Giá bán (đ)</label>
                           <input 
-                            type="number" 
+                            type="text" 
                             className="form-control"
-                            value={productForm.price}
-                            onChange={(e) => setProductForm({...productForm, price: e.target.value})}
-                            placeholder="35000" 
+                            value={productForm.price !== undefined && productForm.price !== '' ? Number(productForm.price).toLocaleString('vi-VN') : ''}
+                            onChange={(e) => {
+                              const rawVal = e.target.value.replace(/\D/g, '');
+                              setProductForm({...productForm, price: rawVal ? parseInt(rawVal, 10) : ''});
+                            }}
+                            placeholder="35.000" 
                             required 
                           />
                         </div>
@@ -1898,10 +1926,13 @@ function App() {
                         <div className="form-group">
                           <label>Số lượng kho</label>
                           <input 
-                            type="number" 
+                            type="text" 
                             className="form-control"
-                            value={productForm.inventory}
-                            onChange={(e) => setProductForm({...productForm, inventory: e.target.value})}
+                            value={productForm.inventory !== undefined && productForm.inventory !== '' ? Number(productForm.inventory).toLocaleString('vi-VN') : ''}
+                            onChange={(e) => {
+                              const rawVal = e.target.value.replace(/\D/g, '');
+                              setProductForm({...productForm, inventory: rawVal ? parseInt(rawVal, 10) : ''});
+                            }}
                             placeholder="50" 
                             required 
                           />
@@ -2177,14 +2208,7 @@ function App() {
                                   </button>
                                 </>
                               )}
-                              {order.Status !== 'Hoàn thành' && order.Status !== 'Đã hủy' && order.Status !== 'Trả hàng' && (
-                                <button 
-                                  className="btn btn-danger btn-sm"
-                                  onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đã hủy')}
-                                >
-                                  ✕ Hủy
-                                </button>
-                              )}
+                              {/* Nút hủy đơn hàng đã bị xóa theo yêu cầu (Chỉ khách hàng mới có quyền hủy) */}
                             </div>
                           </td>
                         </tr>
@@ -2226,10 +2250,10 @@ function App() {
                             <td>{new Date(log.CreatedAt).toLocaleString('vi-VN')}</td>
                             <td>
                               <strong>{log.FullName}</strong>
-                              <div style={{ fontSize: '12px', color: '#888' }}>{log.Email}</div>
-                              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>Session: {log.SessionID.substring(0, 8)}...</div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{log.Email}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Session: {log.SessionID.substring(0, 8)}...</div>
                             </td>
-                            <td><div style={{ whiteSpace: 'pre-wrap', color: '#e0f7fa' }}>{log.userMessage}</div></td>
+                            <td><div style={{ whiteSpace: 'pre-wrap', color: 'var(--primary-color)', fontWeight: '500' }}>{log.userMessage}</div></td>
                             <td><div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: '1.5' }}>{log.botResponse}</div></td>
                           </tr>
                         ))
@@ -2674,86 +2698,143 @@ function App() {
         </div>
       )}
 
-      {/* --- CHI TIẾT ĐƠN HÀNG MODAL OVERLAY --- */}
       {selectedOrderDetails && (
         <div className="checkout-modal-overlay">
-          <div className="checkout-modal glass-panel" style={{ borderRadius: '20px', maxWidth: '600px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0 }}>Chi Tiết Hóa Đơn #{selectedOrderDetails.OrderID}</h3>
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '24px', maxWidth: '600px', background: 'var(--panel-bg)', overflow: 'hidden', padding: 0, display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #00a8ff, #33b8ff)', padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span style={{ fontSize: '28px', background: 'rgba(255,255,255,0.2)', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>🧾</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '1px' }}>HÓA ĐƠN #{selectedOrderDetails.OrderID}</h3>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '13px', opacity: 0.9, fontWeight: '500' }}>
+                    Cảm ơn bạn đã đồng hành cùng FIVEFOOD
+                  </p>
+                </div>
+              </div>
               <button 
-                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' }}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
                 onClick={() => setSelectedOrderDetails(null)}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
-              <div>👤 <strong>Khách hàng:</strong> {selectedOrderDetails.FullName} ({selectedOrderDetails.Phone})</div>
-              <div><MapPin size={16} style={{marginRight: 4, display: "inline"}}/> <strong>Địa chỉ giao:</strong> {selectedOrderDetails.ShippingAddress}</div>
-              <div>📅 <strong>Thời gian đặt:</strong> {new Date(selectedOrderDetails.OrderDate).toLocaleString('vi-VN')}</div>
-              <div>💳 <strong>Phương thức thanh toán:</strong> {selectedOrderDetails.PaymentMethod} ({selectedOrderDetails.PaymentStatus})</div>
-              <div>📊 <strong>Trạng thái đơn:</strong> <span className={`status-pill status-${selectedOrderDetails.Status}`}>{selectedOrderDetails.Status}</span></div>
+            <div style={{ padding: '20px 25px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
+              {/* Info Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0,0,0,0.02)', padding: '20px', borderRadius: '16px', border: '2px dashed rgba(150, 150, 150, 0.4)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Khách hàng</span>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' }}>{selectedOrderDetails.FullName}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}>{selectedOrderDetails.Phone}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Thời gian đặt</span>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' }}>{new Date(selectedOrderDetails.OrderDate).toLocaleTimeString('vi-VN')}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}>{new Date(selectedOrderDetails.OrderDate).toLocaleDateString('vi-VN')}</span>
+                </div>
+                <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '12px', borderTop: '2px dashed rgba(150, 150, 150, 0.4)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Địa chỉ giao hàng</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={16} style={{ color: 'var(--primary-color)' }}/>
+                    {selectedOrderDetails.ShippingAddress}
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Badges */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.03)', padding: '10px 15px', borderRadius: '25px', border: '2px solid rgba(150, 150, 150, 0.2)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                  <span style={{ fontSize: '18px' }}>💳</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)' }}>{selectedOrderDetails.PaymentMethod}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', background: selectedOrderDetails.PaymentStatus === 'Đã thanh toán' ? '#4caf50' : '#ff9800', color: '#fff', padding: '3px 8px', borderRadius: '10px' }}>{selectedOrderDetails.PaymentStatus}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.03)', padding: '10px 15px', borderRadius: '25px', border: '2px solid rgba(150, 150, 150, 0.2)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                  <span style={{ fontSize: '18px' }}>📊</span>
+                  <span className={`status-pill status-${selectedOrderDetails.Status}`} style={{ margin: 0, padding: '4px 10px', fontSize: '13px' }}>{selectedOrderDetails.Status}</span>
+                </div>
+              </div>
 
               {selectedOrderDetails.Status === 'Đang giao' && selectedOrderDetails.Latitude && selectedOrderDetails.Longitude && (
-                <DeliveryTrackingMap 
-                  customerLat={selectedOrderDetails.Latitude} 
-                  customerLng={selectedOrderDetails.Longitude} 
-                  shipperLat={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lat : null}
-                  shipperLng={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lng : null}
-                />
+                <div style={{ borderRadius: '16px', overflow: 'hidden', border: '2px solid var(--panel-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+                  <DeliveryTrackingMap 
+                    customerLat={selectedOrderDetails.Latitude} 
+                    customerLng={selectedOrderDetails.Longitude} 
+                    shipperLat={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lat : null}
+                    shipperLng={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lng : null}
+                  />
+                </div>
               )}
 
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 10px 0' }}>📋 Món ăn đã đặt:</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Order Items */}
+              <div>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>📋 Chi Tiết Món Ăn</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedOrderDetails.items?.map((detail, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span>{detail.ProductName} <strong>x{detail.Quantity}</strong></span>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--input-bg)', padding: '12px 16px', borderRadius: '14px', border: '2px solid rgba(150, 150, 150, 0.2)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '15px', color: 'var(--text-main)', fontWeight: '600' }}>
+                          {detail.ProductName} <strong style={{ color: 'var(--primary-color)', marginLeft: '6px', fontSize: '14px' }}>x{detail.Quantity}</strong>
+                        </span>
                         {selectedOrderDetails.Status === 'Hoàn thành' && user?.role !== 'Admin' && (
                           <button 
                             className="btn btn-sm" 
-                            style={{ padding: '2px 8px', fontSize: '11px', marginTop: '5px', alignSelf: 'flex-start', background: '#ff9800', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+                            style={{ padding: '6px 12px', fontSize: '12px', marginTop: '6px', alignSelf: 'flex-start', background: 'linear-gradient(135deg, #FF9800, #FF5722)', border: 'none', color: '#fff', borderRadius: '20px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(255, 87, 34, 0.3)', fontWeight: 'bold', transition: 'transform 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                             onClick={() => setReviewProductData({ 
                               product: { ProductID: detail.ProductID, ProductName: detail.ProductName },
                               orderId: selectedOrderDetails.OrderID 
                             })}
                           >
-                            ⭐ Đánh giá món này
+                            ⭐ Đánh giá ngay
                           </button>
                         )}
                       </div>
-                      <span className="text-orange">{(detail.UnitPrice * detail.Quantity).toLocaleString('vi-VN')} đ</span>
+                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-main)' }}>{(detail.UnitPrice * detail.Quantity).toLocaleString('vi-VN')} đ</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Tạm tính:</span>
+              {/* Summary */}
+              <div style={{ background: 'linear-gradient(145deg, rgba(0, 168, 255, 0.05) 0%, rgba(51, 184, 255, 0.1) 100%)', padding: '20px', borderRadius: '16px', border: '2px solid rgba(0, 168, 255, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--text-main)', fontWeight: '500' }}>
+                  <span>Tạm tính hàng:</span>
                   <span>{selectedOrderDetails.TotalAmount?.toLocaleString('vi-VN')} đ</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Phí ship (OSRM):</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--text-main)', fontWeight: '500' }}>
+                  <span>Phí vận chuyển (OSRM):</span>
                   <span>{selectedOrderDetails.ShippingFee?.toLocaleString('vi-VN')} đ</span>
                 </div>
                 {selectedOrderDetails.DiscountAmount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--success-color)' }}>
-                    <span>Giảm giá Voucher:</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', color: '#4caf50', fontWeight: '700' }}>
+                    <span>🎉 Giảm giá Voucher:</span>
                     <span>-{selectedOrderDetails.DiscountAmount?.toLocaleString('vi-VN')} đ</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', color: 'var(--primary-color)' }}>
-                  <span>Tổng tiền thanh toán:</span>
-                  <span>{selectedOrderDetails.FinalAmount?.toLocaleString('vi-VN')} đ</span>
+                <div style={{ borderTop: '2px dashed rgba(0, 168, 255, 0.4)', margin: '10px 0' }}></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main)', textTransform: 'uppercase' }}>Tổng thanh toán</span>
+                  <span style={{ fontSize: '24px', fontWeight: '900', background: 'linear-gradient(to right, #FF3D00, #FF7A00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0 2px 4px rgba(255,61,0,0.2))' }}>
+                    {selectedOrderDetails.FinalAmount?.toLocaleString('vi-VN')} đ
+                  </span>
                 </div>
               </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button className="btn btn-secondary" onClick={() => setSelectedOrderDetails(null)}>Đóng</button>
+              {/* Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+                <button 
+                  style={{ background: 'var(--input-bg)', border: '2px solid var(--panel-border)', color: 'var(--text-main)', padding: '12px 40px', borderRadius: '30px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  onClick={() => setSelectedOrderDetails(null)}
+                >
+                  Đóng Hóa Đơn
+                </button>
+              </div>
             </div>
           </div>
         </div>

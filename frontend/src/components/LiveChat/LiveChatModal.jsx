@@ -7,6 +7,7 @@ export default function LiveChatModal({ socket, user, onClose }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [adminId, setAdminId] = useState(1);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -27,12 +28,26 @@ export default function LiveChatModal({ socket, user, onClose }) {
     
     const handleReceiveMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
+      setIsTyping(false);
       scrollToBottom();
     };
 
+    const handleTypingStatus = (data) => {
+      if (data.senderId === adminId) {
+        setIsTyping(data.isTyping);
+        if (data.isTyping) {
+          scrollToBottom();
+        }
+      }
+    };
+
     socket.on('receiveMessage', handleReceiveMessage);
-    return () => socket.off('receiveMessage', handleReceiveMessage);
-  }, [socket]);
+    socket.on('typingStatus', handleTypingStatus);
+    return () => {
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('typingStatus', handleTypingStatus);
+    };
+  }, [socket, adminId]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -204,6 +219,11 @@ export default function LiveChatModal({ socket, user, onClose }) {
                 </div>
               );
             })}
+            {isTyping && (
+              <div style={{ alignSelf: 'flex-start', padding: '10px 15px', color: '#888', fontStyle: 'italic', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span className="typing-dots">Cửa hàng đang phản hồi...</span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 

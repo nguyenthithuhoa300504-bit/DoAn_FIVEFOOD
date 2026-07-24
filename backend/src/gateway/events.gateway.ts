@@ -146,4 +146,25 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.error('Error handling sendMessage event:', err);
     }
   }
+
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { receiverId: number; isTyping: boolean }
+  ) {
+    try {
+      const token = client.handshake.auth.token;
+      const secret = this.configService.get<string>('JWT_SECRET');
+      const decoded = this.jwtService.verify(token, { secret });
+      const senderId = parseInt(decoded.sub);
+
+      // Chuyển tiếp trạng thái typing đến phòng của người nhận
+      this.server.to(`room_user_${payload.receiverId}`).emit('typingStatus', {
+        senderId,
+        isTyping: payload.isTyping
+      });
+    } catch (err) {
+      console.error('Error handling typing event:', err);
+    }
+  }
 }

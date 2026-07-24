@@ -7,6 +7,7 @@ export default function AdminLiveChat({ socket, user }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // Lấy danh sách user đã chat
   useEffect(() => {
@@ -52,7 +53,9 @@ export default function AdminLiveChat({ socket, user }) {
     };
 
     socket.on('receiveMessage', handleReceiveMessage);
-    return () => socket.off('receiveMessage', handleReceiveMessage);
+    return () => {
+      socket.off('receiveMessage', handleReceiveMessage);
+    };
   }, [socket, selectedUserId, user.userId]);
 
   const scrollToBottom = () => {
@@ -61,9 +64,28 @@ export default function AdminLiveChat({ socket, user }) {
     }, 100);
   };
 
+  const handleTypingChange = (e) => {
+    setInputValue(e.target.value);
+    
+    if (socket && selectedUserId) {
+      socket.emit('typing', { receiverId: selectedUserId, isTyping: true });
+      
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing', { receiverId: selectedUserId, isTyping: false });
+      }, 2000);
+    }
+  };
+
   const handleSend = (e) => {
     e.preventDefault();
     if (!inputValue.trim() || !socket || !selectedUserId) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('typing', { receiverId: selectedUserId, isTyping: false });
 
     socket.emit('sendMessage', {
       receiverId: selectedUserId,
@@ -147,7 +169,7 @@ export default function AdminLiveChat({ socket, user }) {
                 style={{ margin: 0, flex: 1 }}
                 placeholder="Nhập phản hồi cho khách hàng..." 
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={handleTypingChange}
               />
               <button type="submit" className="btn btn-primary" style={{ padding: '0 30px' }}>Gửi</button>
             </form>

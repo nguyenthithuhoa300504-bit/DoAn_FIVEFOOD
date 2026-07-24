@@ -193,11 +193,20 @@ export class OrdersService {
     const newCallCount = (order.CallCount || 0) + 1;
 
     if (newCallCount > 3) {
-      // Quá 3 lần -> Trả hàng lại bên shop
-      await this.updateOrderStatus(orderId, 'Trả hàng');
+      // Quá 3 lần -> Chỉ cảnh cáo, không tự động hủy hay trả hàng theo yêu cầu
+      await this.dbService.query(
+        `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
+        [
+          { name: 'CallCount', type: sql.Int, value: newCallCount },
+          { name: 'OrderID', type: sql.Int, value: orderId }
+        ]
+      );
+
+      this.eventsGateway.server.to(`room_user_${order.UserID}`).emit('shipperCalling', { orderId, callCount: newCallCount });
+
       return { 
         success: true, 
-        message: 'Shipper đã gọi quá 3 lần không bắt máy. Đơn hàng tự động chuyển sang "Trả hàng".',
+        message: 'Shipper đã gọi quá 3 lần. Hệ thống đã gửi cảnh cáo đến khách hàng (không tự động hủy đơn).',
         callCount: newCallCount
       };
     } else {
