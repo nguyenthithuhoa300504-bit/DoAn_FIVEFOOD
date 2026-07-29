@@ -25,6 +25,17 @@ export const CartProvider = ({ children }) => {
     };
   }, []);
 
+  // Lắng nghe sự kiện cartUpdated từ Chatbot
+  useEffect(() => {
+    const handleCartUpdated = () => {
+      if (token) {
+        fetchCartFromServer();
+      }
+    };
+    window.addEventListener('cartUpdated', handleCartUpdated);
+    return () => window.removeEventListener('cartUpdated', handleCartUpdated);
+  }, [token]);
+
   // 1. Đồng bộ và tải giỏ hàng ban đầu
   useEffect(() => {
     if (token) {

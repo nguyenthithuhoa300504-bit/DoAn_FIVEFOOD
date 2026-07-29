@@ -43,9 +43,9 @@ const Chatbot = () => {
               // Top 3 gợi ý
               const top3 = res.data.slice(0, 3);
               const itemsList = top3.map(item => `- ${item.ProductName} (${item.Price.toLocaleString('vi-VN')}đ)`).join('\n');
-              welcomeMsg = `Chào ${user.FullName}! Dựa trên sở thích và lịch sử của bạn, mình gợi ý các món ăn sau:\n${itemsList}\n\nBạn muốn gọi món nào hay cần mình tư vấn thêm gì không?`;
+              welcomeMsg = `Chào ${user.fullName}! Dựa trên sở thích và lịch sử của bạn, mình gợi ý các món ăn sau:\n${itemsList}\n\nBạn muốn gọi món nào hay cần mình tư vấn thêm gì không?`;
             } else {
-              welcomeMsg = `Chào ${user.FullName}! Mình là trợ lý ảo của FIVEFOOD. Hôm nay bạn muốn ăn gì?`;
+              welcomeMsg = `Chào ${user.fullName}! Mình là trợ lý ảo của FIVEFOOD. Hôm nay bạn muốn ăn gì?`;
             }
           } else {
             // Không đăng nhập cũng có thể lấy gợi ý top bán chạy
@@ -87,6 +87,9 @@ const Chatbot = () => {
         setMessages(prev => [...prev, { sender: 'bot', text: response.data.reply }]);
         if (!sessionId) {
           setSessionId(response.data.sessionId);
+        }
+        if (response.data.orderPlaced) {
+          window.dispatchEvent(new Event('cartUpdated')); // Kích hoạt sự kiện để cập nhật giỏ hàng/đơn hàng ở các component khác nếu cần
         }
       }
     } catch (error) {

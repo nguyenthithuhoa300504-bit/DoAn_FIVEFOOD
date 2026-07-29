@@ -1,15 +1,27 @@
 import { Controller, Post, Body, Req, Get } from '@nestjs/common';
 import { ChatbotService } from './chatbot.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('chatbot')
 export class ChatbotController {
-  constructor(private readonly chatbotService: ChatbotService) {}
+  constructor(
+    private readonly chatbotService: ChatbotService,
+    private readonly jwtService: JwtService
+  ) {}
 
   @Post()
   async handleChat(@Body() body: { message: string; sessionId?: string }, @Req() req: any) {
-    // For a real app, you might extract userId from JWT token in req.user
-    // Here we'll just check if req.user exists, otherwise use null for guests
-    const userId = req.user ? req.user.userId : null;
+    let userId = null;
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        const payload = this.jwtService.verify(token);
+        userId = payload.sub; // payload.sub chứa UserID
+      }
+    } catch (e) {
+      // Bỏ qua lỗi token (ví dụ hết hạn), coi như là guest
+    }
     
     const result = await this.chatbotService.processMessage(userId, body.message, body.sessionId);
     return {
