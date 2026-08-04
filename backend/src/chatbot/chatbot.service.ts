@@ -29,90 +29,105 @@ export class ChatbotService {
     try {
       // 1. Lấy danh sách sản phẩm kèm lượt bán (TotalSold) để AI biết món nào Best-seller
       const productsQuery = `
-        SELECT p.ProductID, p.ProductName, p.Price, c.CategoryName, 
-               COALESCE(SUM(od.Quantity), 0) AS TotalSold
+        SELECT TOP 12 p.ProductID, p.ProductName, p.Price, c.CategoryName
         FROM Products p
         INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-        LEFT JOIN OrderDetails od ON p.ProductID = od.ProductID
         WHERE p.IsActive = 1
-        GROUP BY p.ProductID, p.ProductName, p.Price, c.CategoryName
-        ORDER BY TotalSold DESC
+        ORDER BY p.ProductID ASC
       `;
       const productsResult = await this.databaseService.query(productsQuery);
+      // Format gọn gàng để tiết kiệm token
       const productsContext = productsResult.recordset.map(
-        p => `- [ID: ${p.ProductID}] ${p.ProductName} (${p.CategoryName}): ${p.Price} đ | Đã bán: ${p.TotalSold}`
+        p => `ID=${p.ProductID} | ${p.ProductName} | Giá:${p.Price}đ`
       ).join('\n');
 
       // 2. Lấy lịch sử đơn hàng của User (nếu đã đăng nhập)
       let historyContext = '';
       if (userId) {
-        const historyQuery = `
-          SELECT TOP 5 p.ProductName 
-          FROM OrderDetails od
-          INNER JOIN Orders o ON od.OrderID = o.OrderID
-          INNER JOIN Products p ON od.ProductID = p.ProductID
-          WHERE o.UserID = @UserID
-          ORDER BY o.OrderDate DESC
-        `;
-        const historyResult = await this.databaseService.query(historyQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
-        if (historyResult.recordset.length > 0) {
-          const pastItems = historyResult.recordset.map(r => r.ProductName).join(', ');
-          historyContext = `\nKhách hàng này đã từng đặt các món sau gần đây: ${pastItems}. Bạn có thể dựa vào đây để gợi ý nếu họ hỏi hôm nay ăn gì.`;
+        try {
+          const historyQuery = `
+            SELECT TOP 5 p.ProductName 
+            FROM OrderDetails od
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            WHERE o.UserID = @UserID
+            ORDER BY o.OrderDate DESC
+          `;
+          const historyResult = await this.databaseService.query(historyQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          if (historyResult.recordset.length > 0) {
+            const pastItems = historyResult.recordset.map(r => r.ProductName).join(', ');
+            historyContext = `\nLỊCH SỬ ĐƠN HÀNG ĐÃ MUA TRONG QUÁ KHỨ (KHÔNG PHẢI GIỎ HÀNG HIỆN TẠI): ${pastItems}. Chỉ dùng để gợi ý món ăn khi khách hỏi "hôm nay ăn gì", KHÔNG PHẢI món đang nằm trong giỏ hàng hiện tại.`;
+          }
+        } catch (e) {
+          this.logger.warn('Không thể tải lịch sử đơn hàng cho chatbot:', e.message);
         }
       }
 
       // 2.5 Lấy thông tin Giỏ hàng hiện tại của User
       let cartContext = '';
       if (userId) {
-        const cartQuery = `
-          SELECT p.ProductName, c.Quantity, p.Price
-          FROM CartItems c
-          INNER JOIN Products p ON c.ProductID = p.ProductID
-          WHERE c.UserID = @UserID
-        `;
-        const cartResult = await this.databaseService.query(cartQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
-        if (cartResult.recordset.length > 0) {
-          const currentCart = cartResult.recordset.map(r => `${r.Quantity}x ${r.ProductName} (Giá: ${r.Price} đ)`).join(', ');
-          const subtotal = cartResult.recordset.reduce((sum, r) => sum + (r.Price * r.Quantity), 0);
-          const shippingFee = 15000;
-          const totalAmount = subtotal + shippingFee;
-          cartContext = `\nGiỏ hàng HIỆN TẠI của khách đang có: ${currentCart}.\nTổng tiền món: ${subtotal} đ. Phí vận chuyển: ${shippingFee} đ. TỔNG THANH TOÁN (chưa trừ voucher): ${totalAmount} đ.`;
-        } else {
-          cartContext = `\nGiỏ hàng HIỆN TẠI của khách đang TRỐNG.`;
+        try {
+          const cartQuery = `
+            SELECT p.ProductID, p.ProductName, c.Quantity, p.Price
+            FROM CartItems c
+            INNER JOIN Products p ON c.ProductID = p.ProductID
+            WHERE c.UserID = @UserID
+          `;
+          const cartResult = await this.databaseService.query(cartQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          if (cartResult.recordset.length > 0) {
+            // Liệt kê rõ từng món kèm ID để AI đọc đúng
+            const cartLines = cartResult.recordset.map(r => `- ${r.Quantity}x ${r.ProductName} (ID sản phẩm=${r.ProductID}, Giá:${r.Price}đ)`).join('\n');
+            const subtotal = cartResult.recordset.reduce((sum, r) => sum + (r.Price * r.Quantity), 0);
+            const shippingFee = 15000;
+            const totalAmount = subtotal + shippingFee;
+            cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI (${cartResult.recordset.length} món) ===\n${cartLines}\nTổng: ${subtotal}đ | Ship: ${shippingFee}đ | Tổng TT: ${totalAmount}đ\n===================================`;
+          } else {
+            cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI: TRỐNG ===`;
+          }
+        } catch (e) {
+          this.logger.warn('Không thể tải giỏ hàng cho chatbot:', e.message);
         }
       }
 
       // 2.6 Lấy danh sách Khuyến mãi (Voucher)
-      const promoQuery = `
-        SELECT PromoCode, Description, MinOrderValue
-        FROM Promotions
-        WHERE GETDATE() BETWEEN StartDate AND EndDate
-          AND UsedCount < UsageLimit
-      `;
-      const promoResult = await this.databaseService.query(promoQuery);
       let promoContext = '';
-      if (promoResult.recordset.length > 0) {
-        const promos = promoResult.recordset.map(p => `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`).join('\n');
-        promoContext = `\nCửa hàng đang có các mã giảm giá sau:\n${promos}\nAI hãy tư vấn mã giảm giá phù hợp với Tổng tiền món hiện tại của khách.`;
+      try {
+        const promoQuery = `
+          SELECT PromoCode, Description, MinOrderValue
+          FROM Promotions
+          WHERE GETDATE() BETWEEN StartDate AND EndDate
+            AND UsedCount < UsageLimit
+        `;
+        const promoResult = await this.databaseService.query(promoQuery);
+        if (promoResult.recordset.length > 0) {
+          const promos = promoResult.recordset.map(p => `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`).join('\n');
+          promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI: Khi khách bày tỏ ý muốn đặt hàng, thanh toán hoặc hỏi về giỏ hàng (mà chưa đưa địa chỉ), BẮT BUỘC bạn phải dựa vào Tổng tiền giỏ hàng hiện tại để đề xuất ngay cho khách mã giảm giá phù hợp nhất và chủ động hỏi: "Bạn có muốn áp dụng mã giảm giá [Tên mã] này cho đơn hàng không ạ? Nếu có, hãy nhắn cho mình địa chỉ giao hàng kèm tên mã nhé!"`;
+        }
+      } catch (e) {
+        this.logger.warn('Không thể tải khuyến mãi cho chatbot:', e.message);
       }
 
       // 2.7 Lấy trạng thái đơn hàng gần nhất (Order Tracking)
       let orderTrackingContext = '';
       if (userId) {
-        const trackingQuery = `
-          SELECT TOP 2 OrderID, OrderDate, FinalAmount, Status
-          FROM Orders
-          WHERE UserID = @UserID
-          ORDER BY OrderDate DESC
-        `;
-        const trackingResult = await this.databaseService.query(trackingQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
-        if (trackingResult.recordset.length > 0) {
-          const trackingInfo = trackingResult.recordset.map((o, index) => {
-            const time = new Date(o.OrderDate).toLocaleString('vi-VN');
-            const label = index === 0 ? "ĐƠN HÀNG MỚI NHẤT" : "ĐƠN HÀNG TRƯỚC ĐÓ";
-            return `- [${label}] Mã đơn: #${o.OrderID} | Đặt lúc: ${time} | Tổng tiền: ${o.FinalAmount} đ | TRẠNG THÁI HIỆN TẠI: ${o.Status}`;
-          }).join('\n');
-          orderTrackingContext = `\nTình trạng các đơn hàng của khách (Real-time Database):\n${trackingInfo}\nTUYỆT ĐỐI DỰA VÀO ĐÂY ĐỂ BÁO CÁO TRẠNG THÁI ĐƠN HÀNG MỚI NHẤT NẾU KHÁCH HỎI, KHÔNG SỬ DỤNG TRÍ NHỚ TỪ CÁC CÂU CHAT CŨ.`;
+        try {
+          const trackingQuery = `
+            SELECT TOP 2 OrderID, OrderDate, FinalAmount, Status
+            FROM Orders
+            WHERE UserID = @UserID
+            ORDER BY OrderDate DESC
+          `;
+          const trackingResult = await this.databaseService.query(trackingQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          if (trackingResult.recordset.length > 0) {
+            const trackingInfo = trackingResult.recordset.map((o, index) => {
+              const time = new Date(o.OrderDate).toLocaleString('vi-VN');
+              const label = index === 0 ? "ĐƠN HÀNG MỚI NHẤT" : "ĐƠN HÀNG TRƯỚC ĐÓ";
+              return `- [${label}] Mã đơn: #${o.OrderID} | Đặt lúc: ${time} | Tổng tiền: ${o.FinalAmount} đ | TRẠNG THÁI HIỆN TẠI: ${o.Status}`;
+            }).join('\n');
+            orderTrackingContext = `\nTình trạng các đơn hàng của khách (Real-time Database):\n${trackingInfo}\nTUYỆT ĐỐI DỰA VÀO ĐÂY ĐỂ BÁO CÁO TRẠNG THÁI ĐƠN HÀNG MỚI NHẤT NẾU KHÁCH HỎI, KHÔNG SỬ DỤNG TRÍ NHỚ TỪ CÁC CÂU CHAT CŨ.`;
+          }
+        } catch (e) {
+          this.logger.warn('Không thể tải trạng thái đơn hàng cho chatbot:', e.message);
         }
       }
 
@@ -127,57 +142,71 @@ export class ChatbotService {
       const timeContext = `\nBây giờ là: ${timeString} (Buổi ${sessionOfDay}). Hãy dựa vào đây để chào hỏi và gợi ý món ăn phù hợp với thời gian.`;
 
       // 3. Xây dựng System Prompt
-      const systemPrompt = `Bạn là trợ lý ảo thân thiện của nhà hàng FIVEFOOD. Bạn sẽ giúp khách hàng chọn món ăn, giải đáp thắc mắc và ĐẶT HÀNG.
-Dưới đây là thực đơn hiện tại của nhà hàng:
+      const systemPrompt = `Bạn là AI trợ lý của FIVEFOOD. Hỗ trợ khách chọn món, đặt hàng bằng tiếng Việt.
+
+THỰC ĐƠN (dùng cột "ID=" để lấy ID khi thêm giỏ hàng):
 ${productsContext}
-${historyContext}
-${cartContext}
-${promoContext}
-${orderTrackingContext}
-${timeContext}
+${historyContext}${cartContext}${promoContext}${orderTrackingContext}${timeContext}
 
-Yêu cầu QUAN TRỌNG:
-- Trả lời ngắn gọn, thân thiện, và tự nhiên bằng tiếng Việt.
-- TÂM LÝ GỢI Ý MÓN ĂN: Khi khách nhờ tư vấn, hãy đan xen 50/50: Đề xuất 1 món "Bán chạy" (lượt "Đã bán" cao) để tạo cảm giác an toàn, VÀ 1 món bán chậm hơn kèm lời giới thiệu hấp dẫn (ví dụ: "hương vị độc đáo", "rất đáng thử") để giúp đẩy hàng. KHÔNG bao giờ chê món bán ít.
-- BÁN CHÉO (UPSELL): Khi khách vừa chọn 1 món chính (VD: Pizza, Phở), hãy luôn khéo léo mời thêm 1 món nước uống hoặc ăn vặt phù hợp để tăng doanh thu.
-- NHẮC NHỞ GIỎ HÀNG CŨ: Khi khách yêu cầu đặt món mới, hãy để ý xem "Giỏ hàng HIỆN TẠI" của khách có đang chứa món ăn nào khác từ trước không. Nếu có, sau khi nhận lệnh thêm món mới, hãy nhắc khéo khách: "Trong giỏ hàng của bạn đang có sẵn [tên món cũ], bạn có muốn thanh toán tất cả luôn không?".
-- TÔN TRỌNG KHẨU VỊ & DỊ ỨNG: Ghi nhớ tuyệt đối các yêu cầu về ăn chay, không cay, dị ứng... của khách. KHÔNG BAO GIỜ gợi ý các món vi phạm yêu cầu đó.
-- Dựa trên danh sách món ăn trên để tư vấn. Nếu khách yêu cầu món KHÔNG CÓ trong thực đơn, HÃY TỪ CHỐI LỊCH SỰ. TUYỆT ĐỐI KHÔNG tự ý thay thế bằng món khác.
-- TUYỆT ĐỐI KHÔNG hiển thị chuỗi "[ID: ...]" hoặc mã ID món ăn trong nội dung chat với khách.
-- Khi khách hàng muốn ĐẶT MÓN hoặc CHỌN MÓN TỪ GỢI Ý (thêm vào giỏ), BẮT BUỘC xuất ra ở cuối: 
-[CART_INTENT: {"items": [{"id": <ProductID>, "qty": <số lượng>}]}]
-- Khi khách hàng muốn XÓA/DỌN SẠCH giỏ hàng, xuất ra ở cuối: 
-[CLEAR_CART_INTENT]
-- Khi khách hàng muốn THANH TOÁN / CHỐT ĐƠN / ĐẶT HÀNG, nếu trong câu nói khách ĐÃ CUNG CẤP ĐỊA CHỈ, BẠN PHẢI NGAY LẬP TỨC XUẤT RA CHUỖI NÀY Ở CUỐI TIN NHẮN (để hệ thống tạo đơn): 
-[CHECKOUT_INTENT: {"address": "<địa chỉ giao hàng>", "promoCode": "<mã giảm giá>"}]
-(promoCode có thể để rỗng "" nếu khách không xài mã. TUYỆT ĐỐI KHÔNG HỎI LẠI ĐỂ XÁC NHẬN! PHẢI XUẤT MÃ [CHECKOUT_INTENT] NGAY LẬP TỨC ĐỂ CHỐT ĐƠN). Nếu khách chưa cho địa chỉ, hãy hỏi xin địa chỉ.
-- Khi khách hàng yêu cầu HỦY ĐƠN HÀNG, hãy xác định mã Hóa đơn và xuất ra ở cuối:
-[CANCEL_ORDER_INTENT: {"orderId": <Mã đơn>}]
+📌 QUY TẮC CHUNG:
+1. Trả lời ngắn gọn, thân thiện, tự nhiên. Chỉ tư vấn món trong thực đơn. KHÔNG in "ID=" ra cho khách thấy.
+2. Nếu khách hỏi món ăn chung chung (ví dụ "hôm nay ăn gì", "quán có gì ngon"), có thể gợi ý 1 món bán chạy + 1 món khác. TUYỆT ĐỐI KHÔNG tự ý liệt kê món hay viết thêm các nhãn lạ khi đang trao đổi về giỏ hàng.
+3. GIỎ HÀNG HIỆN TẠI ở trên là nơi DUY NHẤT chứa thông tin món đang có trong giỏ. Nếu GIỎ HÀNG HIỆN TẠI là TRỐNG, TUYỆT ĐỐI KHÔNG nói khách đã có món trong giỏ.
+4. Ghi nhớ yêu cầu ăn chay/dị ứng/không cay.
 
-VÍ DỤ MẪU (BẮT BUỘC LÀM THEO):
-Khách: "Cho 1 trà sữa (có ID là 3)" -> Bạn: "Dạ vâng... [CART_INTENT: {"items": [{"id": 3, "qty": 1}]}]"
-Khách: "Xóa hết giỏ hàng đi" -> Bạn: "Dạ vâng... [CLEAR_CART_INTENT]"
-Khách: "Thanh toán giao tới 123 ABC, xài mã GIAMGIA10" -> Bạn: "Dạ vâng... [CHECKOUT_INTENT: {"address": "123 ABC", "promoCode": "GIAMGIA10"}]"
-Khách: "Hủy cho tôi đơn 10015" -> Bạn: "Dạ vâng... [CANCEL_ORDER_INTENT: {"orderId": 10015}]"
+📌 QUY TẮC GIỎ HÀNG (BẮT BUỘC TUÂN THEO):
+A. Khi khách muốn thêm món mà KHÔNG CÓ CON SỐ cụ thể: BẮT BUỘC CHỈ HỎI NGẮN GỌN về số lượng, ví dụ "Dạ, bạn muốn thêm bao nhiêu phần Phở Bò Đặc Biệt ạ?". TUYỆT ĐỐI KHÔNG tự gán số lượng hay tạo mã lệnh khi chưa có số.
+B. Khi đã có TÊN MÓN VÀ SỐ LƯỢNG (hoặc khi khách trả lời đồng ý/xác nhận sau lời nhắc từ hệ thống): Tạo mã [CART_INTENT] ngay lập tức.
+   - Khi tin nhắn trước đó của Hệ thống là câu hỏi xác nhận món trùng (ví dụ "⚠️ Giỏ hàng của bạn đang có sẵn... Bạn có muốn thêm vào không?"):
+     + Nếu khách trả lời đồng ý ("có", "ừ", "thêm", "ok", "dạ có"...): BẮT BUỘC bạn CHỈ xuất mã lệnh [CART_INTENT: {"items": [{"id": <ID món đó>, "qty": <số lượng khách muốn thêm>}]}], KHÔNG thêm văn bản tự tác nào khác.
+     + Nếu khách TỪ CHỐI ("không", "thôi", "hủy"...): TUYỆT ĐỐI KHÔNG tạo mã [CART_INTENT], chỉ thông báo nhẹ nhàng đã hủy thao tác.
+C. qty trong [CART_INTENT] LÀ SỐ LƯỢNG MÓN MỚI KHÁCH MUỐN THÊM TRONG LẦN NÀY (VD: 1). TUYỆT ĐỐI KHÔNG TỰ CỘNG VỚI SỐ LƯỢNG ĐANG CÓ TRONG GIỎ HÀNG.
+D. Sau khi xuất [CART_INTENT], có thể gợi ý thêm đồ uống hoặc mã giảm giá.
+E. *** KHÔNG nói "đã thêm", "mình thêm xong". Chỉ xuất mã lệnh. ***
+F. Dùng đúng ID từ cột "ID=" trong THỰC ĐƠN.
 
-CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về mã ngầm này cho khách.`;
+📌 QUY TẮC THANH TOÁN / CHECKOUT (TUYỆT ĐỐI TUÂN THỦ):
+1. Ngay khi khách hàng cung cấp ĐỊA CHỈ GIAO HÀNG (ví dụ: "Giao tới 123 Lê Duẩn", "địa chỉ tôi là...", "ship qua phố X", hoặc có kèm mã voucher như "áp dụng mã GIAM20K"):
+   👉 BẮT BUỘC CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ giao hàng>", "promoCode": "<mã voucher nếu khách có nhắc đến, không có để rỗng>"}]
+2. TUYỆT ĐỐI KHÔNG được tự ý bịa đặt hay giả lập thông báo "Đơn hàng đã được tạo thành công, vui lòng xác nhận Có hoặc Đồng ý". Ký ức về đơn hàng, thông báo thanh toán và xác nhận ĐỀU LÀ VIỆC CỦA HỆ THỐNG BACKEND. Nhiệm vụ duy nhất của bạn khi thấy địa chỉ là xuất mã [CHECKOUT_INTENT] và im lặng! Bất kỳ việc nào khác đều là vi phạm nặng nề.
 
-      // 3.5 Lấy lịch sử chat (nếu có sessionId) để AI nhớ ngữ cảnh
+MÃ LỆNH (chỉ in ra mã này, không kèm lời giải thích lúc thanh toán hay xác nhận):
+Thêm giỏ: [CART_INTENT: {"items": [{"id": <số ID>, "qty": <số lượng>}]}]
+Xóa giỏ: [CLEAR_CART_INTENT]
+Thanh toán (xuất ngay khi có địa chỉ): [CHECKOUT_INTENT: {"address": "<địa chỉ>", "promoCode": "<mã hoặc rỗng>"}]
+Hủy đơn: [CANCEL_ORDER_INTENT: {"orderId": <ID đơn>}]
+
+VÍ DỤ CÁCH TRẢ LỜI ĐÚNG:
+Khách: "Thêm phở" → Bạn: "Dạ, bạn muốn thêm bao nhiêu phần Phở Bò Đặc Biệt ạ?"
+Khách: "1 tô" → Bạn: "[CART_INTENT: {"items": [{"id": 5, "qty": 1}]}]"
+Khách: "thêm 1 phở nữa" → Bạn: "[CART_INTENT: {"items": [{"id": 5, "qty": 1}]}]"
+Khách: "có nha" (xác nhận sau khi được hỏi) → Bạn: "[CART_INTENT: {"items": [{"id": 5, "qty": 1}]}]"
+Khách: "không thêm nữa" (từ chối xác nhận) → Bạn: "Dạ vâng, mình đã hủy thêm món này ạ. Bạn có cần tư vấn món khác không?"
+Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "promoCode": "GIAM20K"}]"
+Khách: "Giao tới 456 Quang Trung" → Bạn: "[CHECKOUT_INTENT: {"address": "456 Quang Trung", "promoCode": ""}]"`;
+
+      // 3.5 Lấy lịch sử chat (nếu có sessionId) để AI nhớ ngữ cảnh - giới hạn 3 lượt để tiết kiệm token
       const chatMessages: any[] = [
         { role: 'system', content: systemPrompt }
       ];
 
+      let lastBotResponse = '';
       if (sessionId) {
         const chatLogsQuery = `
-          SELECT TOP 6 ConversationData
+          SELECT TOP 3 ConversationData
           FROM ChatbotLogs
           WHERE SessionID = @SessionID
           ORDER BY CreatedAt DESC
         `;
         const chatLogsResult = await this.databaseService.query(chatLogsQuery, [{ name: 'SessionID', type: sql.VarChar(100), value: sessionId }]);
         if (chatLogsResult.recordset.length > 0) {
+          try {
+            const lastRow = JSON.parse(chatLogsResult.recordset[0].ConversationData);
+            lastBotResponse = lastRow.botResponse || '';
+          } catch (e) {}
+
           // Lật ngược lại để đưa vào AI theo đúng thứ tự thời gian (cũ nhất -> mới nhất)
-          const historyRows = chatLogsResult.recordset.reverse();
+          const historyRows = [...chatLogsResult.recordset].reverse();
           for (const row of historyRows) {
             try {
               const parsed = JSON.parse(row.ConversationData);
@@ -189,23 +218,44 @@ CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về 
       }
       chatMessages.push({ role: 'user', content: message });
 
-      // 4. Gọi AI
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: chatMessages,
-          temperature: 0.7
-        })
-      });
+      // 4. Gọi AI (có retry tự động khi bị rate limit)
+      const callGroqAPI = async (retryCount = 0): Promise<any> => {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages: chatMessages,
+            temperature: 0.7,
+            max_tokens: 512, // Giới hạn output để tiết kiệm token
+          })
+        });
+
+        if (res.status === 429 && retryCount < 3) {
+          // Rate limit: chờ 3s rồi thử lại
+          const delay = 3000 * (retryCount + 1);
+          this.logger.warn(`Rate limit hit, retrying in ${delay / 1000}s... (attempt ${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return callGroqAPI(retryCount + 1);
+        }
+        return res;
+      };
+
+      const response = await callGroqAPI();
 
       if (!response.ok) {
         const errorData = await response.text();
         this.logger.error(`Groq API Error: ${errorData}`);
+        if (response.status === 429) {
+          return {
+            reply: '⚡ Hệ thống AI đang bận xử lý nhiều yêu cầu cùng lúc. Vui lòng bấm gửi lại sau vài giây nhé!',
+            sessionId: sessionId || uuidv4(),
+            orderPlaced: false
+          };
+        }
         throw new Error('Groq API returned an error');
       }
 
@@ -219,52 +269,131 @@ CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về 
         try {
           const intentData = JSON.parse(cartMatch[1]);
           if (intentData.items && intentData.items.length > 0) {
-            
-            // Thêm các món vào giỏ hàng (Cộng dồn nếu đã có)
+
+            // === Kiểm tra từng món xem đã có trong giỏ chưa ===
+            const duplicateItems: { name: string; currentQty: number; addQty: number; id: number }[] = [];
+            const newItems: { id: number; qty: number }[] = [];
+
             for (const item of intentData.items) {
               const checkCart = await this.databaseService.query(
-                'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
+                'SELECT ci.CartItemID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID AND ci.ProductID = @ProductID',
                 [
                   { name: 'UserID', type: sql.Int, value: userId },
                   { name: 'ProductID', type: sql.Int, value: item.id }
                 ]
               );
-              
               if (checkCart.recordset.length > 0) {
-                // Đã có -> cộng dồn
-                const newQty = checkCart.recordset[0].Quantity + item.qty;
-                await this.databaseService.query(
-                  'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
+                duplicateItems.push({
+                  name: checkCart.recordset[0].ProductName,
+                  currentQty: checkCart.recordset[0].Quantity,
+                  addQty: item.qty,
+                  id: item.id
+                });
+              } else {
+                newItems.push(item);
+              }
+            }
+
+            // Kiểm tra xem tin nhắn trước đó của Bot có phải là câu hỏi xác nhận hay không
+            const wasAskingConfirmation = lastBotResponse.includes('Giỏ hàng của bạn đang có') || lastBotResponse.includes('bạn có chắc muốn thêm') || lastBotResponse.includes('trong giỏ đang có');
+
+            if (duplicateItems.length > 0 && !wasAskingConfirmation) {
+              // Hỏi xác nhận thay vì thêm ngay
+              const confirmLines = duplicateItems.map(d =>
+                `**${d.name}** (trong giỏ đang có **${d.currentQty}** rồi, bạn có chắc muốn thêm **${d.addQty}** nữa không?)`
+              ).join('\n');
+              responseText = `⚠️ Giỏ hàng của bạn đang có sẵn:\n${confirmLines}\n\nBạn có muốn thêm vào không? (Trả lời **"có"** hoặc **"ừ thêm"** để xác nhận)`;
+              isOrderPlaced = false;
+            } else {
+              // Thêm toàn bộ (món mới + món đã xác nhận trùng)
+              const itemsToProcess = [
+                ...newItems,
+                ...(duplicateItems.map(d => ({ id: d.id, qty: d.addQty })))
+              ];
+
+              for (const item of itemsToProcess) {
+                const checkCart = await this.databaseService.query(
+                  'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                   [
-                    { name: 'Quantity', type: sql.Int, value: newQty },
                     { name: 'UserID', type: sql.Int, value: userId },
                     { name: 'ProductID', type: sql.Int, value: item.id }
                   ]
                 );
-              } else {
-                // Chưa có -> thêm mới
-                await this.databaseService.query(
-                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
-                  [
-                    { name: 'UserID', type: sql.Int, value: userId },
-                    { name: 'ProductID', type: sql.Int, value: item.id },
-                    { name: 'Quantity', type: sql.Int, value: item.qty }
-                  ]
-                );
+                if (checkCart.recordset.length > 0) {
+                  const newQty = checkCart.recordset[0].Quantity + item.qty;
+                  await this.databaseService.query(
+                    'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
+                    [
+                      { name: 'Quantity', type: sql.Int, value: newQty },
+                      { name: 'UserID', type: sql.Int, value: userId },
+                      { name: 'ProductID', type: sql.Int, value: item.id }
+                    ]
+                  );
+                } else {
+                  await this.databaseService.query(
+                    'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                    [
+                      { name: 'UserID', type: sql.Int, value: userId },
+                      { name: 'ProductID', type: sql.Int, value: item.id },
+                      { name: 'Quantity', type: sql.Int, value: item.qty }
+                    ]
+                  );
+                }
               }
-            }
 
-            isOrderPlaced = true; // Vẫn giữ nguyên tên biến cờ để Frontend kích hoạt event 'cartUpdated'
-            // Thay thế đoạn code ẩn bằng thông báo thành công cho người dùng
-            responseText = responseText.replace(cartMatch[0], '\n\n✅ **Đã thêm món vào giỏ hàng thành công!** Vui lòng bấm vào biểu tượng Giỏ hàng để hoàn tất thanh toán nhé.');
+              isOrderPlaced = true;
+
+              // Tự động kiểm tra tổng giỏ hàng và tư vấn mã giảm giá thông minh cho khách
+              const updatedCartResult = await this.databaseService.query(
+                'SELECT SUM(c.Quantity * p.Price) as Subtotal FROM CartItems c INNER JOIN Products p ON c.ProductID = p.ProductID WHERE c.UserID = @UserID',
+                [{ name: 'UserID', type: sql.Int, value: userId }]
+              );
+              const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
+
+              // Lấy danh sách voucher đủ điều kiện áp dụng
+              const validPromos = await this.databaseService.query(
+                `SELECT TOP 2 PromoCode, Description, MinOrderValue 
+                 FROM Promotions 
+                 WHERE GETDATE() BETWEEN StartDate AND EndDate 
+                   AND UsedCount < UsageLimit 
+                   AND MinOrderValue <= @Subtotal
+                 ORDER BY MinOrderValue DESC`,
+                [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }]
+              );
+
+              // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
+              const nextPromos = await this.databaseService.query(
+                `SELECT TOP 1 PromoCode, Description, MinOrderValue 
+                 FROM Promotions 
+                 WHERE GETDATE() BETWEEN StartDate AND EndDate 
+                   AND UsedCount < UsageLimit 
+                   AND MinOrderValue > @Subtotal
+                 ORDER BY MinOrderValue ASC`,
+                [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }]
+              );
+
+              let promoMsg = '';
+              if (validPromos.recordset.length > 0) {
+                const codes = validPromos.recordset.map(p => `**${p.PromoCode}** (${p.Description})`).join(', ');
+                promoMsg = `\n🎁 **Ưu đãi phù hợp cho giỏ hàng của bạn:** ${codes}.\n💡 Bạn có muốn áp dụng mã này không? Chỉ cần nhắn địa chỉ giao hàng kèm tên mã (Ví dụ: *"Giao tới 123 Lê Duẩn, dùng mã ${validPromos.recordset[0].PromoCode}"*).`;
+              } else if (nextPromos.recordset.length > 0) {
+                const nextP = nextPromos.recordset[0];
+                const diff = nextP.MinOrderValue - subtotal;
+                promoMsg = `\n🔥 **Mẹo ưu đãi:** Bạn chỉ cần mua thêm **${diff.toLocaleString('vi-VN')}đ** nữa là đủ điều kiện dùng mã **${nextP.PromoCode}** (${nextP.Description})! Bạn có muốn chọn thêm món hoặc đồ uống không?`;
+              } else {
+                promoMsg = `\n💡 Bạn có thể tiếp tục chọn món hoặc nhắn cho mình **Địa chỉ giao hàng** để AI tự động đặt đơn ngay nhé!`;
+              }
+
+              responseText = `✅ **Đã thêm món vào giỏ hàng thành công!** (Tổng tiền tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)${promoMsg}`;
+            }
           }
         } catch (err) {
           this.logger.error('Lỗi khi tự động thêm giỏ hàng từ Chatbot', err);
-          responseText = responseText.replace(cartMatch[0], '\n\n❌ Xin lỗi bạn, quá trình tự động thêm vào giỏ hàng đã xảy ra lỗi. Vui lòng thử lại bằng tay trên website nhé!');
+          responseText = '❌ Xin lỗi bạn, quá trình tự động thêm vào giỏ hàng đã xảy ra lỗi. Vui lòng thử lại bằng tay trên website nhé!';
         }
       } else if (cartMatch && !userId) {
         // Có ý định đặt hàng nhưng khách chưa đăng nhập
-        responseText = responseText.replace(cartMatch[0], '\n\n❌ Bạn cần **Đăng nhập** để AI có thể tự động thêm vào giỏ hàng cho bạn nhé!');
+        responseText = '❌ Bạn cần **Đăng nhập** để AI có thể tự động thêm vào giỏ hàng cho bạn nhé!';
       }
 
       // 5.2 Xử lý Xóa giỏ hàng tự động
@@ -273,13 +402,13 @@ CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về 
         try {
           await this.databaseService.query('DELETE FROM CartItems WHERE UserID = @UserID', [{ name: 'UserID', type: sql.Int, value: userId }]);
           isOrderPlaced = true;
-          responseText = responseText.replace(clearCartMatch[0], '\n\n✅ **Đã dọn sạch giỏ hàng thành công!**');
+          responseText = '✅ **Đã dọn sạch giỏ hàng thành công!**';
         } catch (err) {
           this.logger.error('Lỗi khi xóa giỏ hàng từ Chatbot', err);
-          responseText = responseText.replace(clearCartMatch[0], '\n\n❌ Quá trình xóa giỏ hàng đã xảy ra lỗi.');
+          responseText = '❌ Quá trình xóa giỏ hàng đã xảy ra lỗi.';
         }
       } else if (clearCartMatch && !userId) {
-        responseText = responseText.replace(clearCartMatch[0], '\n\n❌ Bạn cần **Đăng nhập** để AI thao tác nhé!');
+        responseText = '❌ Bạn cần **Đăng nhập** để AI thao tác nhé!';
       }
 
       // 5.3 Xử lý Thanh toán (Checkout) tự động
@@ -291,24 +420,24 @@ CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về 
             // Check nếu giỏ hàng rỗng
             const cartCheck = await this.databaseService.query('SELECT COUNT(*) as count FROM CartItems WHERE UserID = @UserID', [{ name: 'UserID', type: sql.Int, value: userId }]);
             if (cartCheck.recordset[0].count === 0) {
-              responseText = responseText.replace(checkoutMatch[0], '\n\n❌ **Giỏ hàng của bạn đang trống!** Vui lòng thêm món trước khi thanh toán.');
+              responseText = '❌ **Giỏ hàng của bạn đang trống!** Vui lòng thêm món trước khi thanh toán.';
             } else {
               const appliedPromo = intentData.promoCode ? intentData.promoCode : null;
               await this.ordersService.createOrder(userId, intentData.address, null, null, 'Tiền mặt', appliedPromo, 15000);
               isOrderPlaced = true;
-              let successMsg = '\n\n✅ **Đặt hàng thành công!** Đơn hàng của bạn sẽ sớm được giao đến: ' + intentData.address;
+              let successMsg = '✅ **Đặt hàng thành công!** Đơn hàng của bạn sẽ sớm được giao đến: ' + intentData.address;
               if (appliedPromo) {
                 successMsg += ` (Đã áp dụng mã giảm giá ${appliedPromo}).`;
               }
-              responseText = responseText.replace(checkoutMatch[0], successMsg);
+              responseText = successMsg;
             }
           }
         } catch (err) {
           this.logger.error('Lỗi khi checkout từ Chatbot', err);
-          responseText = responseText.replace(checkoutMatch[0], '\n\n❌ Quá trình thanh toán xảy ra lỗi, bạn vui lòng tự bấm nút Thanh Toán nhé!');
+          responseText = '❌ Quá trình thanh toán xảy ra lỗi, bạn vui lòng tự bấm nút Thanh Toán nhé!';
         }
       } else if (checkoutMatch && !userId) {
-        responseText = responseText.replace(checkoutMatch[0], '\n\n❌ Bạn cần **Đăng nhập** để AI đặt hàng nhé!');
+        responseText = '❌ Bạn cần **Đăng nhập** để AI đặt hàng nhé!';
       }
 
       // 5.4 Xử lý Hủy đơn hàng tự động
@@ -318,11 +447,11 @@ CHỈ xuất mã ngầm khi chắc chắn. Đừng bao giờ giải thích về 
           const intentData = JSON.parse(cancelMatch[1]);
           if (intentData.orderId) {
             await this.ordersService.cancelOrder(userId, intentData.orderId);
-            responseText = responseText.replace(cancelMatch[0], `\n\n✅ **Hủy đơn hàng thành công!** Đơn hàng #${intentData.orderId} của bạn đã được hủy.`);
+            responseText = `✅ **Hủy đơn hàng thành công!** Đơn hàng #${intentData.orderId} của bạn đã được hủy.`;
             // Emit signal to frontend if necessary, although it might just rely on normal polling/websocket.
           }
         } catch (err) {
-          responseText = responseText.replace(cancelMatch[0], `\n\n❌ **Không thể hủy đơn hàng!** Lý do: ${err.message || 'Chỉ có thể hủy đơn khi đang Chờ xác nhận.'}`);
+          responseText = `❌ **Không thể hủy đơn hàng!** Lý do: ${err.message || 'Chỉ có thể hủy đơn khi đang Chờ xác nhận.'}`;
         }
       }
 

@@ -13,20 +13,41 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const config: sql.config = {
       user: this.configService.get<string>('DB_USER') || 'sa',
       password: this.configService.get<string>('DB_PASSWORD') || '',
-      server: this.configService.get<string>('DB_HOST') || 'localhost',
+      server: this.configService.get<string>('DB_HOST') || '127.0.0.1',
       database: this.configService.get<string>('DB_NAME') || 'DOAN_H',
       port: parseInt(this.configService.get<string>('DB_PORT') || '1433', 10),
       options: {
         encrypt: this.configService.get<string>('DB_ENCRYPT') === 'true',
         trustServerCertificate: this.configService.get<string>('DB_TRUST_SERVER_CERTIFICATE') === 'true',
       },
+      connectionTimeout: 15000,
+      requestTimeout: 30000,
+      pool: {
+        max: 10,
+        min: 2,
+        idleTimeoutMillis: 60000,
+        acquireTimeoutMillis: 30000,
+      },
     };
 
-    try {
-      this.pool = await new sql.ConnectionPool(config).connect();
-      this.logger.log('Connected to SQL Server successfully (Database: ' + config.database + ').');
-    } catch (err) {
-      this.logger.error('Failed to connect to SQL Server:', err);
+    const maxRetries = 5;
+    const retryDelayMs = 5000;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.log(`Connecting to SQL Server (attempt ${attempt}/${maxRetries})...`);
+        this.pool = await new sql.ConnectionPool(config).connect();
+        this.logger.log('Connected to SQL Server successfully (Database: ' + config.database + ').');
+        return; // Kết nối thành công, thoát vòng lặp
+      } catch (err) {
+        this.logger.warn(`Connection attempt ${attempt} failed: ${err.message}`);
+        if (attempt === maxRetries) {
+          this.logger.error('All connection attempts failed. Could not connect to SQL Server.');
+          throw err;
+        }
+        this.logger.log(`Retrying in ${retryDelayMs / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
     }
   }
 

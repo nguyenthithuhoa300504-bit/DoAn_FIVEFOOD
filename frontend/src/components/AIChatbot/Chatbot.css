@@ -56,6 +56,28 @@
   font-size: 16px;
 }
 
+.chatbot-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-history-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 3px 7px;
+  line-height: 1;
+  transition: background 0.2s;
+}
+
+.clear-history-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 .close-btn {
   background: transparent;
   border: none;
