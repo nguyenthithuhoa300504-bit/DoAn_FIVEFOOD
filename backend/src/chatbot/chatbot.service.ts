@@ -27,19 +27,34 @@ export class ChatbotService {
     }
 
     try {
-      // 1. Lấy danh sách sản phẩm kèm lượt bán (TotalSold) để AI biết món nào Best-seller
+      // 1. Lấy toàn bộ danh sách sản phẩm kèm thành phần (Ingredients) và tồn kho (Inventory) để AI tư vấn theo giá, vị cay, chay, đồ uống...
       const productsQuery = `
-        SELECT TOP 12 p.ProductID, p.ProductName, p.Price, c.CategoryName
+        SELECT p.ProductID, p.ProductName, p.Price, p.Ingredients, p.Inventory, c.CategoryName
         FROM Products p
         INNER JOIN Categories c ON p.CategoryID = c.CategoryID
         WHERE p.IsActive = 1
         ORDER BY p.ProductID ASC
       `;
       const productsResult = await this.databaseService.query(productsQuery);
-      // Format gọn gàng để tiết kiệm token
+      // Format gọn gàng nhưng đầy đủ thuộc tính cho AI tư vấn chi tiết
       const productsContext = productsResult.recordset.map(
-        p => `ID=${p.ProductID} | ${p.ProductName} | Giá:${p.Price}đ`
+        p => `ID=${p.ProductID} | ${p.ProductName} (${p.CategoryName}) | Giá:${p.Price}đ | Thành phần/Mô tả:${p.Ingredients || 'Không ghi rõ'} | Tình trạng:${p.Inventory > 0 ? 'Còn hàng' : 'Tạm hết hàng'}`
       ).join('\n');
+
+      // 1.5 Lấy thông tin tài khoản khách hàng (nếu đã đăng nhập) để AI biết tên và xưng hô thân thiết
+      let userContext = '\nKHÁCH HÀNG HIỆN TẠI: Khách vãng lai (Chưa đăng nhập tài khoản).';
+      if (userId) {
+        try {
+          const userQuery = `SELECT FullName, Email FROM Users WHERE UserID = @UserID`;
+          const userResult = await this.databaseService.query(userQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          if (userResult.recordset.length > 0) {
+            const u = userResult.recordset[0];
+            userContext = `\nKHÁCH HÀNG HIỆN TẠI: Khách hàng thành viên của quán, tên là "${u.FullName}" (Email: ${u.Email}).\n👉 YÊU CẦU BẮT BUỘC CHO AI: Bạn hãy LUÔN chào hỏi và gọi khách bằng tên "${u.FullName}" (hoặc tên riêng ngắn gọn của khách) khi trò chuyện để thể hiện sự chu đáo, thân thiết (Ví dụ: "Dạ chào ${u.FullName}!", "${u.FullName} muốn dùng món gì ạ?"). TUYỆT ĐỐI KHÔNG xem khách này là khách vãng lai!`;
+          }
+        } catch (e) {
+          this.logger.warn('Không thể tải thông tin user cho chatbot:', e.message);
+        }
+      }
 
       // 2. Lấy lịch sử đơn hàng của User (nếu đã đăng nhập)
       let historyContext = '';
@@ -141,18 +156,27 @@ export class ChatbotService {
       else if (hour >= 14 && hour < 18) sessionOfDay = 'Chiều';
       const timeContext = `\nBây giờ là: ${timeString} (Buổi ${sessionOfDay}). Hãy dựa vào đây để chào hỏi và gợi ý món ăn phù hợp với thời gian.`;
 
+      // 2.9 Thông tin FAQ & Chính sách Quán (FAQ Context)
+      const faqContext = `\n\n=== THÔNG TIN & CÂU HỎI THƯỜNG GẶP VỀ FIVEFOOD (FAQ) ===
+- Giờ mở cửa: Từ 07:00 sáng đến 22:00 tối hàng ngày (T2 - CN).
+- Thời gian giao hàng: Trung bình khoảng 20 - 35 phút tùy địa điểm nội thành.
+- Phí vận chuyển (Phí ship): Mặc định 15.000đ cho tất cả đơn hàng nội thành.
+- Phương thức thanh toán: Hỗ trợ Tiền mặt khi nhận hàng (COD) và Chuyển khoản online qua cổng VNPay/ATM/QR Code tiện lợi.
+- Chính sách hoàn/đổi: Cam kết đổi món mới hoặc hoàn tiền 100% trong vòng 30 phút nếu món ăn bị đổ vỡ, hư hỏng hoặc làm sai đơn.
+- Hỗ trợ tư vấn món: Sẵn sàng gợi ý các món cay, món không hành, món chay, đồ uống, combo, hoặc món rẻ theo mức giá khách chọn dựa theo bảng THỰC ĐƠN.`;
+
       // 3. Xây dựng System Prompt
-      const systemPrompt = `Bạn là AI trợ lý của FIVEFOOD. Hỗ trợ khách chọn món, đặt hàng bằng tiếng Việt.
+      const systemPrompt = `Bạn là AI trợ lý của FIVEFOOD. Hỗ trợ khách chọn món, đặt hàng và giải đáp thắc mắc (FAQ) bằng tiếng Việt.
 
 THỰC ĐƠN (dùng cột "ID=" để lấy ID khi thêm giỏ hàng):
 ${productsContext}
-${historyContext}${cartContext}${promoContext}${orderTrackingContext}${timeContext}
+${userContext}${historyContext}${cartContext}${promoContext}${orderTrackingContext}${timeContext}${faqContext}
 
-📌 QUY TẮC CHUNG:
-1. Trả lời ngắn gọn, thân thiện, tự nhiên. Chỉ tư vấn món trong thực đơn. KHÔNG in "ID=" ra cho khách thấy.
+📌 QUY TẢC CHUNG:
+1. Trả lời ngắn gọn, thân thiện, tự nhiên. Chỉ tư vấn món trong thực đơn và thông tin FAQ hợp lệ. KHÔNG in "ID=" ra cho khách thấy.
 2. Nếu khách hỏi món ăn chung chung (ví dụ "hôm nay ăn gì", "quán có gì ngon"), có thể gợi ý 1 món bán chạy + 1 món khác. TUYỆT ĐỐI KHÔNG tự ý liệt kê món hay viết thêm các nhãn lạ khi đang trao đổi về giỏ hàng.
 3. GIỎ HÀNG HIỆN TẠI ở trên là nơi DUY NHẤT chứa thông tin món đang có trong giỏ. Nếu GIỎ HÀNG HIỆN TẠI là TRỐNG, TUYỆT ĐỐI KHÔNG nói khách đã có món trong giỏ.
-4. Ghi nhớ yêu cầu ăn chay/dị ứng/không cay.
+4. Ghi nhớ yêu cầu ăn chay/dị ứng/không cay/ngân sách của khách và dùng thông tin Thành phần, Giá, Tình trạng để tư vấn. Nếu khách hỏi về phí ship, thanh toán, thời gian giao hàng, giờ mở cửa... trả lời chính xác theo mục FAQ.
 
 📌 QUY TẮC GIỎ HÀNG (BẮT BUỘC TUÂN THEO):
 A. Khi khách muốn thêm món mà KHÔNG CÓ CON SỐ cụ thể: BẮT BUỘC CHỈ HỎI NGẮN GỌN về số lượng, ví dụ "Dạ, bạn muốn thêm bao nhiêu phần Phở Bò Đặc Biệt ạ?". TUYỆT ĐỐI KHÔNG tự gán số lượng hay tạo mã lệnh khi chưa có số.

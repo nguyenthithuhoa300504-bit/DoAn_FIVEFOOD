@@ -795,7 +795,9 @@ body.dark-theme .user-avatar {
 
 .action-buttons-cell {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .btn-icon-sm {
@@ -1109,29 +1111,205 @@ body.dark-theme .user-avatar {
   border: 1px solid rgba(244, 67, 54, 0.2);
 }
 
+/* ==========================================================
+   HỆ THỐNG GIAO DIỆN QUẢN TRỊ VIÊN ĐẤNG CẤP (EXECUTIVE ADMIN)
+========================================================== */
+.app-container.admin-theme-wrapper,
+.admin-theme-wrapper {
+  --text-main: #ffffff !important;
+  --text-muted: #94a3b8 !important;
+  --panel-bg: rgba(20, 25, 38, 0.95) !important;
+  --input-bg: rgba(30, 41, 59, 0.8) !important;
+  --panel-border: rgba(255, 255, 255, 0.15) !important;
+  background-color: #0c0d14 !important;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(255, 179, 0, 0.06) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.07) 0px, transparent 45%) !important;
+  color: #ffffff !important;
+  min-height: 100vh;
+}
+
+/* Đảm bảo chữ Hóa đơn / Popup Chi tiết trong chế độ Dark / Admin luôn Sáng rõ 100% */
+.admin-theme-wrapper .checkout-modal,
+.admin-theme-wrapper .checkout-modal span,
+.admin-theme-wrapper .checkout-modal div,
+.admin-theme-wrapper .checkout-modal h4 {
+  color: #ffffff !important;
+}
+.admin-theme-wrapper .checkout-modal span[style*="text-muted"],
+.admin-theme-wrapper .checkout-modal .text-muted {
+  color: #94a3b8 !important;
+}
+
+.admin-theme-wrapper .main-content {
+  background: transparent !important;
+  max-width: 1440px !important;
+  margin: 0 auto;
+  padding: 24px 35px !important;
+}
+
+/* Thanh điều hướng Admin Subtabs sang trọng */
 .admin-subtabs {
+  background: rgba(18, 22, 32, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 10px 18px;
+  margin-bottom: 28px;
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 10px;
+  gap: 12px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .subtab-btn {
   background: transparent;
-  border: none;
-  color: var(--text-muted);
+  border: 1px solid transparent;
+  color: #94a3b8;
   font-size: 14px;
-  padding: 8px 16px;
+  font-weight: 600;
+  padding: 10px 22px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.3s;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subtab-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  transform: translateY(-1px);
 }
 
 .subtab-btn.active {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-main);
-  font-weight: 600;
+  background: linear-gradient(135deg, #FFB300 0%, #FF7A00 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid rgba(255, 220, 150, 0.5);
+  box-shadow: 0 6px 20px rgba(255, 138, 0, 0.38);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Chuẩn hóa màu sắc bảng biểu và Panel quản lý khi ở giao diện Dark Executive */
+.admin-theme-wrapper .glass-panel,
+.admin-theme-wrapper .admin-form-card {
+  background: rgba(20, 25, 38, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4) !important;
+}
+
+.admin-theme-wrapper .form-control,
+.admin-theme-wrapper select,
+.admin-theme-wrapper input {
+  background: #171b29 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+}
+
+.admin-theme-wrapper .form-control:focus {
+  border-color: #FFB300 !important;
+  box-shadow: 0 0 12px rgba(255, 179, 0, 0.3) !important;
+}
+
+.admin-theme-wrapper table,
+.admin-theme-wrapper th,
+.admin-theme-wrapper td {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: #e2e8f0 !important;
+}
+.admin-theme-wrapper tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* EXECUTIVE STAT CHIPS CHO CÁC TRANG QUẢN TRỊ CON */
+.admin-theme-wrapper .admin-stat-chip {
+  background: linear-gradient(145deg, rgba(25, 31, 46, 0.85) 0%, rgba(16, 21, 33, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 4px solid #FFB300;
+  border-radius: 18px;
+  padding: 18px 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.admin-theme-wrapper .admin-stat-chip:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 179, 0, 0.4);
+}
+
+.admin-theme-wrapper .admin-stat-chip span {
+  font-size: 13px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.admin-theme-wrapper .admin-stat-chip h3 {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* NÂNG CẤP GIAO DIỆN BẢNG THẾ HỆ HẠNG SANG (EXECUTIVE TABLE STYLE) */
+.admin-theme-wrapper .admin-products-table-container {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(14, 18, 28, 0.85) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.admin-theme-wrapper .admin-table {
+  border-collapse: separate !important;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.admin-theme-wrapper .admin-table th {
+  background: rgba(23, 30, 47, 0.95) !important;
+  color: #FFB300 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  padding: 16px 22px !important;
+  border-bottom: 2px solid rgba(255, 179, 0, 0.3) !important;
+  white-space: nowrap;
+}
+
+.admin-theme-wrapper .admin-table td {
+  padding: 18px 22px !important;
+  font-size: 15px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+  transition: all 0.2s ease;
+}
+
+.admin-theme-wrapper .admin-table tbody tr:hover td {
+  background: rgba(255, 179, 0, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.admin-theme-wrapper .list-header h2 {
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  margin-bottom: 6px;
+  background: linear-gradient(to right, #fff, #FFB300);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Floating Hotline */
@@ -2462,14 +2640,17 @@ body.dark-theme .premium-hero-image {
 }
 .dbs-scroll-container {
   display: flex;
-  gap: 15px;
+  gap: 16px;
   overflow-x: auto;
   padding-bottom: 15px;
   padding-right: 40px; /* Thêm padding-right để không bị cắt xén */
-  scrollbar-width: none; /* Hide scrollbar */
+  scroll-behavior: smooth;
+  cursor: grab;
+  user-select: none;
+  scrollbar-width: none; /* Ẩn thanh cuộn để giữ thẩm mỹ tối đa */
 }
 .dbs-scroll-container::-webkit-scrollbar {
-  display: none;
+  display: none; /* Ẩn hoàn toàn thanh cuộn */
 }
 
 /* Product Card Design Mockup */

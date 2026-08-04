@@ -14,6 +14,9 @@ import LiveChatModal from './components/LiveChat/LiveChatModal';
 import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import ProtectedRoute from './components/Common/ProtectedRoute';
+import AdminLogin from './components/Admin/AdminLogin';
+import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { renderToString } from 'react-dom/server';
 import { Store, MapPin } from 'lucide-react';
@@ -220,9 +223,36 @@ function App() {
     fetchCartFromServer
   } = useCart();
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [activeTab, setActiveTab] = useState('home'); // home, menu, orders, admin, login, register
+  const [activeTabState, setActiveTabState] = useState('home'); // home, menu, orders, admin, login, register
+
+  const activeTab = activeTabState;
+  const setActiveTab = (tab, customSubtab = null) => {
+    setActiveTabState(tab);
+    if (tab === 'home' && location.pathname !== '/') navigate('/');
+    else if (tab === 'menu' && location.pathname !== '/menu') navigate('/menu');
+    else if (tab === 'orders' && location.pathname !== '/orders') navigate('/orders');
+    else if (tab === 'cart' && location.pathname !== '/cart') navigate('/cart');
+    else if (tab === 'favorites' && location.pathname !== '/favorites') navigate('/favorites');
+    else if (tab === 'contact' && location.pathname !== '/contact') navigate('/contact');
+    else if (tab === 'login' && location.pathname !== '/login') navigate('/login');
+    else if (tab === 'register' && location.pathname !== '/register') navigate('/register');
+    else if (tab === 'admin') {
+      const targetSub = customSubtab || adminSubtab || 'dashboard';
+      if (targetSub === 'dashboard' && location.pathname !== '/admin/dashboard') navigate('/admin/dashboard');
+      else if (targetSub === 'products' && location.pathname !== '/admin/products') navigate('/admin/products');
+      else if (targetSub === 'orders' && location.pathname !== '/admin/orders') navigate('/admin/orders');
+      else if (targetSub === 'chatbotLogs' && location.pathname !== '/admin/chatbot-logs') navigate('/admin/chatbot-logs');
+      else if (targetSub === 'liveChat' && location.pathname !== '/admin/live-chat') navigate('/admin/live-chat');
+      else if (targetSub === 'reviews' && location.pathname !== '/admin/reviews') navigate('/admin/reviews');
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
   const [selectedCategory, setSelectedCategory] = useState('All'); // Thêm state bộ lọc danh mục
   const [sortBy, setSortBy] = useState('all'); // 'all', 'priceAsc', 'priceDesc', 'newest'
@@ -309,6 +339,28 @@ function App() {
   const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
   const [adminSubtab, setAdminSubtab] = useState('dashboard'); // dashboard, products, orders, reviews
   const [adminReviews, setAdminReviews] = useState([]);
+
+  // Đồng bộ URL với State khi truy cập trực tiếp URL hoặc điều hướng
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/' || path === '') setActiveTabState('home');
+    else if (path === '/menu') setActiveTabState('menu');
+    else if (path === '/orders') setActiveTabState('orders');
+    else if (path === '/cart') setActiveTabState('cart');
+    else if (path === '/favorites') setActiveTabState('favorites');
+    else if (path === '/contact') setActiveTabState('contact');
+    else if (path === '/login') setActiveTabState('login');
+    else if (path === '/register') setActiveTabState('register');
+    else if (path.startsWith('/admin') && path !== '/admin/login') {
+      setActiveTabState('admin');
+      if (path === '/admin/dashboard' || path === '/admin') setAdminSubtab('dashboard');
+      else if (path === '/admin/products') setAdminSubtab('products');
+      else if (path === '/admin/orders') setAdminSubtab('orders');
+      else if (path === '/admin/chatbot-logs') setAdminSubtab('chatbotLogs');
+      else if (path === '/admin/live-chat') setAdminSubtab('liveChat');
+      else if (path === '/admin/reviews') setAdminSubtab('reviews');
+    }
+  }, [location.pathname]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   
   // Product Detail Modal State
@@ -468,6 +520,16 @@ function App() {
       console.error('Lỗi khi tải nhật ký chatbot', err);
     }
   };
+
+  // Tự động tải dữ liệu tổng quan Admin ngay khi vào khu vực Quản trị
+  useEffect(() => {
+    if (isAdminRoute && isLoggedIn && user?.role === 'Admin') {
+      fetchAdminOrders();
+      fetchAdminUsersCount();
+      fetchAdminReviews();
+      fetchChatbotLogs();
+    }
+  }, [isAdminRoute, isLoggedIn, user]);
 
   // Xem chi tiết đơn hàng
   const loadOrderDetails = async (orderId, isAdmin = false) => {
@@ -1016,10 +1078,58 @@ function App() {
     );
   };
 
+  // Nếu truy cập trang Đăng nhập Admin chuyên dụng -> Render Độc lập tuyệt đối
+  if (location.pathname === '/admin/login') {
+    return (
+      <div className="app-container">
+        <Toaster position="top-center" reverseOrder={false} />
+        <AdminLogin />
+      </div>
+    );
+  }
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${isAdminRoute ? 'admin-theme-wrapper' : ''}`}>
       <Toaster position="bottom-right" />
       {/* Header */}
+      {isAdminRoute ? (
+        <header className="header-bar fade-in" style={{ borderBottom: '2px solid #ffb300', background: '#14141e' }}>
+          <div className="header-top" style={{ justifyContent: 'space-between', padding: '12px 24px' }}>
+            <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => { setActiveTab('admin', 'dashboard'); }}>
+              <div style={{ fontSize: '28px' }}>🛡️</div>
+              <h1 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                <span className="logo-text-dark" style={{ color: '#fff' }}>FIVE</span>
+                <span className="logo-text-primary">FOOD</span>
+                <span style={{ color: '#ffb300', marginLeft: '12px', fontSize: '15px', fontWeight: '800', background: 'rgba(255,179,0,0.15)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,179,0,0.3)', letterSpacing: '1px' }}>
+                  ADMIN PORTAL
+                </span>
+              </h1>
+            </div>
+            <div className="header-actions" style={{ gap: '16px', display: 'flex', alignItems: 'center' }}>
+              <button 
+                onClick={() => { setActiveTab('home'); navigate('/'); }} 
+                style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: '#ccc', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Chuyển sang Giao diện Khách hàng"
+              >
+                🛍️ Mở Cửa Hàng
+              </button>
+              <button 
+                className="action-btn"
+                title={isDarkMode ? "Giao diện sáng" : "Giao diện tối"} 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '14px', color: '#ffb300', fontWeight: 'bold' }}>{user?.fullName || 'Admin'}</span>
+                <div className="user-avatar logged-in" title="Đăng xuất khỏi Admin" onClick={() => { logout(); navigate('/admin/login'); }}>
+                  🔒
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+      ) : (
       <header className="header-bar fade-in">
         
         {/* Top Row: Logo, Search, Actions */}
@@ -1127,10 +1237,11 @@ function App() {
             setActiveTab('contact');
           }}>Liên hệ</button>
           {isLoggedIn && user?.role === 'Admin' && (
-            <button className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}>Quản trị</button>
+            <button className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => { setActiveTab('admin', 'dashboard'); fetchAdminOrders(); setAdminSuccess(''); setAdminError(''); }}>Quản trị</button>
           )}
         </div>
       </header>
+      )}
 
       <main className="main-content">
         {activeTab === 'favorites' && isLoggedIn && (
@@ -1271,7 +1382,45 @@ function App() {
                   <div className="dbs-products-header">
                   </div>
                   
-                  <div className="dbs-scroll-container">
+                  <div 
+                    id="dbs-scroll-box" 
+                    className="dbs-scroll-container"
+                    onWheel={(e) => {
+                      if (Math.abs(e.deltaY) > 0) {
+                        e.currentTarget.scrollLeft += e.deltaY * 1.5;
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      const container = e.currentTarget;
+                      container.isDown = true;
+                      container.startX = e.pageX - container.offsetLeft;
+                      container.scrollLeftPos = container.scrollLeft;
+                      container.style.cursor = 'grabbing';
+                      container.style.scrollBehavior = 'auto';
+                      container.hasMoved = false;
+                    }}
+                    onMouseLeave={(e) => {
+                      const container = e.currentTarget;
+                      container.isDown = false;
+                      container.style.cursor = 'grab';
+                      container.style.scrollBehavior = 'smooth';
+                    }}
+                    onMouseUp={(e) => {
+                      const container = e.currentTarget;
+                      container.isDown = false;
+                      container.style.cursor = 'grab';
+                      container.style.scrollBehavior = 'smooth';
+                    }}
+                    onMouseMove={(e) => {
+                      const container = e.currentTarget;
+                      if (!container.isDown) return;
+                      e.preventDefault();
+                      const x = e.pageX - container.offsetLeft;
+                      const walk = (x - container.startX) * 1.5;
+                      if (Math.abs(walk) > 5) container.hasMoved = true;
+                      container.scrollLeft = container.scrollLeftPos - walk;
+                    }}
+                  >
                     {(() => {
                       const todaySeed = new Date().getDate();
                       const bestSellers = [...products]
@@ -1291,7 +1440,15 @@ function App() {
                         const originalPrice = p.OriginalPrice || Math.round(p.Price / (1 - discountPercent / 100));
                         
                         return (
-                          <div key={p.ProductID} className="dbs-product-card" onClick={() => { setSelectedProduct(p); setIsDetailModalOpen(true); }}>
+                          <div key={p.ProductID} className="dbs-product-card" onClick={() => { 
+                            const container = document.getElementById('dbs-scroll-box');
+                            if (container && container.hasMoved) {
+                              container.hasMoved = false;
+                              return;
+                            }
+                            setSelectedProduct(p); 
+                            setIsDetailModalOpen(true); 
+                          }}>
                           <div className="dbs-discount-tag" style={{ background: '#ff3d00', color: '#fff', fontWeight: 'bold' }}>-{discountPercent}%</div>
                           
                           <div className="dbs-img-container">
@@ -1803,44 +1960,45 @@ function App() {
             </div>
         )}
 
-        {/* Tab Admin (CRUD Thực đơn và Kho) */}
-        {activeTab === 'admin' && isLoggedIn && user?.role === 'Admin' && (
+        {/* Tab Admin (Được bảo vệ bởi ProtectedRoute) */}
+        {isAdminRoute && location.pathname !== '/admin/login' && (
+          <ProtectedRoute requireAdmin={true}>
           <div style={{ width: '100%' }}>
             {/* Sub-tabs */}
             <div className="admin-subtabs glass-panel" style={{ padding: '10px 20px', borderRadius: '12px', marginBottom: '20px', display: 'flex', gap: '15px' }}>
               <button 
                 className={`subtab-btn ${adminSubtab === 'dashboard' ? 'active' : ''}`}
-                onClick={() => { setAdminSubtab('dashboard'); fetchAdminOrders(); fetchAdminUsersCount(); }}
+                onClick={() => { setAdminSubtab('dashboard'); navigate('/admin/dashboard'); fetchAdminOrders(); fetchAdminUsersCount(); }}
               >
                 📊 Dashboard Thống kê
               </button>
               <button 
                 className={`subtab-btn ${adminSubtab === 'products' ? 'active' : ''}`}
-                onClick={() => setAdminSubtab('products')}
+                onClick={() => { setAdminSubtab('products'); navigate('/admin/products'); }}
               >
                 🍔 Quản lý Thực đơn & Kho
               </button>
               <button 
                 className={`subtab-btn ${adminSubtab === 'orders' ? 'active' : ''}`}
-                onClick={() => { setAdminSubtab('orders'); fetchAdminOrders(); }}
+                onClick={() => { setAdminSubtab('orders'); navigate('/admin/orders'); fetchAdminOrders(); }}
               >
                 📦 Quản lý Đơn hàng ({adminOrders.length})
               </button>
               <button 
                 className={`subtab-btn ${adminSubtab === 'chatbotLogs' ? 'active' : ''}`}
-                onClick={() => { setAdminSubtab('chatbotLogs'); fetchChatbotLogs(); }}
+                onClick={() => { setAdminSubtab('chatbotLogs'); navigate('/admin/chatbot-logs'); fetchChatbotLogs(); }}
               >
                 🤖 Nhật ký Chatbot
               </button>
               <button 
                 className={`subtab-btn ${adminSubtab === 'liveChat' ? 'active' : ''}`}
-                onClick={() => setAdminSubtab('liveChat')}
+                onClick={() => { setAdminSubtab('liveChat'); navigate('/admin/live-chat'); }}
               >
                 💬 Hỗ trợ trực tuyến
               </button>
               <button 
                 className={`subtab-btn ${adminSubtab === 'reviews' ? 'active' : ''}`}
-                onClick={() => { setAdminSubtab('reviews'); fetchAdminReviews(); }}
+                onClick={() => { setAdminSubtab('reviews'); navigate('/admin/reviews'); fetchAdminReviews(); }}
               >
                 ⭐ Quản lý Đánh Giá
               </button>
@@ -1856,6 +2014,27 @@ function App() {
             )}
 
             {adminSubtab === 'products' && (
+              <>
+                {/* Executive Strip cho Thực Đơn */}
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                  <div className="admin-stat-chip">
+                    <span>Tổng Món Ăn</span>
+                    <h3>🍔 {products.length} Món</h3>
+                  </div>
+                  <div className="admin-stat-chip">
+                    <span>Danh Mục Đạt Chuẩn</span>
+                    <h3>📂 {categories.length} Danh Mục</h3>
+                  </div>
+                  <div className="admin-stat-chip">
+                    <span>Trạng Thái Kho</span>
+                    <h3 style={{ color: '#10B981' }}>🟢 100% Sẵn Sàng</h3>
+                  </div>
+                  <div className="admin-stat-chip">
+                    <span>Tính Năng Temporal SQL</span>
+                    <h3 style={{ color: '#FFB300' }}>⚡ Lưu Tự Động</h3>
+                  </div>
+                </div>
+
               <div className="admin-grid fade-in">
                 {/* Form quản lý */}
                 <div className="admin-forms">
@@ -2045,9 +2224,10 @@ function App() {
                               </span>
                             </td>
                             <td>
-                              <div className="action-buttons-cell">
+                              <div className="action-buttons-cell" style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                 <button 
-                                  className="btn btn-secondary btn-icon-sm"
+                                  className="btn btn-secondary"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', padding: 0, borderRadius: '10px', fontSize: '15px' }}
                                   title="Sửa món ăn"
                                   onClick={() => setProductForm({
                                     id: prod.ProductID,
@@ -2064,7 +2244,8 @@ function App() {
 
                                 {prod.IsActive || prod.IsActive === undefined ? (
                                   <button 
-                                    className="btn btn-danger btn-icon-sm"
+                                    className="btn btn-danger"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', padding: 0, borderRadius: '10px', fontSize: '15px' }}
                                     title="Ngừng bán (Xóa mềm)"
                                     onClick={() => handleSoftDelete(prod.ProductID)}
                                   >
@@ -2072,7 +2253,8 @@ function App() {
                                   </button>
                                 ) : (
                                   <button 
-                                    className="btn btn-primary btn-icon-sm"
+                                    className="btn btn-primary"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', padding: 0, borderRadius: '10px', fontSize: '15px' }}
                                     title="Kích hoạt bán lại"
                                     onClick={() => handleRestoreProduct(prod.ProductID)}
                                   >
@@ -2081,11 +2263,28 @@ function App() {
                                 )}
 
                                 <button 
-                                  className="btn btn-info btn-icon-sm"
-                                  title="Xem lịch sử giá/kho"
+                                  className="btn btn-info"
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    gap: '6px', 
+                                    height: '36px', 
+                                    padding: '0 16px', 
+                                    whiteSpace: 'nowrap', 
+                                    fontWeight: '800', 
+                                    borderRadius: '10px',
+                                    fontSize: '13px',
+                                    background: 'linear-gradient(135deg, #00F2FE 0%, #00a8ff 100%)',
+                                    color: '#080b11',
+                                    border: 'none',
+                                    boxShadow: '0 3px 12px rgba(0, 242, 254, 0.3)',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Xem lịch sử thay đổi (Temporal Table)"
                                   onClick={() => loadProductHistory(prod.ProductID)}
                                 >
-                                  📜 Lịch sử
+                                  <span>📜</span> <span style={{ color: '#080b11', fontWeight: '800' }}>Lịch sử</span>
                                 </button>
                               </div>
                             </td>
@@ -2136,11 +2335,33 @@ function App() {
                   )}
                 </div>
               </div>
+              </>
             )}
             
             {/* Quản lý đơn hàng Admin */}
             {adminSubtab === 'orders' && (
-              <div className="glass-panel fade-in" style={{ padding: '20px' }}>
+              <>
+                {/* Executive Strip cho Đơn Hàng */}
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #FFB300' }}>
+                    <span>Chờ Xác Nhận</span>
+                    <h3>🟡 {adminOrders.filter(o => o.Status === 'Chờ xác nhận').length} Đơn</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #3B82F6' }}>
+                    <span>Đang Giao Hàng</span>
+                    <h3>🚚 {adminOrders.filter(o => o.Status === 'Đang giao').length} Đơn</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #10B981' }}>
+                    <span>Đã Hoàn Thành</span>
+                    <h3 style={{ color: '#10B981' }}>✓ {adminOrders.filter(o => o.Status === 'Hoàn thành').length} Đơn</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #EF4444' }}>
+                    <span>Tỷ Lệ Thành Công</span>
+                    <h3 style={{ color: '#FFB300' }}>🏆 {adminOrders.length > 0 ? Math.round((adminOrders.filter(o => o.Status === 'Hoàn thành').length / adminOrders.length) * 100) : 100}%</h3>
+                  </div>
+                </div>
+
+              <div className="glass-panel fade-in" style={{ padding: '28px', borderRadius: '24px' }}>
                 <div className="list-header" style={{ marginBottom: '20px' }}>
                   <h2>Đơn Hàng Toàn Hệ Thống</h2>
                   <p className="text-muted">Quản lý và duyệt trạng thái đơn hàng của thực khách</p>
@@ -2217,11 +2438,27 @@ function App() {
                   </table>
                 </div>
               </div>
+              </>
             )}
 
             {/* Quản lý Nhật ký Chatbot Admin */}
             {adminSubtab === 'chatbotLogs' && (
-              <div className="glass-panel fade-in" style={{ padding: '20px' }}>
+              <>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #8B5CF6' }}>
+                    <span>Trợ Lý Trí Tuệ Nhân Tạo</span>
+                    <h3 style={{ color: '#a78bfa' }}>🤖 Gemini NLP Engine</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #00F2FE' }}>
+                    <span>Lượt Hội Thoại Đã Ghi Nhận</span>
+                    <h3 style={{ color: '#00F2FE' }}>💬 {adminChatbotLogs.length} Tương Tác</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #10B981' }}>
+                    <span>Trạng Thái Phân Khối</span>
+                    <h3 style={{ color: '#10B981' }}>🟢 Active 24/7</h3>
+                  </div>
+                </div>
+              <div className="glass-panel fade-in" style={{ padding: '28px', borderRadius: '24px' }}>
                 <div className="list-header" style={{ marginBottom: '20px' }}>
                   <h2>Lịch Sử Trò Chuyện Trợ Lý AI</h2>
                   <p className="text-muted">Theo dõi nội dung khách hàng giao tiếp với Chatbot</p>
@@ -2262,6 +2499,7 @@ function App() {
                   </table>
                 </div>
               </div>
+              </>
             )}
 
             {/* Quản lý Chat Realtime */}
@@ -2273,7 +2511,22 @@ function App() {
 
             {/* Quản lý Đánh Giá Admin */}
             {adminSubtab === 'reviews' && (
-              <div className="admin-section fade-in">
+              <>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #F59E0B' }}>
+                    <span>Tỷ Lệ Đánh Giá Trung Bình</span>
+                    <h3 style={{ color: '#F59E0B' }}>⭐ {adminReviews.length > 0 ? (adminReviews.reduce((sum, r) => sum + r.Rating, 0) / adminReviews.length).toFixed(1) : '5.0'} / 5.0</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #3B82F6' }}>
+                    <span>Tổng Biểu Đạt Nhận Xét</span>
+                    <h3>📝 {adminReviews.length} Bài Đánh Giá</h3>
+                  </div>
+                  <div className="admin-stat-chip" style={{ borderLeft: '4px solid #10B981' }}>
+                    <span>Bộ Lọc Bảo Vệ Uy Tín</span>
+                    <h3 style={{ color: '#10B981' }}>🛡️ Tự Động Quản Lý</h3>
+                  </div>
+                </div>
+              <div className="glass-panel fade-in" style={{ padding: '28px', borderRadius: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ color: '#00e5ff', margin: 0 }}>Quản lý Đánh Giá & Bình Luận</h3>
                   <button className="btn btn-secondary" onClick={fetchAdminReviews}>Làm mới</button>
@@ -2331,8 +2584,10 @@ function App() {
                   </table>
                 </div>
               </div>
+              </>
             )}
           </div>
+          </ProtectedRoute>
         )}
 
         {/* Tab Đăng nhập */}
@@ -2902,14 +3157,17 @@ function App() {
 
 
       {/* Floating Hotline */}
+      {!isAdminRoute && (
       <div className="floating-hotline">
         <a href="tel:19001234" className="hotline-btn">
           📞
         </a>
         <span className="hotline-text">Gọi ngay 1900 1234</span>
       </div>
+      )}
 
       {/* GLOBAL FOOTER */}
+      {!isAdminRoute && (
       <footer className="global-footer full-width">
         <div className="footer-container">
           <div className="footer-col brand-col">
@@ -2955,8 +3213,9 @@ function App() {
           <p>&copy; {new Date().getFullYear()} FIVEFOOD. Tất cả các quyền được bảo lưu.</p>
         </div>
       </footer>
+      )}
 
-      <Chatbot />
+      {!isAdminRoute && <Chatbot />}
     </div>
   );
 }
