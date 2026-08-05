@@ -5,6 +5,7 @@ import { apiFetch, logUserAction } from './utils/apiFetch';
 import L from 'leaflet';
 import io from 'socket.io-client';
 import Chatbot from './components/AIChatbot/Chatbot';
+import ZaloWidget from './components/ZaloWidget/ZaloWidget';
 import RecommendationSection from './components/Recommendations/RecommendationSection';
 import FavoriteList from './components/Favorites/FavoriteList';
 import ReviewModal from './components/Reviews/ReviewModal';
@@ -3156,15 +3157,8 @@ function App() {
 
 
 
-      {/* Floating Hotline */}
-      {!isAdminRoute && (
-      <div className="floating-hotline">
-        <a href="tel:19001234" className="hotline-btn">
-          📞
-        </a>
-        <span className="hotline-text">Gọi ngay 1900 1234</span>
-      </div>
-      )}
+      {/* Floating Zalo QR Widget */}
+      {!isAdminRoute && <ZaloWidget />}
 
       {/* GLOBAL FOOTER */}
       {!isAdminRoute && (
