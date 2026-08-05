@@ -83,21 +83,6 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages, isOpen]);
 
-  // Bộ tự sửa chữa (Self-Healing): Tự động xóa lịch sử vãng lai bị mắc kẹt lại khi thành viên đang đăng nhập
-  useEffect(() => {
-    const uid = getUserId(user);
-    if (uid && messages.length > 0) {
-      const firstText = messages[0]?.text || '';
-      if (isGuestWelcomeMessage(firstText)) {
-        localStorage.removeItem(`chatbot_messages_user_${uid}`);
-        localStorage.removeItem(`chatbot_session_user_${uid}`);
-        setMessages([]);
-        setSessionId('');
-        setHasInitialized(false);
-      }
-    }
-  }, [messages, user, isLoggedIn]);
-
   // CHỈ LƯU messages vào localStorage KHI KHÁCH HÀNG ĐÃ ĐĂNG NHẬP VÀ KHÔNG CHỨA LỜI CHÀO VÃNG LAI
   useEffect(() => {
     const uid = getUserId(user);
@@ -174,7 +159,11 @@ const Chatbot = () => {
             setMessages(parsed);
             setSessionId(savedSession || '');
             setHasInitialized(true);
-            return;
+            return; // Phục hồi thành công lịch sử chat của user
+          } else {
+            // Nếu trong storage của user bị kẹt nhầm tin nhắn vãng lai cũ từ trước thì mới dọn dẹp storage
+            localStorage.removeItem(`chatbot_messages_user_${uid}`);
+            localStorage.removeItem(`chatbot_session_user_${uid}`);
           }
         } catch (e) {}
       }
@@ -257,12 +246,12 @@ const Chatbot = () => {
         if (data.sessionId) {
           setSessionId(data.sessionId);
         }
-        // Chỉ dispatch cartUpdated khi backend xác nhận đã xử lý giỏ hàng thành công
-        if (data.orderPlaced) {
-          // Đảm bảo dispatch sau khi state messages đã cập nhật
+        // Kích hoạt cập nhật giao diện Giỏ Hàng lập tức khi có thao tác tác động
+        const isCartAction = data.orderPlaced || (typeof data.reply === 'string' && (data.reply.includes('Đã thêm') || data.reply.includes('Đã dọn sạch') || data.reply.includes('Đã xóa') || data.reply.includes('trống')));
+        if (isCartAction) {
           setTimeout(() => {
             window.dispatchEvent(new Event('cartUpdated'));
-          }, 300);
+          }, 200);
         }
       }
     } catch (error) {
