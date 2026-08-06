@@ -40,7 +40,7 @@ export class ChatbotController {
   }
 
   @Post('generate-promo')
-  async generatePromo(@Body() body: { productName: string; type: string; discount?: string; event?: string }) {
+  async generatePromo(@Body() body: { productName: string; type: string; discount?: string; event?: string; platform: string; style: string; length: string; description?: string }) {
     const content = await this.chatbotService.generatePromotionContent(body);
     return { success: true, data: content };
   }

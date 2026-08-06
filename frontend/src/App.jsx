@@ -318,7 +318,18 @@ function App() {
     description: ''
   });
   const [categoryForm, setCategoryForm] = useState({ categoryName: '', description: '', imageUrl: '' });
-  const [marketingForm, setMarketingForm] = useState({ productName: '', type: 'Ra mắt món mới', discount: '', event: '', generatedContent: '' });
+  const [marketingForm, setMarketingForm] = useState({ 
+    productName: '', 
+    type: 'Ra mắt món mới', 
+    discount: '', 
+    event: '', 
+    generatedContent: '',
+    platform: 'Website Banner',
+    style: 'Thu hút',
+    length: 'Trung bình',
+    generatedVersions: [],
+    selectedVersionIndex: 0
+  });
   const [adminSuccess, setAdminSuccess] = useState('');
   const [adminError, setAdminError] = useState('');
   const [selectedHistory, setSelectedHistory] = useState(null); // Lịch sử Temporal Table của sản phẩm được chọn
@@ -991,8 +1002,19 @@ function App() {
         body: JSON.stringify(marketingForm)
       });
       if (res && res.data) {
-        setMarketingForm({ ...marketingForm, generatedContent: res.data });
-        toast.success('Tạo bài quảng cáo thành công!', { id: toastId });
+        try {
+          const parsedData = JSON.parse(res.data);
+          if (parsedData.versions && parsedData.versions.length > 0) {
+            setMarketingForm({ ...marketingForm, generatedVersions: parsedData.versions, selectedVersionIndex: 0, generatedContent: parsedData.versions[0] });
+            toast.success('Tạo bài quảng cáo thành công!', { id: toastId });
+          } else {
+             throw new Error("Invalid format from AI");
+          }
+        } catch (e) {
+          console.error(e, res.data);
+          setMarketingForm({ ...marketingForm, generatedVersions: [res.data], selectedVersionIndex: 0, generatedContent: res.data });
+          toast.success('Tạo bài quảng cáo thành công!', { id: toastId });
+        }
       }
     } catch (err) {
       toast.error('Lỗi: ' + err.message, { id: toastId });
@@ -1000,17 +1022,18 @@ function App() {
   };
 
   const handlePostAnnouncement = async () => {
-    if (!marketingForm.generatedContent) return;
+    const contentToPost = marketingForm.generatedVersions?.[marketingForm.selectedVersionIndex] || marketingForm.generatedContent;
+    if (!contentToPost) return;
     const toastId = toast.loading('Đang đăng lên Website...');
     try {
       await apiFetch(`${API_BASE_URL}/chatbot/announcement`, {
         method: 'POST',
-        body: JSON.stringify({ content: marketingForm.generatedContent })
+        body: JSON.stringify({ content: contentToPost })
       });
-      setWebsiteAnnouncement(marketingForm.generatedContent);
-      toast.success('Đã đăng thông báo lên Website!', { id: toastId });
+      setWebsiteAnnouncement(contentToPost);
+      toast.success('Đã hiển thị trên đầu trang Website!', { id: toastId });
     } catch (err) {
-      toast.error('Lỗi khi đăng thông báo: ' + err.message, { id: toastId });
+      toast.error('Lỗi đăng banner: ' + err.message, { id: toastId });
     }
   };
 
@@ -2163,7 +2186,49 @@ function App() {
                       />
                     </div>
 
-                    <button className="btn btn-primary w-full" onClick={handleGeneratePromo}>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>Nền tảng sử dụng</label>
+                        <select 
+                          className="form-control"
+                          value={marketingForm.platform}
+                          onChange={(e) => setMarketingForm({...marketingForm, platform: e.target.value})}
+                        >
+                          <option value="Website Banner">🌐 Website Banner</option>
+                          <option value="Facebook">📘 Facebook</option>
+                          <option value="Zalo">💬 Zalo</option>
+                          <option value="Popup Website">🌟 Popup Website</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Phong cách</label>
+                        <select 
+                          className="form-control"
+                          value={marketingForm.style}
+                          onChange={(e) => setMarketingForm({...marketingForm, style: e.target.value})}
+                        >
+                          <option value="Chuyên nghiệp">👔 Chuyên nghiệp</option>
+                          <option value="Thu hút">✨ Thu hút</option>
+                          <option value="Vui vẻ">😄 Vui vẻ</option>
+                          <option value="Sang trọng">💎 Sang trọng</option>
+                          <option value="Thân thiện">🤝 Thân thiện</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Độ dài</label>
+                        <select 
+                          className="form-control"
+                          value={marketingForm.length}
+                          onChange={(e) => setMarketingForm({...marketingForm, length: e.target.value})}
+                        >
+                          <option value="Ngắn">⚡ Ngắn</option>
+                          <option value="Trung bình">📝 Trung bình</option>
+                          <option value="Dài">📚 Dài</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button className="btn btn-primary w-full" onClick={handleGeneratePromo} style={{ marginTop: '15px' }}>
                       ✨ Tạo Bài Viết Bằng AI
                     </button>
                   </div>
@@ -2173,25 +2238,102 @@ function App() {
                   <div className="list-header">
                     <h2>Kết Quả (AI Generated)</h2>
                   </div>
-                  <div style={{ background: 'var(--panel-bg)', borderRadius: '12px', padding: '20px', minHeight: '300px', whiteSpace: 'pre-wrap', border: '1px dashed var(--primary-color)' }}>
-                    {marketingForm.generatedContent ? marketingForm.generatedContent : <span style={{ color: '#999' }}>Chưa có nội dung... Hãy bấm "Tạo Bài Viết" để trải nghiệm phép màu từ AI.</span>}
-                  </div>
-                  {marketingForm.generatedContent && (
-                    <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
-                      <button 
-                        className="btn btn-secondary" 
-                        onClick={() => { navigator.clipboard.writeText(marketingForm.generatedContent); toast.success('Đã copy!'); }}
-                        style={{ flex: 1 }}
-                      >
-                        📋 Copy để đăng Facebook/Zalo
-                      </button>
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={handlePostAnnouncement}
-                        style={{ flex: 1, background: 'linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%)', color: '#000' }}
-                      >
-                        🚀 Đăng lên Website (Banner)
-                      </button>
+                  {marketingForm.generatedVersions && marketingForm.generatedVersions.length > 0 ? (
+                    <div className="ai-results-container">
+                      <div className="ai-versions-tabs">
+                        {marketingForm.generatedVersions.map((version, index) => (
+                          <button 
+                            key={index} 
+                            className={`ai-version-tab ${marketingForm.selectedVersionIndex === index ? 'active' : ''}`}
+                            onClick={() => setMarketingForm({...marketingForm, selectedVersionIndex: index, generatedContent: version})}
+                          >
+                            Phiên bản {index + 1}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <div className="ai-content-layout">
+                        <div className="ai-text-editor">
+                          <textarea 
+                            className="form-control" 
+                            style={{ height: '350px', resize: 'none', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px dashed var(--primary-color)' }}
+                            value={marketingForm.generatedContent}
+                            onChange={(e) => {
+                              const newContent = e.target.value;
+                              const newVersions = [...marketingForm.generatedVersions];
+                              newVersions[marketingForm.selectedVersionIndex] = newContent;
+                              setMarketingForm({...marketingForm, generatedContent: newContent, generatedVersions: newVersions});
+                            }}
+                          />
+                          <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
+                            <button 
+                              className="btn btn-secondary" 
+                              onClick={() => { navigator.clipboard.writeText(marketingForm.generatedContent); toast.success('Đã copy!'); }}
+                              style={{ flex: 1 }}
+                            >
+                              📋 Copy Text
+                            </button>
+                            <button 
+                              className="btn btn-primary" 
+                              onClick={handlePostAnnouncement}
+                              style={{ flex: 1, background: 'linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%)', color: '#000' }}
+                            >
+                              🚀 Đăng lên Website
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="ai-preview-panel">
+                          <h3>Preview - {marketingForm.platform}</h3>
+                          <div className="ai-preview-box">
+                            {marketingForm.platform === 'Website Banner' && (
+                              <div className="preview-banner">
+                                <div className="preview-banner-inner">
+                                  <span className="preview-banner-text">{marketingForm.generatedContent}</span>
+                                </div>
+                              </div>
+                            )}
+                            {marketingForm.platform === 'Facebook' && (
+                              <div className="preview-facebook">
+                                <div className="fb-header">
+                                  <div className="fb-avatar">F</div>
+                                  <div className="fb-name-time">
+                                    <span className="fb-name">FIVEFOOD</span>
+                                    <span className="fb-time">Vừa xong • 🌎</span>
+                                  </div>
+                                </div>
+                                <div className="fb-content">{marketingForm.generatedContent}</div>
+                                <div className="fb-actions">
+                                  <span>👍 Thích</span>
+                                  <span>💬 Bình luận</span>
+                                  <span>↪️ Chia sẻ</span>
+                                </div>
+                              </div>
+                            )}
+                            {marketingForm.platform === 'Zalo' && (
+                              <div className="preview-zalo">
+                                <div className="zalo-message">
+                                  {marketingForm.generatedContent}
+                                </div>
+                              </div>
+                            )}
+                            {marketingForm.platform === 'Popup Website' && (
+                              <div className="preview-popup">
+                                <div className="popup-close">×</div>
+                                <div className="popup-content">
+                                  <h2>🎉 ƯU ĐÃI ĐẶC BIỆT</h2>
+                                  <p>{marketingForm.generatedContent}</p>
+                                  <button className="popup-btn">Nhận ngay</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ background: 'var(--panel-bg)', borderRadius: '12px', padding: '20px', minHeight: '300px', whiteSpace: 'pre-wrap', border: '1px dashed var(--primary-color)' }}>
+                      <span style={{ color: '#999' }}>Chưa có nội dung... Hãy bấm "Tạo Bài Viết" để trải nghiệm phép màu từ AI.</span>
                     </div>
                   )}
                 </div>

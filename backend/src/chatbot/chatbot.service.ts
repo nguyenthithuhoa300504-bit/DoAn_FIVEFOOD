@@ -903,17 +903,39 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
     }
   }
 
-  async generatePromotionContent(data: { productName: string, type: string, discount?: string, event?: string }) {
+  async generatePromotionContent(data: { productName: string, type: string, discount?: string, event?: string, platform: string, style: string, length: string, description?: string }) {
     if (!this.apiKey) throw new InternalServerErrorException('Missing API key.');
-    const prompt = `Bạn là một chuyên gia Marketing cho nhà hàng FIVEFOOD. Hãy viết 1 bài đăng (post) thật hấp dẫn để quảng cáo trên Facebook/Zalo/Website.
-Thông tin:
-- Món ăn: ${data.productName}
-- Loại bài viết: ${data.type}
-- Giảm giá: ${data.discount || 'Không có'}
-- Sự kiện: ${data.event || 'Không có'}
-Yêu cầu: Viết ngắn gọn (dưới 150 chữ), sử dụng nhiều emoji, có tiêu đề giật gân, kêu gọi hành động (Call to Action) rõ ràng. Ngôn ngữ tiếng Việt tự nhiên, trẻ trung. Trả về nội dung bài viết trực tiếp, không cần chào hỏi hay giải thích.`;
+    const prompt = `Bạn là một chuyên gia Marketing cho nhà hàng FIVEFOOD. Hãy viết nội dung quảng cáo dựa trên các yêu cầu sau:
 
-    return this.callGroq(prompt);
+THÔNG TIN ĐẦU VÀO:
+- Tên món / Sản phẩm: ${data.productName}
+- Loại bài viết: ${data.type}
+- Giảm giá / Ưu đãi: ${data.discount || 'Không có'}
+- Sự kiện: ${data.event || 'Không có'}
+- Nền tảng hiển thị: ${data.platform}
+- Phong cách viết: ${data.style}
+- Yêu cầu độ dài: ${data.length}
+
+QUY TẮC BẮT BUỘC (TUYỆT ĐỐI TUÂN THỦ):
+1. CHỈ SỬ DỤNG DỮ LIỆU ĐƯỢC CUNG CẤP. TUYỆT ĐỐI KHÔNG TỰ BỊA ĐẶT NGUYÊN LIỆU, GIÁ TIỀN HAY ƯU ĐÃI KHÁC.
+2. NẾU nền tảng là "Website Banner": Viết cực kỳ ngắn gọn (khoảng 15-25 từ). KHÔNG dùng hashtag. BẮT BUỘC phải có Call to Action (CTA) thật kích thích ở cuối câu (ví dụ: 👉 Đặt ngay!, 🎉 Xem ngay!).
+3. NẾU nền tảng là "Facebook": Viết dài hơn (khoảng 80-150 từ tùy độ dài yêu cầu). Sử dụng Emoji tự nhiên. BẮT BUỘC có CTA hấp dẫn (VD: 👉 Thưởng thức hôm nay!) và hashtag liên quan (#FIVEFOOD #${data.productName.replace(/\s+/g, '')} ...).
+4. NẾU nền tảng là "Zalo": Viết ngắn gọn, thân thiện (khoảng 40-70 từ). Ít hashtag. Có lời chào hoặc CTA gần gũi.
+5. NẾU nền tảng là "Popup Website": Viết trực diện vào khuyến mãi, gây chú ý mạnh (khoảng 20-40 từ). Có CTA rõ ràng.
+6. Luôn kết thúc bằng 1 lời kêu gọi hành động (CTA) phù hợp.
+
+KẾT QUẢ ĐẦU RA:
+Bạn phải sáng tạo ra chính xác 3 phiên bản nội dung (Version 1, Version 2, Version 3) mang sắc thái hơi khác nhau nhưng đều tuân thủ các quy tắc trên.
+TRẢ VỀ ĐÚNG ĐỊNH DẠNG JSON SAU (KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO BÊN NGOÀI JSON):
+{
+  "versions": [
+    "Nội dung phiên bản 1...",
+    "Nội dung phiên bản 2...",
+    "Nội dung phiên bản 3..."
+  ]
+}`;
+
+    return this.callGroq(prompt, true);
   }
 
   async generateProductDescription(productName: string, ingredients: string) {
@@ -927,7 +949,7 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
     return this.callGroq(prompt);
   }
 
-  private async callGroq(prompt: string) {
+  private async callGroq(prompt: string, expectJson: boolean = false) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -937,11 +959,16 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-        temperature: 0.7
+        max_tokens: expectJson ? 1500 : 500,
+        temperature: 0.7,
+        ...(expectJson && { response_format: { type: "json_object" } })
       })
     });
-    if (!res.ok) throw new Error('Failed to call Groq API');
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`Groq API Error: ${errorText}`);
+      throw new Error('Failed to call Groq API');
+    }
     const data = await res.json();
     return data.choices[0].message.content.trim();
   }
