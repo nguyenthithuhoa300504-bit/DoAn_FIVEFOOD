@@ -6,11 +6,14 @@ import L from 'leaflet';
 import io from 'socket.io-client';
 import Chatbot from './components/AIChatbot/Chatbot';
 import ZaloWidget from './components/ZaloWidget/ZaloWidget';
+import OrderProgressStepper from './components/Orders/OrderProgressStepper';
+import CrossSellCombo from './components/Cart/CrossSellCombo';
 import RecommendationSection from './components/Recommendations/RecommendationSection';
 import FavoriteList from './components/Favorites/FavoriteList';
 import ReviewModal from './components/Reviews/ReviewModal';
 import ProductReviewsModal from './components/Reviews/ProductReviewsModal';
 import NotificationDropdown from './components/Notifications/NotificationDropdown';
+import SocialProofNotification from './components/Notifications/SocialProofNotification';
 import LiveChatModal from './components/LiveChat/LiveChatModal';
 import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
@@ -251,8 +254,22 @@ function App() {
       else if (targetSub === 'chatbotLogs' && location.pathname !== '/admin/chatbot-logs') navigate('/admin/chatbot-logs');
       else if (targetSub === 'liveChat' && location.pathname !== '/admin/live-chat') navigate('/admin/live-chat');
       else if (targetSub === 'reviews' && location.pathname !== '/admin/reviews') navigate('/admin/reviews');
+      else if (targetSub === 'marketing' && location.pathname !== '/admin/marketing') navigate('/admin/marketing');
     }
   };
+
+  const [websiteAnnouncement, setWebsiteAnnouncement] = useState('');
+
+  // Fetch website announcement
+  useEffect(() => {
+    apiFetch(`${API_BASE_URL}/chatbot/announcement`)
+      .then(res => {
+        if (res && res.data) {
+          setWebsiteAnnouncement(res.data);
+        }
+      })
+      .catch(err => console.error('Error fetching announcement:', err));
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState(''); // Thêm state cho thanh tìm kiếm
   const [selectedCategory, setSelectedCategory] = useState('All'); // Thêm state bộ lọc danh mục
@@ -297,9 +314,11 @@ function App() {
     price: '',
     inventory: '',
     imageUrl: '🍔',
-    ingredients: ''
+    ingredients: '',
+    description: ''
   });
   const [categoryForm, setCategoryForm] = useState({ categoryName: '', description: '', imageUrl: '' });
+  const [marketingForm, setMarketingForm] = useState({ productName: '', type: 'Ra mắt món mới', discount: '', event: '', generatedContent: '' });
   const [adminSuccess, setAdminSuccess] = useState('');
   const [adminError, setAdminError] = useState('');
   const [selectedHistory, setSelectedHistory] = useState(null); // Lịch sử Temporal Table của sản phẩm được chọn
@@ -338,7 +357,7 @@ function App() {
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminUsersCount, setAdminUsersCount] = useState(0);
   const [adminChatbotLogs, setAdminChatbotLogs] = useState([]);
-  const [adminSubtab, setAdminSubtab] = useState('dashboard'); // dashboard, products, orders, reviews
+  const [adminSubtab, setAdminSubtab] = useState('dashboard'); // dashboard, products, orders, reviews, marketing
   const [adminReviews, setAdminReviews] = useState([]);
 
   // Đồng bộ URL với State khi truy cập trực tiếp URL hoặc điều hướng
@@ -888,7 +907,9 @@ function App() {
       categoryId: parseInt(productForm.categoryId, 10),
       price: parseFloat(productForm.price),
       inventory: parseInt(productForm.inventory, 10),
-      imageUrl: productForm.imageUrl
+      imageUrl: productForm.imageUrl,
+      ingredients: productForm.ingredients,
+      description: productForm.description
     };
 
     try {
@@ -909,7 +930,7 @@ function App() {
       }
 
       // Reset form và reload
-      setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔' });
+      setProductForm({ id: null, productName: '', categoryId: '', price: '', inventory: '', imageUrl: '🍔', ingredients: '', description: '' });
       fetchProducts();
     } catch (err) {
       setAdminError(err.message || 'Lỗi khi lưu sản phẩm.');
@@ -932,6 +953,64 @@ function App() {
       fetchCategories();
     } catch (err) {
       setAdminError(err.message || 'Lỗi khi lưu danh mục.');
+    }
+  };
+
+  const handleGenerateDesc = async () => {
+    if (!productForm.productName || !productForm.ingredients) {
+      toast.error('Vui lòng nhập Tên món ăn và Nguyên liệu trước khi tạo mô tả bằng AI.');
+      return;
+    }
+    const toastId = toast.loading('AI đang viết mô tả...');
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/chatbot/generate-desc`, {
+        method: 'POST',
+        body: JSON.stringify({
+          productName: productForm.productName,
+          ingredients: productForm.ingredients
+        })
+      });
+      if (res && res.data) {
+        setProductForm({ ...productForm, description: res.data });
+        toast.success('Đã tạo mô tả thành công!', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tạo mô tả: ' + err.message, { id: toastId });
+    }
+  };
+
+  const handleGeneratePromo = async () => {
+    if (!marketingForm.productName) {
+      toast.error('Vui lòng chọn hoặc nhập món ăn!');
+      return;
+    }
+    const toastId = toast.loading('AI đang viết bài quảng cáo...');
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/chatbot/generate-promo`, {
+        method: 'POST',
+        body: JSON.stringify(marketingForm)
+      });
+      if (res && res.data) {
+        setMarketingForm({ ...marketingForm, generatedContent: res.data });
+        toast.success('Tạo bài quảng cáo thành công!', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Lỗi: ' + err.message, { id: toastId });
+    }
+  };
+
+  const handlePostAnnouncement = async () => {
+    if (!marketingForm.generatedContent) return;
+    const toastId = toast.loading('Đang đăng lên Website...');
+    try {
+      await apiFetch(`${API_BASE_URL}/chatbot/announcement`, {
+        method: 'POST',
+        body: JSON.stringify({ content: marketingForm.generatedContent })
+      });
+      setWebsiteAnnouncement(marketingForm.generatedContent);
+      toast.success('Đã đăng thông báo lên Website!', { id: toastId });
+    } catch (err) {
+      toast.error('Lỗi khi đăng thông báo: ' + err.message, { id: toastId });
     }
   };
 
@@ -1114,13 +1193,6 @@ function App() {
               >
                 🛍️ Mở Cửa Hàng
               </button>
-              <button 
-                className="action-btn"
-                title={isDarkMode ? "Giao diện sáng" : "Giao diện tối"} 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-              >
-                {isDarkMode ? '☀️' : '🌙'}
-              </button>
               <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '14px', color: '#ffb300', fontWeight: 'bold' }}>{user?.fullName || 'Admin'}</span>
                 <div className="user-avatar logged-in" title="Đăng xuất khỏi Admin" onClick={() => { logout(); navigate('/admin/login'); }}>
@@ -1245,6 +1317,17 @@ function App() {
       )}
 
       <main className="main-content">
+        {websiteAnnouncement && !isAdminRoute && (
+          <div className="premium-announcement-wrapper">
+            <div className="premium-announcement-inner">
+              <span className="premium-announcement-icon">✨</span>
+              <div className="premium-announcement-marquee">
+                <span className="premium-announcement-text">{websiteAnnouncement.replace(/\n/g, '  •  ')}</span>
+              </div>
+              <button className="premium-announcement-close" onClick={() => setWebsiteAnnouncement('')}>&times;</button>
+            </div>
+          </div>
+        )}
         {activeTab === 'favorites' && isLoggedIn && (
           <FavoriteList onAddToCart={addToCart} />
         )}
@@ -1927,6 +2010,9 @@ function App() {
                     </div>
                   ))}
 
+                  {/* Smart Cross-Sell Combos */}
+                  <CrossSellCombo products={products} cart={cart} onAddToCart={(item) => addToCart(item, 1)} />
+
                   <div className="cart-summary glass-panel" style={{ marginTop: '20px', padding: '20px', background: 'rgba(0, 168, 255, 0.05)', border: '1px solid var(--primary-color)' }}>
                     <div className="summary-row" style={{ fontSize: '20px', marginBottom: '15px' }}>
                       <span style={{ fontWeight: 'bold' }}>Tổng tiền thanh toán:</span>
@@ -2003,7 +2089,114 @@ function App() {
               >
                 ⭐ Quản lý Đánh Giá
               </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'marketing' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('marketing'); navigate('/admin/marketing'); }}
+              >
+                📢 Marketing AI
+              </button>
             </div>
+
+            {adminSubtab === 'marketing' && (
+              <div className="admin-grid fade-in">
+                <div className="admin-forms">
+                  <div className="glass-panel admin-form-card">
+                    <h3>📢 AI Content Generator</h3>
+                    <p style={{ color: '#666', marginBottom: '20px' }}>AI tự động viết bài quảng cáo siêu cuốn hút để đăng lên Facebook, Zalo hoặc làm Banner thông báo trên Website.</p>
+                    
+                    <div className="form-group">
+                      <label>Sản phẩm cần quảng cáo</label>
+                      <select 
+                        className="form-control"
+                        value={marketingForm.productName}
+                        onChange={(e) => setMarketingForm({...marketingForm, productName: e.target.value})}
+                      >
+                        <option value="">-- Chọn sản phẩm có sẵn hoặc tự nhập --</option>
+                        {products.map(p => (
+                          <option key={p.ProductID} value={p.ProductName}>{p.ProductName}</option>
+                        ))}
+                      </select>
+                      <input 
+                        type="text"
+                        className="form-control"
+                        style={{ marginTop: '10px' }}
+                        placeholder="Hoặc nhập tên món/chương trình..."
+                        value={marketingForm.productName}
+                        onChange={(e) => setMarketingForm({...marketingForm, productName: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>Mục đích quảng cáo</label>
+                        <select 
+                          className="form-control"
+                          value={marketingForm.type}
+                          onChange={(e) => setMarketingForm({...marketingForm, type: e.target.value})}
+                        >
+                          <option value="Ra mắt món mới">🌟 Ra mắt món mới</option>
+                          <option value="Khuyến mãi/Giảm giá">🔥 Khuyến mãi / Giảm giá</option>
+                          <option value="Giới thiệu Best Seller">👑 Giới thiệu món Best Seller</option>
+                          <option value="Sự kiện/Lễ hội">🎉 Sự kiện đặc biệt (Lễ, Tết, Cuối tuần)</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Mức Giảm Giá (nếu có)</label>
+                        <input 
+                          type="text" 
+                          className="form-control"
+                          placeholder="VD: 20%, Giảm 50K..." 
+                          value={marketingForm.discount}
+                          onChange={(e) => setMarketingForm({...marketingForm, discount: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Chương trình / Sự kiện (Tùy chọn)</label>
+                      <input 
+                        type="text" 
+                        className="form-control"
+                        placeholder="VD: Black Friday, Chào Hè, Giáng Sinh..." 
+                        value={marketingForm.event}
+                        onChange={(e) => setMarketingForm({...marketingForm, event: e.target.value})}
+                      />
+                    </div>
+
+                    <button className="btn btn-primary w-full" onClick={handleGeneratePromo}>
+                      ✨ Tạo Bài Viết Bằng AI
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-list glass-panel">
+                  <div className="list-header">
+                    <h2>Kết Quả (AI Generated)</h2>
+                  </div>
+                  <div style={{ background: 'var(--panel-bg)', borderRadius: '12px', padding: '20px', minHeight: '300px', whiteSpace: 'pre-wrap', border: '1px dashed var(--primary-color)' }}>
+                    {marketingForm.generatedContent ? marketingForm.generatedContent : <span style={{ color: '#999' }}>Chưa có nội dung... Hãy bấm "Tạo Bài Viết" để trải nghiệm phép màu từ AI.</span>}
+                  </div>
+                  {marketingForm.generatedContent && (
+                    <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => { navigator.clipboard.writeText(marketingForm.generatedContent); toast.success('Đã copy!'); }}
+                        style={{ flex: 1 }}
+                      >
+                        📋 Copy để đăng Facebook/Zalo
+                      </button>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={handlePostAnnouncement}
+                        style={{ flex: 1, background: 'linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%)', color: '#000' }}
+                      >
+                        🚀 Đăng lên Website (Banner)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {adminSubtab === 'dashboard' && (
               <AdminDashboard 
@@ -2127,6 +2320,27 @@ function App() {
                           value={productForm.ingredients || ''}
                           onChange={(e) => setProductForm({...productForm, ingredients: e.target.value})}
                           placeholder="Ví dụ: Bánh phở, thịt bò nạc, hành lá..." 
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          Mô tả món ăn
+                          <button 
+                            type="button" 
+                            onClick={handleGenerateDesc}
+                            style={{ background: 'linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '15px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}
+                          >
+                            ✨ Tạo bằng AI
+                          </button>
+                        </label>
+                        <textarea 
+                          className="form-control"
+                          rows="3"
+                          value={productForm.description || ''}
+                          onChange={(e) => setProductForm({...productForm, description: e.target.value})}
+                          placeholder="Mô tả hấp dẫn về món ăn..."
+                          style={{ resize: 'vertical' }}
                         />
                       </div>
 
@@ -2761,6 +2975,9 @@ function App() {
                       </div>
                     </div>
 
+                    {/* Live Order Status Stepper */}
+                    <OrderProgressStepper status={order.Status} />
+
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                       <button 
                         className="btn btn-secondary btn-sm"
@@ -2979,6 +3196,9 @@ function App() {
             </div>
 
             <div style={{ padding: '20px 25px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
+              {/* Visual Status Progress Timeline */}
+              <OrderProgressStepper status={selectedOrderDetails.Status} />
+
               {/* Info Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0,0,0,0.02)', padding: '20px', borderRadius: '16px', border: '2px dashed rgba(150, 150, 150, 0.4)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -3157,7 +3377,8 @@ function App() {
 
 
 
-      {/* Floating Zalo QR Widget */}
+      {/* Floating Zalo QR Widget & Social Proof Live Notifications */}
+      {!isAdminRoute && <SocialProofNotification />}
       {!isAdminRoute && <ZaloWidget />}
 
       {/* GLOBAL FOOTER */}

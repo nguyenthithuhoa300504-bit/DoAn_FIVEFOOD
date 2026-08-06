@@ -107,8 +107,8 @@ export class ProductsController {
   @Post('admin/products')
   @HttpCode(HttpStatus.CREATED)
   async createProduct(@Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl, ingredients } = body;
-    return await this.productsService.createProduct(productName, categoryId, price, inventory, imageUrl, ingredients);
+    const { productName, categoryId, price, inventory, imageUrl, ingredients, description } = body;
+    return await this.productsService.createProduct(productName, categoryId, price, inventory, imageUrl, ingredients, description);
   }
 
   /**
@@ -118,8 +118,8 @@ export class ProductsController {
   @Roles('Admin')
   @Put('admin/products/:id')
   async updateProduct(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl, ingredients } = body;
-    const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl, ingredients);
+    const { productName, categoryId, price, inventory, imageUrl, ingredients, description } = body;
+    const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl, ingredients, description);
     if (!updated) {
       throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để cập nhật.`);
     }

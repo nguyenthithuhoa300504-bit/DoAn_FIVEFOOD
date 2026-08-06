@@ -38,4 +38,28 @@ export class ChatbotController {
       data: logs
     };
   }
+
+  @Post('generate-promo')
+  async generatePromo(@Body() body: { productName: string; type: string; discount?: string; event?: string }) {
+    const content = await this.chatbotService.generatePromotionContent(body);
+    return { success: true, data: content };
+  }
+
+  @Post('generate-desc')
+  async generateDesc(@Body() body: { productName: string; ingredients: string }) {
+    const content = await this.chatbotService.generateProductDescription(body.productName, body.ingredients);
+    return { success: true, data: content };
+  }
+
+  @Post('announcement')
+  async setAnnouncement(@Body() body: { content: string }) {
+    const result = await this.chatbotService.setWebsiteAnnouncement(body.content);
+    return result;
+  }
+
+  @Get('announcement')
+  async getAnnouncement() {
+    const content = await this.chatbotService.getWebsiteAnnouncement();
+    return { success: true, data: content };
+  }
 }

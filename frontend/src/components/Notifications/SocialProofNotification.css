@@ -1,0 +1,108 @@
+/* ==========================================================================
+   SOCIAL PROOF LIVE TOAST (HIỆU ỨNG THỰC KHÁCH MUA HÀNG SÔI ĐỘNG)
+   ========================================================================== */
+
+.social-proof-toast {
+  position: fixed;
+  bottom: 105px;
+  left: 30px;
+  z-index: 99990;
+  max-width: 330px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1.5px solid rgba(255, 122, 0, 0.35);
+  border-radius: 20px;
+  padding: 12px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 15px rgba(255, 122, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: slideUpFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1), pulseBorder 3s infinite;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+body.dark-theme .social-proof-toast {
+  background: rgba(22, 28, 42, 0.95);
+  border-color: rgba(255, 122, 0, 0.45);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 122, 0, 0.2);
+}
+
+.social-proof-toast:hover {
+  transform: scale(1.03) translateY(-3px);
+  box-shadow: 0 14px 35px rgba(255, 122, 0, 0.25);
+}
+
+.social-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #FF7A00 0%, #FF3D00 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 94, 0, 0.4);
+}
+
+.social-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.social-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main, #1F2937);
+  line-height: 1.4;
+  margin: 0;
+}
+
+body.dark-theme .social-text {
+  color: #F8FAFC;
+}
+
+.social-highlight {
+  color: var(--primary-color, #FF7A00);
+  font-weight: 800;
+}
+
+.social-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: #22C55E;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.social-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 6px #22C55E;
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseBorder {
+  0% { border-color: rgba(255, 122, 0, 0.35); }
+  50% { border-color: rgba(255, 122, 0, 0.7); }
+  100% { border-color: rgba(255, 122, 0, 0.35); }
+}

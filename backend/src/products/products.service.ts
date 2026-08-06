@@ -146,18 +146,19 @@ export class ProductsService {
   /**
    * Tạo món ăn mới (Chỉ dành cho Admin)
    */
-  async createProduct(productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string) {
+  async createProduct(productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string, description?: string) {
     const result = await this.dbService.query(
-      `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, Ingredients, IsActive) 
+      `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, Ingredients, Description, IsActive) 
        OUTPUT inserted.* 
-       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, 1)`,
+       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, @Description, 1)`,
       [
         { name: 'ProductName', type: sql.NVarChar(150), value: productName },
         { name: 'CategoryID', type: sql.Int, value: categoryId },
         { name: 'Price', type: sql.Decimal(18, 2), value: price },
         { name: 'Inventory', type: sql.Int, value: inventory },
         { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
-        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null }
+        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null },
+        { name: 'Description', type: sql.NVarChar(sql.MAX), value: description || null }
       ]
     );
     return result.recordset[0];
@@ -166,10 +167,10 @@ export class ProductsService {
   /**
    * Cập nhật món ăn (Chỉ dành cho Admin)
    */
-  async updateProduct(id: number, productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string) {
+  async updateProduct(id: number, productName: string, categoryId: number, price: number, inventory: number, imageUrl: string, ingredients?: string, description?: string) {
     const result = await this.dbService.query(
       `UPDATE Products 
-       SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL, Ingredients = @Ingredients
+       SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL, Ingredients = @Ingredients, Description = @Description
        OUTPUT inserted.* 
        WHERE ProductID = @ProductID`,
       [
@@ -179,7 +180,8 @@ export class ProductsService {
         { name: 'Price', type: sql.Decimal(18, 2), value: price },
         { name: 'Inventory', type: sql.Int, value: inventory },
         { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
-        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null }
+        { name: 'Ingredients', type: sql.NVarChar(500), value: ingredients || null },
+        { name: 'Description', type: sql.NVarChar(sql.MAX), value: description || null }
       ]
     );
     return result.recordset[0] || null;

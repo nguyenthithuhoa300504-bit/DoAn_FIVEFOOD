@@ -1,0 +1,161 @@
+/* ==========================================================================
+   CROSS-SELL SMART COMBO CAROUSEL STYLING (FOR CART)
+   ========================================================================== */
+
+.cross-sell-wrapper {
+  margin: 24px 0 10px 0;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, rgba(255, 122, 0, 0.05) 0%, rgba(255, 61, 0, 0.08) 100%);
+  border: 1px dashed rgba(255, 122, 0, 0.4);
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(255, 122, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+body.dark-theme .cross-sell-wrapper {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 122, 0, 0.45);
+}
+
+.cross-sell-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cross-sell-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary-color, #FF7A00);
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cross-sell-badge {
+  font-size: 11px;
+  background: linear-gradient(135deg, #FF7A00, #FF3D00);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.cross-sell-grid {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.cross-sell-grid::-webkit-scrollbar {
+  height: 5px;
+}
+
+.cross-sell-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 122, 0, 0.3);
+  border-radius: 10px;
+}
+
+.cross-sell-item-card {
+  min-width: 180px;
+  max-width: 200px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body.dark-theme .cross-sell-item-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.cross-sell-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 22px rgba(255, 122, 0, 0.18);
+  border-color: var(--primary-color, #FF7A00);
+}
+
+.cross-sell-img-container {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 8px;
+  background: #F8FAFC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 122, 0, 0.2);
+}
+
+.cross-sell-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cross-sell-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main, #1F2937);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+body.dark-theme .cross-sell-name {
+  color: #F8FAFC;
+}
+
+.cross-sell-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-color, #FF7A00);
+  margin: 0 0 10px 0;
+}
+
+.cross-sell-add-btn {
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--primary-color, #FF7A00);
+  background: transparent;
+  color: var(--primary-color, #FF7A00);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cross-sell-item-card:hover .cross-sell-add-btn,
+.cross-sell-add-btn:hover {
+  background: linear-gradient(135deg, #FF7A00 0%, #FF3D00 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(255, 94, 0, 0.35);
+}
+
+.cross-sell-add-btn:active {
+  transform: scale(0.95);
+}

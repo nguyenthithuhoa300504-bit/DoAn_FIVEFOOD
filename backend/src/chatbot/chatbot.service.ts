@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../orders/orders.service';
 import * as sql from 'mssql';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class ChatbotService {
@@ -899,5 +901,63 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       this.logger.error('Error fetching chatbot logs', error);
       throw new InternalServerErrorException('Failed to fetch chatbot logs');
     }
+  }
+
+  async generatePromotionContent(data: { productName: string, type: string, discount?: string, event?: string }) {
+    if (!this.apiKey) throw new InternalServerErrorException('Missing API key.');
+    const prompt = `Bạn là một chuyên gia Marketing cho nhà hàng FIVEFOOD. Hãy viết 1 bài đăng (post) thật hấp dẫn để quảng cáo trên Facebook/Zalo/Website.
+Thông tin:
+- Món ăn: ${data.productName}
+- Loại bài viết: ${data.type}
+- Giảm giá: ${data.discount || 'Không có'}
+- Sự kiện: ${data.event || 'Không có'}
+Yêu cầu: Viết ngắn gọn (dưới 150 chữ), sử dụng nhiều emoji, có tiêu đề giật gân, kêu gọi hành động (Call to Action) rõ ràng. Ngôn ngữ tiếng Việt tự nhiên, trẻ trung. Trả về nội dung bài viết trực tiếp, không cần chào hỏi hay giải thích.`;
+
+    return this.callGroq(prompt);
+  }
+
+  async generateProductDescription(productName: string, ingredients: string) {
+    if (!this.apiKey) throw new InternalServerErrorException('Missing API key.');
+    const prompt = `Bạn là một chuyên gia ẩm thực chuyên viết mô tả món ăn cho menu nhà hàng FIVEFOOD.
+Hãy viết mô tả thật hấp dẫn, kích thích vị giác cho món ăn sau:
+- Tên món: ${productName}
+- Nguyên liệu/Thành phần: ${ingredients}
+Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng những tính từ miêu tả sự tươi ngon, đậm đà, nóng hổi. Trả về đúng nội dung mô tả, không cần giải thích hay thêm thắt.`;
+
+    return this.callGroq(prompt);
+  }
+
+  private async callGroq(prompt: string) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
+    if (!res.ok) throw new Error('Failed to call Groq API');
+    const data = await res.json();
+    return data.choices[0].message.content.trim();
+  }
+
+  async setWebsiteAnnouncement(content: string) {
+    const filePath = path.join(process.cwd(), 'announcement.json');
+    fs.writeFileSync(filePath, JSON.stringify({ content, timestamp: new Date().toISOString() }));
+    return { success: true };
+  }
+
+  async getWebsiteAnnouncement() {
+    const filePath = path.join(process.cwd(), 'announcement.json');
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return data.content;
+    }
+    return '';
   }
 }
