@@ -973,9 +973,9 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
     return data.choices[0].message.content.trim();
   }
 
-  async setWebsiteAnnouncement(content: string) {
+  async setWebsiteAnnouncement(content: string, productId?: number) {
     const filePath = path.join(process.cwd(), 'announcement.json');
-    fs.writeFileSync(filePath, JSON.stringify({ content, timestamp: new Date().toISOString() }));
+    fs.writeFileSync(filePath, JSON.stringify({ content, productId, timestamp: new Date().toISOString() }));
     return { success: true };
   }
 
@@ -983,8 +983,8 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
     const filePath = path.join(process.cwd(), 'announcement.json');
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      return data.content;
+      return { content: data.content, productId: data.productId };
     }
-    return '';
+    return { content: '', productId: null };
   }
 }

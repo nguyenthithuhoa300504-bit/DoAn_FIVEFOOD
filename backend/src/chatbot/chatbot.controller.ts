@@ -52,14 +52,14 @@ export class ChatbotController {
   }
 
   @Post('announcement')
-  async setAnnouncement(@Body() body: { content: string }) {
-    const result = await this.chatbotService.setWebsiteAnnouncement(body.content);
+  async setAnnouncement(@Body() body: { content: string, productId?: number }) {
+    const result = await this.chatbotService.setWebsiteAnnouncement(body.content, body.productId);
     return result;
   }
 
   @Get('announcement')
   async getAnnouncement() {
-    const content = await this.chatbotService.getWebsiteAnnouncement();
-    return { success: true, data: content };
+    const data = await this.chatbotService.getWebsiteAnnouncement();
+    return { success: true, data };
   }
 }

@@ -258,14 +258,14 @@ function App() {
     }
   };
 
-  const [websiteAnnouncement, setWebsiteAnnouncement] = useState('');
+  const [websiteAnnouncement, setWebsiteAnnouncement] = useState({ content: '', productId: null });
 
   // Fetch website announcement
   useEffect(() => {
     apiFetch(`${API_BASE_URL}/chatbot/announcement`)
       .then(res => {
         if (res && res.data) {
-          setWebsiteAnnouncement(res.data);
+          setWebsiteAnnouncement({ content: res.data.content, productId: res.data.productId });
         }
       })
       .catch(err => console.error('Error fetching announcement:', err));
@@ -1026,11 +1026,13 @@ function App() {
     if (!contentToPost) return;
     const toastId = toast.loading('Đang đăng lên Website...');
     try {
+      const selectedProduct = products.find(p => p.ProductName === marketingForm.productName);
+      const productId = selectedProduct ? selectedProduct.ProductID : null;
       await apiFetch(`${API_BASE_URL}/chatbot/announcement`, {
         method: 'POST',
-        body: JSON.stringify({ content: contentToPost })
+        body: JSON.stringify({ content: contentToPost, productId })
       });
-      setWebsiteAnnouncement(contentToPost);
+      setWebsiteAnnouncement({ content: contentToPost, productId });
       toast.success('Đã hiển thị trên đầu trang Website!', { id: toastId });
     } catch (err) {
       toast.error('Lỗi đăng banner: ' + err.message, { id: toastId });
@@ -1340,14 +1342,28 @@ function App() {
       )}
 
       <main className="main-content">
-        {websiteAnnouncement && !isAdminRoute && (
+        {websiteAnnouncement && websiteAnnouncement.content && !isAdminRoute && (
           <div className="premium-announcement-wrapper">
             <div className="premium-announcement-inner">
               <span className="premium-announcement-icon">✨</span>
               <div className="premium-announcement-marquee">
-                <span className="premium-announcement-text">{websiteAnnouncement.replace(/\n/g, '  •  ')}</span>
+                <span className="premium-announcement-text">{websiteAnnouncement.content.replace(/#\w+/g, '').replace(/\n/g, '  •  ')}</span>
               </div>
-              <button className="premium-announcement-close" onClick={() => setWebsiteAnnouncement('')}>&times;</button>
+              <button className="premium-announcement-action-btn" onClick={() => {
+                if (websiteAnnouncement.productId) {
+                  const prod = products.find(p => p.ProductID === websiteAnnouncement.productId);
+                  if (prod) {
+                    setSelectedProductDetails(prod);
+                  } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}>
+                Đặt ngay
+              </button>
+              <button className="premium-announcement-close" onClick={() => setWebsiteAnnouncement({ content: '', productId: null })}>&times;</button>
             </div>
           </div>
         )}
@@ -1631,16 +1647,24 @@ function App() {
 
             {/* PHẦN 2: MÓN NGON ĐẶC TRƯNG (Signature Dish Split-screen) */}
             <div className="signature-dish-section">
+              <div className="signature-bg-pattern"></div>
               <div className="signature-container">
                 <div className="signature-content">
                   <span className="signature-badge">⭐ Món Ngon Nổi Bật</span>
-                  <h2>Phở Bò Thố Đá<br/>Đặc Biệt</h2>
-                  <p>Hương vị truyền thống được nâng tầm. Nước dùng hầm từ xương bò nguyên chất trong 24 giờ, hòa quyện cùng các loại thảo mộc cung đình, phục vụ sôi sùng sục trong thố đá núi lửa giữ nhiệt hoàn hảo.</p>
-                  <button className="signature-btn" onClick={() => setActiveTab('menu')}>Khám phá ngay</button>
+                  <h2 className="signature-title">Phở Bò Thố Đá<br/>Đặc Biệt</h2>
+                  <p className="signature-desc">Hương vị truyền thống được nâng tầm. Nước dùng hầm từ xương bò nguyên chất trong 24 giờ, hòa quyện cùng các loại thảo mộc cung đình, phục vụ sôi sùng sục trong thố đá núi lửa giữ nhiệt hoàn hảo.</p>
+                  <button className="signature-btn" onClick={() => setActiveTab('menu')}>
+                    Khám phá ngay <span className="btn-arrow">→</span>
+                  </button>
                 </div>
                 <div className="signature-image-wrapper">
                   <div className="signature-glow"></div>
-                  <div style={{ fontSize: '250px', textAlign: 'center', position: 'relative', zIndex: 2, animation: 'float 6s ease-in-out infinite', filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.5))' }}>🍜</div>
+                  <div className="signature-floating-elements">
+                    <span className="floating-item float-1">🌿</span>
+                    <span className="floating-item float-2">🌶️</span>
+                    <span className="floating-item float-3">⭐</span>
+                  </div>
+                  <div className="signature-main-img">🍜</div>
                 </div>
               </div>
             </div>
@@ -2288,8 +2312,14 @@ function App() {
                           <div className="ai-preview-box">
                             {marketingForm.platform === 'Website Banner' && (
                               <div className="preview-banner">
-                                <div className="preview-banner-inner">
-                                  <span className="preview-banner-text">{marketingForm.generatedContent}</span>
+                                <div className="preview-banner-inner" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span className="premium-announcement-icon" style={{ fontSize: '14px' }}>✨</span>
+                                  <span className="preview-banner-text" style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {marketingForm.generatedContent.replace(/#\w+/g, '')}
+                                  </span>
+                                  <button className="premium-announcement-action-btn" style={{ padding: '4px 10px', fontSize: '11px' }}>
+                                    Đặt ngay
+                                  </button>
                                 </div>
                               </div>
                             )}
