@@ -1,7 +1,7 @@
 # TÀI LIỆU THIẾT KẾ CÁC PHÂN HỆ HỆ THỐNG (DESIGN_MODULES)
 ## DỰ ÁN: PHÁT TRIỂN ỨNG DỤNG WEB ĐẶT VÀ GIAO ĐỒ ĂN TRỰC TUYẾN FIVEFOOD
 
-Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **10 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
+Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **11 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
 
 ---
 
@@ -44,6 +44,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 8. [Phân hệ 8: Đánh giá & Yêu thích (Reviews & Favorites)](#8-phan-he-8-danh-gia--yeu-thich-reviews--favorites)
 9. [Phân hệ 9: Thông báo & Chat Realtime (Socket.io Gateway)](#9-phan-he-9-thong-bao--chat-realtime-socketio-gateway)
 10. [Phân hệ 10: Theo dõi Hành vi & Gợi ý Nâng cao (User Action Logging)](#10-phan-he-10-theo-doi-hanh-vi--goi-y-nang-cao-user-action-logging)
+11. [Phân hệ 11: Marketing, Tăng trưởng & Tương tác (Marketing & Engagement)](#11-phan-he-11-marketing-tang-truong--tuong-tac-marketing--engagement)
 
 
 ---
@@ -499,3 +500,25 @@ Phân hệ này đóng vai trò thu thập dữ liệu hành vi của người d
         + `FAVORITE_PRODUCT` (Yêu thích): **+3 điểm**
     - **Tích hợp Search Intent**: Hệ thống sẽ lấy các từ khóa từ hành động `SEARCH` gần đây, dùng lệnh truy vấn (`LIKE '%keyword%'`) để tìm các món ăn phù hợp và cộng thêm điểm ưu tiên.
     - **Kết quả**: Danh sách sản phẩm được sắp xếp theo tổng điểm (Score) giảm dần, trộn cùng thuật toán lọc từ `v_RecommendedProducts` (lịch sử mua hàng), mang lại danh sách gợi ý hoàn hảo và sát với nhu cầu thực tế.
+
+---
+
+## 11. PHÂN HỆ 11: MARKETING, TĂNG TRƯỞNG & TƯƠNG TÁC (Marketing & Engagement)
+
+### Tổng quan (Overview)
+Phân hệ này tập trung vào các chiến lược thúc đẩy doanh thu, tăng tỷ lệ chuyển đổi (Conversion Rate) và nâng cao trải nghiệm chăm sóc khách hàng tại Frontend mà không yêu cầu thay đổi cấu trúc Database phức tạp. Phân hệ bao gồm 3 tính năng cốt lõi: Hiệu ứng mua hàng đám đông (Social Proof/FOMO), Gợi ý mua kèm (Cross-sell/Upsell), và Tiện ích chat Zalo.
+
+### A. Chi tiết Tính năng (Frontend Implementation)
+1. **Hiệu ứng FOMO & Social Proof (`SocialProofNotification.jsx`)**:
+   - Sử dụng kỹ thuật hiển thị thông báo popup (Toast/Notification) tuần hoàn ngẫu nhiên theo thời gian (cứ 35 - 45 giây/lần).
+   - **Mục đích**: Kích thích hiệu ứng tâm lý đám đông (FOMO), cho khách hàng thấy sự nhộn nhịp của hệ thống (ví dụ: "Tuấn Anh vừa đặt 2x Pizza...", "18 Thực khách đang xem..."), tạo sự tin cậy và thúc đẩy họ nhanh chóng chốt đơn.
+
+2. **Gợi ý Mua kèm Cross-sell & Combo (`CrossSellCombo.jsx`)**:
+   - **Vị trí hiển thị**: Tại màn hình Giỏ hàng (Cart) hoặc bước chuẩn bị Thanh toán.
+   - **Thuật toán lọc**: Tự động trích xuất các sản phẩm "phụ" như Đồ uống (Coca, Pepsi, Trà) hoặc Món ăn vặt (Khoai, Quẩy, Viên) có mức giá phải chăng (< 45,000 VNĐ). Hệ thống sẽ loại trừ những món mà khách đã thêm vào giỏ hàng trước đó.
+   - **Mục đích**: Tăng Giá trị Trung bình Đơn hàng (AOV - Average Order Value) một cách tinh tế thông qua nút "Thêm nhanh" vào giỏ hàng với thiết kế lôi cuốn (ví dụ: "Thêm chút sảng khoái cho món chính").
+
+3. **Tiện ích Hỗ trợ Zalo (`ZaloWidget.jsx`)**:
+   - Cung cấp nút nổi (Floating action button) cho phép người dùng mở khung modal hiển thị mã QR Zalo của Cửa hàng (Tạo mã QR tự động qua API `api.qrserver.com` kết hợp với số điện thoại cấu hình cứng ở Frontend).
+   - Tích hợp nút chuyển hướng thẳng vào app Zalo thông qua giao thức `zalo.me/[SĐT]`.
+   - **Mục đích**: Tăng tương tác hỗ trợ đa kênh (Omnichannel), giúp khách hàng liên hệ trực tiếp với nhân viên qua mạng xã hội phổ biến nhất Việt Nam, giảm rào cản giao tiếp.
