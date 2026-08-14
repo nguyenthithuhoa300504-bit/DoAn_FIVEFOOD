@@ -125,9 +125,10 @@ export class AdminOrdersController {
   @Roles('Admin')
   async updateOrderStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body('status') status: string
+    @Body('status') status: string,
+    @Body('cancelReason') cancelReason?: string
   ) {
-    return await this.ordersService.updateOrderStatus(id, status);
+    return await this.ordersService.updateOrderStatus(id, status, cancelReason);
   }
 
   /**

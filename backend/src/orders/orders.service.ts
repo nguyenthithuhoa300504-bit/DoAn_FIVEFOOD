@@ -121,7 +121,7 @@ export class OrdersService {
   /**
    * Cập nhật trạng thái đơn hàng (Duyệt đơn, đang giao, hoàn thành, hủy đơn)
    */
-  async updateOrderStatus(orderId: number, status: string) {
+  async updateOrderStatus(orderId: number, status: string, cancelReason?: string) {
     // 1. Kiểm tra đơn hàng có tồn tại không
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
@@ -152,7 +152,7 @@ export class OrdersService {
     );
 
     // Phát sự kiện WebSockets
-    this.eventsGateway.notifyOrderStatusUpdate(orderResult.recordset[0].UserID, orderId, status);
+    this.eventsGateway.notifyOrderStatusUpdate(orderResult.recordset[0].UserID, orderId, status, cancelReason);
 
     if (status === 'Đang giao') {
       const { UserID, Latitude, Longitude } = orderResult.recordset[0];

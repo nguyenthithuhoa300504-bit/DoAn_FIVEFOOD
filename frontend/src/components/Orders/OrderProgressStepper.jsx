@@ -3,7 +3,7 @@ import './OrderProgressStepper.css';
 
 const STEPS = [
   { label: 'Chờ xác nhận', icon: '📝' },
-  { label: 'Bếp đang nấu', icon: '🍳' },
+  { label: 'Đang chuẩn bị', icon: '🍳' },
   { label: 'Đang giao', icon: '🛵' },
   { label: 'Hoàn thành', icon: '🎉' },
 ];
@@ -23,7 +23,7 @@ export default function OrderProgressStepper({ status }) {
   // Chuyển đổi trạng thái chuỗi thành số bước (0 đến 3)
   let currentStep = 0;
   if (status === 'Chờ xác nhận' || status === 'Pending') currentStep = 0;
-  else if (status === 'Đang nấu' || status === 'Đã duyệt' || status === 'Cooking') currentStep = 1;
+  else if (status === 'Đang nấu' || status === 'Đã duyệt' || status === 'Đang chuẩn bị' || status === 'Cooking') currentStep = 1;
   else if (status === 'Đang giao' || status === 'Delivering' || status === 'Shipping') currentStep = 2;
   else if (status === 'Hoàn thành' || status === 'Completed' || status === 'Success' || status === 'Đã thanh toán') currentStep = 3;
 

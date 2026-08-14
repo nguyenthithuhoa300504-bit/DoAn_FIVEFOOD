@@ -24,6 +24,7 @@ import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-
 import './App.css';
 import { renderToString } from 'react-dom/server';
 import { Store, MapPin } from 'lucide-react';
+import { getDiscountForPrice, getMockProductData } from './utils/productUtils';
 
 // Đọc địa chỉ API Backend từ biến môi trường của Vite
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -196,24 +197,6 @@ const MOCK_PRODUCTS = [
   { ProductID: 4, ProductName: 'Trà Sữa Thái Xanh Trân Châu', CategoryID: 4, CategoryName: 'Đồ uống', Price: 30000, Inventory: 20, ImageURL: '🥤', IsActive: true }
 ];
 
-export const getDiscountForPrice = (price) => {
-  if (price >= 100000) return 25;
-  if (price >= 60000) return 20;
-  if (price >= 30000) return 15;
-  return 10;
-};
-
-export const getMockProductData = (id) => {
-  const numId = typeof id === 'number' ? id : parseInt(id) || 0;
-  // Rating between 4.2 and 4.9
-  const rating = (4.2 + (numId % 8) * 0.1).toFixed(1);
-  // Reviews between 15 and 214
-  const reviews = (numId * 7 % 200) + 15;
-  // Sold count
-  const rawSold = (numId * 13 % 1500) + 10;
-  const sold = rawSold >= 1000 ? (rawSold / 1000).toFixed(1) + 'k' : rawSold.toString();
-  return { rating, reviews, sold };
-};
 function App() {
   const {
     cart,
@@ -320,6 +303,7 @@ function App() {
   const [categoryForm, setCategoryForm] = useState({ categoryName: '', description: '', imageUrl: '' });
   const [marketingForm, setMarketingForm] = useState({ 
     productName: '', 
+    productNames: [],
     type: 'Ra mắt món mới', 
     discount: '', 
     event: '', 
@@ -397,6 +381,11 @@ function App() {
   // Product Detail Modal State
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+
+  // Cancel Order Modal State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelOrderId, setCancelOrderId] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   // States cho Phân hệ 8: Đánh giá & Yêu thích
   const [reviewProductData, setReviewProductData] = useState(null);
@@ -574,11 +563,11 @@ function App() {
   };
 
   // Admin cập nhật trạng thái đơn hàng
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, reason = '') => {
     try {
       await apiFetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, cancelReason: reason })
       });
       fetchAdminOrders();
       if (selectedOrderDetails && selectedOrderDetails.OrderID === orderId) {
@@ -603,6 +592,21 @@ function App() {
     } catch (err) {
       toast('Lỗi gọi điện: ' + err.message);
     }
+  };
+
+  const handleOpenCancelModal = (orderId) => {
+    setCancelOrderId(orderId);
+    setCancelReason('');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancelReason.trim()) {
+      toast('Vui lòng nhập lý do hủy đơn');
+      return;
+    }
+    handleUpdateOrderStatus(cancelOrderId, 'Đã hủy', cancelReason);
+    setCancelModalOpen(false);
   };
 
   // Khách hàng tự hủy đơn hàng (trạng thái Chờ xác nhận)
@@ -2152,13 +2156,21 @@ function App() {
                     <p style={{ color: '#666', marginBottom: '20px' }}>AI tự động viết bài quảng cáo siêu cuốn hút để đăng lên Facebook, Zalo hoặc làm Banner thông báo trên Website.</p>
                     
                     <div className="form-group">
-                      <label>Sản phẩm cần quảng cáo</label>
+                      <label>Sản phẩm cần quảng cáo (Giữ Ctrl để chọn 3-5 sản phẩm)</label>
                       <select 
+                        multiple
                         className="form-control"
-                        value={marketingForm.productName}
-                        onChange={(e) => setMarketingForm({...marketingForm, productName: e.target.value})}
+                        style={{ height: '120px' }}
+                        value={marketingForm.productNames || []}
+                        onChange={(e) => {
+                          const options = Array.from(e.target.selectedOptions, option => option.value);
+                          if (options.length > 5) {
+                            toast.error('Chỉ được chọn tối đa 5 sản phẩm!');
+                            return;
+                          }
+                          setMarketingForm({...marketingForm, productNames: options, productName: options.join(', ')});
+                        }}
                       >
-                        <option value="">-- Chọn sản phẩm có sẵn hoặc tự nhập --</option>
                         {products.map(p => (
                           <option key={p.ProductID} value={p.ProductName}>{p.ProductName}</option>
                         ))}
@@ -2167,7 +2179,7 @@ function App() {
                         type="text"
                         className="form-control"
                         style={{ marginTop: '10px' }}
-                        placeholder="Hoặc nhập tên món/chương trình..."
+                        placeholder="Hoặc tự nhập tên món (VD: Món A, Món B)..."
                         value={marketingForm.productName}
                         onChange={(e) => setMarketingForm({...marketingForm, productName: e.target.value})}
                       />
@@ -2253,7 +2265,7 @@ function App() {
                     </div>
 
                     <button className="btn btn-primary w-full" onClick={handleGeneratePromo} style={{ marginTop: '15px' }}>
-                      ✨ Tạo Bài Viết Bằng AI
+                      ✨ Tạo Quảng Cáo
                     </button>
                   </div>
                 </div>
@@ -2363,7 +2375,7 @@ function App() {
                     </div>
                   ) : (
                     <div style={{ background: 'var(--panel-bg)', borderRadius: '12px', padding: '20px', minHeight: '300px', whiteSpace: 'pre-wrap', border: '1px dashed var(--primary-color)' }}>
-                      <span style={{ color: '#999' }}>Chưa có nội dung... Hãy bấm "Tạo Bài Viết" để trải nghiệm phép màu từ AI.</span>
+                      <span style={{ color: '#999' }}>Chưa có nội dung... Hãy bấm "Tạo Quảng Cáo" để trải nghiệm phép màu từ AI.</span>
                     </div>
                   )}
                 </div>
@@ -2731,8 +2743,8 @@ function App() {
                 {/* Executive Strip cho Đơn Hàng */}
                 <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
                   <div className="admin-stat-chip" style={{ borderLeft: '4px solid #FFB300' }}>
-                    <span>Chờ Xác Nhận</span>
-                    <h3>🟡 {adminOrders.filter(o => o.Status === 'Chờ xác nhận').length} Đơn</h3>
+                    <span>Chờ XN & Chuẩn Bị</span>
+                    <h3>🟡 {adminOrders.filter(o => o.Status === 'Chờ xác nhận' || o.Status === 'Đang chuẩn bị').length} Đơn</h3>
                   </div>
                   <div className="admin-stat-chip" style={{ borderLeft: '4px solid #3B82F6' }}>
                     <span>Đang Giao Hàng</span>
@@ -2779,7 +2791,7 @@ function App() {
                           <td className="text-orange">{order.FinalAmount.toLocaleString('vi-VN')} đ</td>
                           <td>{order.PaymentMethod} ({order.PaymentStatus})</td>
                           <td>
-                            <span className={`status-pill status-${order.Status}`}>
+                            <span className={`status-pill status-${order.Status ? order.Status.replace(/\s+/g, '-') : ''}`}>
                               {order.Status}
                             </span>
                           </td>
@@ -2792,8 +2804,26 @@ function App() {
                                 👁️ Chi tiết
                               </button>
                               {order.Status === 'Chờ xác nhận' && (
+                                <>
+                                  <button 
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đang chuẩn bị')}
+                                    style={{ marginRight: '5px', padding: '4px 8px', fontSize: '12px' }}
+                                  >
+                                    ✅ Duyệt đơn
+                                  </button>
+                                  <button 
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => handleOpenCancelModal(order.OrderID)}
+                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                  >
+                                    ❌ Hủy đơn
+                                  </button>
+                                </>
+                              )}
+                              {order.Status === 'Đang chuẩn bị' && (
                                 <button 
-                                  className="btn btn-primary btn-sm"
+                                  className="btn btn-info btn-sm"
                                   onClick={() => handleUpdateOrderStatus(order.OrderID, 'Đang giao')}
                                 >
                                   🚚 Giao đơn
@@ -3123,7 +3153,7 @@ function App() {
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>MÃ ĐƠN HÀNG</span>
                         <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>#{order.OrderID}</h4>
                       </div>
-                      <span className={`status-pill status-${order.Status}`}>
+                      <span className={`status-pill status-${order.Status ? order.Status.replace(/\s+/g, '-') : ''}`}>
                         {order.Status}
                       </span>
                     </div>
@@ -3401,7 +3431,7 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.03)', padding: '10px 15px', borderRadius: '25px', border: '2px solid rgba(150, 150, 150, 0.2)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                   <span style={{ fontSize: '18px' }}>📊</span>
-                  <span className={`status-pill status-${selectedOrderDetails.Status}`} style={{ margin: 0, padding: '4px 10px', fontSize: '13px' }}>{selectedOrderDetails.Status}</span>
+                  <span className={`status-pill status-${selectedOrderDetails.Status ? selectedOrderDetails.Status.replace(/\s+/g, '-') : ''}`} style={{ margin: 0, padding: '4px 10px', fontSize: '13px' }}>{selectedOrderDetails.Status}</span>
                 </div>
               </div>
 
@@ -3548,6 +3578,29 @@ function App() {
       )}
 
 
+
+      {/* --- CANCEL ORDER MODAL --- */}
+      {cancelModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '15px' }}>Lý do hủy đơn</h3>
+            <div className="form-group">
+              <label>Vui lòng nhập lý do hủy đơn hàng #{cancelOrderId}:</label>
+              <textarea 
+                className="form-control"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ví dụ: Hết món, khách đặt sai..."
+                rows="3"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setCancelModalOpen(false)}>Đóng</button>
+              <button className="btn btn-danger" onClick={handleConfirmCancel}>Xác nhận hủy</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Zalo QR Widget & Social Proof Live Notifications */}
       {!isAdminRoute && <SocialProofNotification />}

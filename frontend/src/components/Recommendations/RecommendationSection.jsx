@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/apiFetch';
 import { useCart } from '../../context/CartContext';
-import { getDiscountForPrice } from '../../App';
+import { getDiscountForPrice } from '../../utils/productUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 

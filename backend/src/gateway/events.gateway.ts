@@ -99,14 +99,20 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Gửi thông báo cập nhật trạng thái đơn hàng
-  notifyOrderStatusUpdate(userId: number, orderId: number, status: string) {
+  notifyOrderStatusUpdate(userId: number, orderId: number, status: string, cancelReason?: string) {
     this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {
       orderId,
-      status
+      status,
+      cancelReason
     });
     
     // Ghi vào DB thông báo luôn
-    this.chatService.addNotification(userId, 'Cập nhật đơn hàng', `Đơn hàng #${orderId} của bạn đã chuyển sang trạng thái: ${status}`);
+    let msg = `Đơn hàng #${orderId} của bạn đã chuyển sang trạng thái: ${status}`;
+    if (status === 'Đã hủy' && cancelReason) {
+      msg = `Đơn hàng #${orderId} của bạn đã bị hủy với lý do: ${cancelReason}`;
+    }
+    
+    this.chatService.addNotification(userId, 'Cập nhật đơn hàng', msg);
     this.server.to(`room_user_${userId}`).emit('newNotification');
   }
 
