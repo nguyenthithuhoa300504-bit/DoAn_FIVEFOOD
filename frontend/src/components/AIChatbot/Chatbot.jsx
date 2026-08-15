@@ -66,6 +66,64 @@ const Chatbot = () => {
   const prevUserRef = useRef(user);
   const [isOpen, setIsOpen] = useState(false);
   
+  // Trạng thái kéo thả
+  const [position, setPosition] = useState({ bottom: 28 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startY: 0, startBottom: 28, isMoved: false });
+
+  // Tự động điều chỉnh vị trí nếu Chatbot bị đẩy ra ngoài màn hình (khi mở lên hoặc resize)
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => {
+        const maxBottom = Math.max(20, window.innerHeight - (isOpen ? 640 : 100));
+        return prev.bottom > maxBottom ? { bottom: maxBottom } : prev;
+      });
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      const deltaY = dragRef.current.startY - e.clientY;
+      if (Math.abs(deltaY) > 3) {
+        dragRef.current.isMoved = true;
+      }
+      const maxBottom = window.innerHeight - (isOpen ? 560 : 100);
+      const newBottom = Math.max(20, Math.min(maxBottom, dragRef.current.startBottom + deltaY));
+      setPosition({ bottom: newBottom });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    
+    // Ngăn chặn kéo thả nếu đang tương tác với vùng chứa nội dung chính
+    if (e.target.closest('.chatbot-messages') || 
+        e.target.closest('.chatbot-input-area') ||
+        e.target.closest('.chatbot-quick-actions') ||
+        e.target.closest('.header-action-btn')) {
+      return;
+    }
+    
+    setIsDragging(true);
+    dragRef.current.startY = e.clientY;
+    dragRef.current.startBottom = position.bottom;
+    dragRef.current.isMoved = false;
+  };
+
   // Khôi phục lịch sử chat TỪNG TÀI KHOẢN (Chỉ khôi phục cho thành viên nếu tin nhắn KHÔNG BỊ LẪN lời chào vãng lai cũ)
   const [messages, setMessages] = useState(() => {
     try {
@@ -110,7 +168,11 @@ const Chatbot = () => {
     return '';
   });
 
-  const toggleChatbot = () => {
+  const toggleChatbot = (e) => {
+    if (dragRef.current.isMoved) {
+      dragRef.current.isMoved = false;
+      return;
+    }
     setIsOpen(!isOpen);
   };
 
@@ -316,7 +378,11 @@ const Chatbot = () => {
   };
 
   return (
-    <div className="chatbot-wrapper">
+    <div 
+      className="chatbot-wrapper" 
+      style={{ bottom: `${position.bottom}px`, cursor: isDragging ? 'grabbing' : 'auto' }}
+      onMouseDown={handleMouseDown}
+    >
       {isOpen && (
         <div className="chatbot-window">
           {/* Header */}
@@ -324,7 +390,6 @@ const Chatbot = () => {
             <div className="chatbot-header-info">
               <div className="chatbot-avatar-container">
                 🤖
-                <div className="online-indicator-dot" title="Online - Phản hồi 0ms" />
               </div>
               <div className="chatbot-title-box">
                 <h3>

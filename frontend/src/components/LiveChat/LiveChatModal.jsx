@@ -220,8 +220,10 @@ export default function LiveChatModal({ socket, user, onClose }) {
               );
             })}
             {isTyping && (
-              <div style={{ alignSelf: 'flex-start', padding: '10px 15px', color: '#888', fontStyle: 'italic', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span className="typing-dots">Cửa hàng đang phản hồi...</span>
+              <div style={{ alignSelf: 'flex-start', padding: '14px 18px', background: '#fff', border: '1px solid #ffe0b2', borderRadius: '22px 22px 22px 6px', display: 'flex', alignItems: 'center', gap: '5px', animation: 'fadeIn 0.3s ease-out', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
+                <div className="typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
               </div>
             )}
             <div ref={messagesEndRef} />

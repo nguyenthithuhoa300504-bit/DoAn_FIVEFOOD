@@ -45,7 +45,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 9. [Phân hệ 9: Thông báo & Chat Realtime (Socket.io Gateway)](#9-phan-he-9-thong-bao--chat-realtime-socketio-gateway)
 10. [Phân hệ 10: Theo dõi Hành vi & Gợi ý Nâng cao (User Action Logging)](#10-phan-he-10-theo-doi-hanh-vi--goi-y-nang-cao-user-action-logging)
 11. [Phân hệ 11: Marketing, Tăng trưởng & Tương tác (Marketing & Engagement)](#11-phan-he-11-marketing-tang-truong--tuong-tac-marketing--engagement)
-
+12. [Phân hệ 12: Quản lý Chi nhánh Động (Dynamic Branch Management)](#12-phan-he-12-quan-ly-chi-nhanh-dong-dynamic-branch-management)
 
 ---
 
@@ -522,3 +522,40 @@ Phân hệ này tập trung vào các chiến lược thúc đẩy doanh thu, t�
    - Cung cấp nút nổi (Floating action button) cho phép người dùng mở khung modal hiển thị mã QR Zalo của Cửa hàng (Tạo mã QR tự động qua API `api.qrserver.com` kết hợp với số điện thoại cấu hình cứng ở Frontend).
    - Tích hợp nút chuyển hướng thẳng vào app Zalo thông qua giao thức `zalo.me/[SĐT]`.
    - **Mục đích**: Tăng tương tác hỗ trợ đa kênh (Omnichannel), giúp khách hàng liên hệ trực tiếp với nhân viên qua mạng xã hội phổ biến nhất Việt Nam, giảm rào cản giao tiếp.
+
+---
+
+## 12. PHÂN HỆ 12: QUẢN LÝ CHI NHÁNH ĐỘNG (Dynamic Branch Management)
+
+### Tổng quan (Overview)
+Phân hệ này cho phép Admin quản lý danh sách các chi nhánh của hệ thống một cách linh hoạt thông qua Database thay vì thiết lập cứng (hardcode) trên Frontend. Tính năng này giúp mở rộng khả năng quản lý chuỗi cung ứng, hiển thị trực quan các chi nhánh (như Phan Thiết, La Gi, Đảo Phú Quý...) trên bản đồ Leaflet, và cung cấp API để sau này phục vụ tính toán định tuyến giao hàng từ chi nhánh gần nhất.
+
+### A. Database Schema
+*   **Bảng `Branches`**: Bảng lưu trữ thông tin mạng lưới chi nhánh.
+    ```sql
+    CREATE TABLE Branches (
+        BranchID INT IDENTITY(1,1) PRIMARY KEY,
+        BranchName NVARCHAR(150) NOT NULL UNIQUE,
+        Latitude DECIMAL(9,6) NOT NULL,
+        Longitude DECIMAL(9,6) NOT NULL,
+        Address NVARCHAR(255) NULL,
+        CoverageRadius INT DEFAULT 5, -- Bán kính giao hàng (km)
+        Description NVARCHAR(255) NULL,
+        IsActive BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+    ```
+
+### B. RESTful API Endpoints
+| Method | Endpoint | Quyền truy cập | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/branches` | Public | Lấy danh sách toàn bộ chi nhánh đang hoạt động để render lên bản đồ |
+| `POST` | `/api/admin/branches` | Admin | Thêm mới một chi nhánh (Cung cấp Vĩ độ, Kinh độ, Tên) |
+| `PUT` | `/api/admin/branches/:id` | Admin | Cập nhật thông tin chi nhánh |
+| `DELETE` | `/api/admin/branches/:id` | Admin | Xóa mềm hoặc vô hiệu hóa chi nhánh |
+
+### C. Giao diện \u0026 Bản đồ (Frontend Implementation)
+1. **Admin Dashboard (Quản lý Chi Nhánh)**: 
+   - Thêm tab "Quản lý Chi nhánh" hỗ trợ đầy đủ các thao tác CRUD. Admin có thể nhập toạ độ (Lat, Lng) của chi nhánh mới và lưu vào DB.
+2. **Bản đồ Động (Dynamic Leaflet Map)**:
+   - Các điểm marker trên trang chủ (`App.jsx`) và Admin Dashboard (`AdminDashboard.jsx`) sẽ tự động gọi API `GET /api/branches` để lấy tọa độ và vẽ lên thay vì khai báo mảng tĩnh. Khi có cập nhật từ Admin, bản đồ sẽ ngay lập tức đồng bộ.

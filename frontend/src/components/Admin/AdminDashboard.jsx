@@ -272,7 +272,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
       </div>
       
       {/* 4 KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '36px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '24px', marginBottom: '36px' }}>
         
         {/* Doanh thu Card */}
         <div className="kpi-card" style={{ 
@@ -397,7 +397,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
       </div>
 
       {/* 4 CHARTS GRID - BIỂU ĐỒ SANG TRỌNG ĐA CUNG HÌNH */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '28px', marginBottom: '36px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))', gap: '28px', marginBottom: '36px' }}>
         
         {/* CHART 1: Area Chart Doanh Thu */}
         <div className="chart-card" style={{ 

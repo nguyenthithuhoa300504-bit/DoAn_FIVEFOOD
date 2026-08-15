@@ -16,11 +16,32 @@
             justify-content: center;
             padding: 50px;
             background-color: #ffffff;
+            margin: 0;
+            overflow-x: auto;
         }
         .mermaid {
             /* Tăng kích thước biểu đồ để chụp ảnh cho nét */
             transform: scale(1.2);
             transform-origin: top center;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px;
+                justify-content: flex-start;
+            }
+            .mermaid {
+                transform: scale(0.9);
+                transform-origin: top left;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .mermaid {
+                transform: scale(0.7);
+            }
         }
     </style>
 </head>

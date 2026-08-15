@@ -23,6 +23,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private lastAutoReplyTime: Map<number, number> = new Map();
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -148,6 +150,41 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       
       // Gửi cho người nhận
       this.server.to(`room_user_${payload.receiverId}`).emit('receiveMessage', messageObj);
+
+      // --- AUTOMATIC REPLY LOGIC ---
+      if (payload.receiverId === 1 && senderId !== 1) {
+        const now = Date.now();
+        const lastReply = this.lastAutoReplyTime.get(senderId) || 0;
+        
+        // Gửi tự động phản hồi nếu chưa gửi trong vòng 5 phút (300000ms)
+        if (now - lastReply > 300000) {
+          this.lastAutoReplyTime.set(senderId, now);
+          
+          // Giả lập độ trễ đánh máy của Admin (3 giây)
+          setTimeout(async () => {
+            const autoReplyMsg = "Cảm ơn bạn đã liên hệ FIVEFOOD! Hiện tại các tư vấn viên đang bận, chúng tôi sẽ phản hồi bạn trong vài phút tới nhé. Chúc bạn một ngày vui vẻ! ❤️";
+            try {
+              const autoReplyResult = await this.chatService.saveMessage(1, senderId, autoReplyMsg);
+              const autoObj = {
+                MessageID: autoReplyResult.MessageID,
+                SenderID: 1,
+                ReceiverID: senderId,
+                MessageText: autoReplyResult.MessageText,
+                SentAt: autoReplyResult.SentAt,
+                IsRead: false
+              };
+              
+              // Gửi tin nhắn tự động tới khách hàng
+              this.server.to(`room_user_${senderId}`).emit('receiveMessage', autoObj);
+              // Gửi cả tới phòng của Admin để giao diện Admin cũng cập nhật
+              this.server.to(`room_user_1`).emit('receiveMessage', autoObj);
+            } catch (err) {
+              console.error('Error sending auto reply:', err);
+            }
+          }, 3000);
+        }
+      }
+      // -----------------------------
     } catch (err) {
       console.error('Error handling sendMessage event:', err);
     }

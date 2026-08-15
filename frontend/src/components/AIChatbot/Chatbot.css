@@ -81,8 +81,9 @@
 
 /* --- Main Chat Window (Glassmorphism) --- */
 .chatbot-window {
-  width: 385px;
-  height: 580px;
+  width: 350px;
+  height: 520px;
+  max-height: calc(100vh - 120px);
   padding: 0 !important;
   margin-bottom: 22px;
   border-radius: 26px;

@@ -42,13 +42,9 @@ export default function AdminLiveChat({ socket, user }) {
     if (!socket) return;
     
     const handleReceiveMessage = (msg) => {
-      // Nếu tin nhắn thuộc về cuộc hội thoại đang mở
       if (msg.SenderID === selectedUserId || msg.ReceiverID === selectedUserId) {
         setMessages((prev) => [...prev, msg]);
         scrollToBottom();
-      } else if (msg.ReceiverID === user.userId) {
-        // Tin nhắn từ user khác gửi tới Admin, có thể load lại danh sách user để hiện lên đầu
-        // Tạm thời bỏ qua logic sort lại list
       }
     };
 
@@ -56,7 +52,7 @@ export default function AdminLiveChat({ socket, user }) {
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
     };
-  }, [socket, selectedUserId, user.userId]);
+  }, [socket, selectedUserId]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -94,65 +90,79 @@ export default function AdminLiveChat({ socket, user }) {
     setInputValue('');
   };
 
+  const activeUser = chatUsers.find(u => u.UserID === selectedUserId);
+
   return (
-    <div className="glass-panel fade-in" style={{ display: 'flex', height: '600px', padding: 0, overflow: 'hidden' }}>
+    <div className="glass-panel fade-in live-chat-container">
       
       {/* Cột trái: Danh sách khách hàng */}
-      <div style={{ width: '300px', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '15px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <h3 style={{ margin: 0 }}>👥 Khách hàng ({chatUsers.length})</h3>
+      <div className={`chat-sidebar ${selectedUserId ? 'hidden-on-mobile' : ''}`}>
+        <div className="chat-sidebar-header">
+          <h3>Hộp Thư ({chatUsers.length})</h3>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {chatUsers.length === 0 && <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>Chưa có tin nhắn nào</p>}
+        <div className="chat-sidebar-list">
+          {chatUsers.length === 0 && <p className="chat-empty-list">Chưa có tin nhắn nào</p>}
           
-          {chatUsers.map(u => (
-            <div 
-              key={u.UserID}
-              style={{ 
-                padding: '15px', 
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                cursor: 'pointer',
-                background: selectedUserId === u.UserID ? 'rgba(255, 87, 34, 0.1)' : 'transparent'
-              }}
-              onClick={() => setSelectedUserId(u.UserID)}
-            >
-              <div style={{ fontWeight: 'bold' }}>{u.FullName}</div>
-              <div style={{ fontSize: '12px', color: '#aaa' }}>{u.Email}</div>
-            </div>
-          ))}
+          {chatUsers.map(u => {
+            const isActive = selectedUserId === u.UserID;
+            const initial = u.FullName ? u.FullName.charAt(0).toUpperCase() : '?';
+            return (
+              <div 
+                key={u.UserID}
+                className={`chat-user-item ${isActive ? 'active' : ''}`}
+                onClick={() => setSelectedUserId(u.UserID)}
+              >
+                <div className="chat-avatar">
+                  {initial}
+                </div>
+                <div className="chat-user-info">
+                  <div className="chat-user-name">{u.FullName}</div>
+                  <div className="chat-user-email">{u.Email}</div>
+                </div>
+                {isActive && <div className="chat-active-indicator"></div>}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Cột phải: Nội dung Chat */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className={`chat-main ${!selectedUserId ? 'hidden-on-mobile' : ''}`}>
         {!selectedUserId ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
-            <p>👈 Chọn một khách hàng để bắt đầu chat</p>
+          <div className="chat-empty-state">
+            <div className="chat-empty-icon">💬</div>
+            <h2>Sẵn sàng hỗ trợ!</h2>
+            <p>Chọn một khách hàng bên trái để bắt đầu trò chuyện</p>
           </div>
         ) : (
           <>
             {/* Header chat */}
-            <div style={{ padding: '15px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
-              <h3 style={{ margin: 0 }}>💬 Đang chat với: {chatUsers.find(u => u.UserID === selectedUserId)?.FullName}</h3>
+            <div className="chat-main-header">
+              <button 
+                className="btn-back-mobile" 
+                onClick={() => setSelectedUserId(null)}
+              >
+                ⬅
+              </button>
+              <div className="chat-avatar small">
+                {activeUser?.FullName?.charAt(0).toUpperCase()}
+              </div>
+              <div className="chat-header-info">
+                <h3 style={{ margin: 0 }}>{activeUser?.FullName}</h3>
+                <span className="online-status">● Đang hoạt động</span>
+              </div>
             </div>
             
             {/* Messages */}
-            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="chat-messages-area">
               {messages.map((msg, idx) => {
                 const isMe = msg.SenderID === user.userId;
                 return (
-                  <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
-                    <div style={{
-                      background: isMe ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-                      padding: '12px 16px',
-                      borderRadius: isMe ? '15px 15px 0 15px' : '15px 15px 15px 0',
-                      color: '#fff',
-                      fontSize: '15px',
-                      wordBreak: 'break-word'
-                    }}>
+                  <div key={idx} className={`chat-bubble-wrapper ${isMe ? 'is-me' : 'is-other'}`}>
+                    <div className="chat-bubble">
                       {msg.MessageText}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#888', marginTop: '6px', textAlign: isMe ? 'right' : 'left' }}>
+                    <div className="chat-time">
                       {new Date(msg.SentAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}
                     </div>
                   </div>
@@ -162,16 +172,17 @@ export default function AdminLiveChat({ socket, user }) {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '10px' }}>
+            <form onSubmit={handleSend} className="chat-input-area">
               <input 
                 type="text" 
-                className="form-control" 
-                style={{ margin: 0, flex: 1 }}
-                placeholder="Nhập phản hồi cho khách hàng..." 
+                className="chat-input-field" 
+                placeholder="Viết tin nhắn cho khách hàng..." 
                 value={inputValue}
                 onChange={handleTypingChange}
               />
-              <button type="submit" className="btn btn-primary" style={{ padding: '0 30px' }}>Gửi</button>
+              <button type="submit" className="chat-send-btn">
+                ➤
+              </button>
             </form>
           </>
         )}

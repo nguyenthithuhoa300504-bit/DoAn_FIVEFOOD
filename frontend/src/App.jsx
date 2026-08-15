@@ -478,6 +478,31 @@ function App() {
     }
   }, [isLoggedIn]);
 
+  // Global Socket Listener cho tin nhắn mới (phía Khách hàng)
+  useEffect(() => {
+    if (!socket || !isLoggedIn || user?.role === 'Admin') return;
+    
+    const handleReceiveMessage = (msg) => {
+      if (activeTab !== 'contact') {
+        toast(`💬 Có tin nhắn mới từ Cửa hàng!`, {
+          description: msg.MessageText,
+          duration: 5000,
+          position: 'bottom-right',
+          style: {
+            background: 'linear-gradient(135deg, #FFB300 0%, #FF7A00 100%)',
+            color: '#fff',
+            fontWeight: 'bold',
+            borderRadius: '12px'
+          }
+        });
+      }
+    };
+
+    socket.on('receiveMessage', handleReceiveMessage);
+    return () => socket.off('receiveMessage', handleReceiveMessage);
+  }, [socket, isLoggedIn, user, activeTab]);
+
+
   // Tải danh sách đơn hàng cho Khách hàng
   const fetchClientOrders = async () => {
     try {
@@ -2301,7 +2326,7 @@ function App() {
                               setMarketingForm({...marketingForm, generatedContent: newContent, generatedVersions: newVersions});
                             }}
                           />
-                          <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
+                          <div style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                             <button 
                               className="btn btn-secondary" 
                               onClick={() => { navigator.clipboard.writeText(marketingForm.generatedContent); toast.success('Đã copy!'); }}
@@ -2394,7 +2419,7 @@ function App() {
             {adminSubtab === 'products' && (
               <>
                 {/* Executive Strip cho Thực Đơn */}
-                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', marginBottom: '28px' }}>
                   <div className="admin-stat-chip">
                     <span>Tổng Món Ăn</span>
                     <h3>🍔 {products.length} Món</h3>
@@ -2741,7 +2766,7 @@ function App() {
             {adminSubtab === 'orders' && (
               <>
                 {/* Executive Strip cho Đơn Hàng */}
-                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', marginBottom: '28px' }}>
                   <div className="admin-stat-chip" style={{ borderLeft: '4px solid #FFB300' }}>
                     <span>Chờ XN & Chuẩn Bị</span>
                     <h3>🟡 {adminOrders.filter(o => o.Status === 'Chờ xác nhận' || o.Status === 'Đang chuẩn bị').length} Đơn</h3>
@@ -2861,7 +2886,7 @@ function App() {
             {/* Quản lý Nhật ký Chatbot Admin */}
             {adminSubtab === 'chatbotLogs' && (
               <>
-                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '20px', marginBottom: '28px' }}>
                   <div className="admin-stat-chip" style={{ borderLeft: '4px solid #8B5CF6' }}>
                     <span>Trợ Lý Trí Tuệ Nhân Tạo</span>
                     <h3 style={{ color: '#a78bfa' }}>🤖 Gemini NLP Engine</h3>
@@ -2929,7 +2954,7 @@ function App() {
             {/* Quản lý Đánh Giá Admin */}
             {adminSubtab === 'reviews' && (
               <>
-                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '20px', marginBottom: '28px' }}>
                   <div className="admin-stat-chip" style={{ borderLeft: '4px solid #F59E0B' }}>
                     <span>Tỷ Lệ Đánh Giá Trung Bình</span>
                     <h3 style={{ color: '#F59E0B' }}>⭐ {adminReviews.length > 0 ? (adminReviews.reduce((sum, r) => sum + r.Rating, 0) / adminReviews.length).toFixed(1) : '5.0'} / 5.0</h3>
