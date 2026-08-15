@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Biểu đồ Thanh toán FIVEFOOD</title>
+    <!-- Tải thư viện Mermaid từ CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        // Khởi tạo Mermaid
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 50px;
+            background-color: #ffffff;
+        }
+        .mermaid {
+            /* Tăng kích thước biểu đồ để chụp ảnh cho nét */
+            transform: scale(1.2);
+            transform-origin: top center;
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+flowchart TD
+    %% Định nghĩa màu sắc
+    classDef startEnd fill:#000,stroke:#000,stroke-width:2px,color:#fff,shape:circle
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
+    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
+    classDef db fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+
+    Start(((Start))):::startEnd --> ViewCart["Khách hàng xem Giỏ hàng"]:::process
+    ViewCart --> Checkout["Bấm nút Thanh toán"]:::process
+    Checkout --> CheckAuth{"Đã đăng nhập?"}:::decision
+    
+    CheckAuth -- Chưa --> Login["Chuyển hướng đến Đăng nhập"]:::process
+    Login --> ViewCart
+    
+    CheckAuth -- Rồi --> InputInfo["Nhập thông tin giao hàng & Mã giảm giá"]:::process
+    InputInfo --> ChoosePayment{"Chọn phương thức<br/>thanh toán"}:::decision
+    
+    %% Luồng COD
+    ChoosePayment -- "Tiền mặt (COD)" --> SaveDB["Lưu đơn hàng vào CSDL"]:::db
+    
+    %% Luồng VNPay
+    ChoosePayment -- "VNPay" --> GenVNPay["Tạo URL thanh toán VNPay"]:::process
+    GenVNPay --> RedirectVNPay["Chuyển hướng sang VNPay Sandbox"]:::external
+    RedirectVNPay --> UserPay["Khách hàng quét mã QR / Nhập thẻ"]:::external
+    UserPay --> WaitIPN{"VNPay xử lý"}:::decision
+    
+    WaitIPN -- Thất bại / Hủy --> PayFail["Hiển thị lỗi thanh toán"]:::process
+    PayFail --> ViewCart
+    
+    WaitIPN -- Thành công --> IPN["Bắn tín hiệu Webhook IPN về Server"]:::process
+    IPN --> VerifyHash{"Xác thực<br/>Chữ ký (Hash)?"}:::decision
+    
+    VerifyHash -- Sai chữ ký --> PayFail
+    VerifyHash -- Hợp lệ --> SaveDB
+    
+    %% Lưu DB và kết thúc
+    SaveDB --> DeductStock["Trừ số lượng tồn kho"]:::db
+    DeductStock --> SendNotif["Gửi thông báo Đặt hàng thành công"]:::process
+    SendNotif --> End(((End))):::startEnd
+    </div>
+</body>
+</html>
