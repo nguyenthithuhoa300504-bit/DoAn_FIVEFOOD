@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
-import { MapPin, TrendingUp, Users, Package, Utensils, ShieldCheck, Calendar, Sparkles, Activity, Globe, BarChart2, PieChart as PieIcon, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Package, Utensils, ShieldCheck, Calendar, Sparkles, Activity, Globe, BarChart2, PieChart as PieIcon, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart, Line
@@ -10,10 +10,28 @@ import L from 'leaflet';
 const PIE_COLORS = ['#FFB300', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6', '#14B8A6', '#F97316'];
 const STATUS_COLORS = { 'Hoàn thành': '#10B981', 'Đang giao': '#3B82F6', 'Chờ xác nhận': '#FFB300', 'Đã hủy': '#EF4444' };
 
-const AdminDashboard = ({ orders = [], products = [], categories = [], usersCount = 0 }) => {
+const AdminDashboard = ({ orders = [], products = [], categories = [], usersCount = 0, isDark = true }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const themeColors = {
+    textMain: isDark ? '#e2e8f0' : '#1e293b',
+    textPrimary: isDark ? '#ffffff' : '#0f172a',
+    textSecondary: isDark ? '#94a3b8' : '#64748b',
+    bgBanner: isDark ? 'linear-gradient(135deg, rgba(25, 33, 49, 0.9) 0%, rgba(15, 20, 31, 0.95) 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
+    bgCard: isDark ? 'linear-gradient(145deg, rgba(28, 35, 51, 0.9) 0%, rgba(18, 22, 34, 0.95) 100%)' : '#ffffff',
+    bgChart: isDark ? 'linear-gradient(145deg, rgba(22, 28, 42, 0.85) 0%, rgba(15, 19, 29, 0.95) 100%)' : '#ffffff',
+    bgMap: isDark ? 'linear-gradient(145deg, rgba(22, 28, 42, 0.92) 0%, rgba(14, 18, 28, 0.98) 100%)' : '#ffffff',
+    border: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+    borderStrong: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.15)',
+    shadow: isDark ? '0 10px 25px rgba(0,0,0,0.35)' : '0 10px 25px rgba(0,0,0,0.05)',
+    gridLine: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    tooltipBg: isDark ? 'rgba(15, 20, 32, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+    tooltipColor: isDark ? '#fff' : '#0f172a',
+    mapTiles: isDark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  };
+
+
 
   const stats = useMemo(() => {
     let totalRevenue = 0;
@@ -125,7 +143,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         minZoom: 7
       }).setView([10.8, 108.4], 8); // Zoom 8 giúp ôm trọn vẹn cả đất liền và Đảo Phú Quý ngay lập tức
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      mapInstance.current.tileLayer = L.tileLayer(themeColors.mapTiles, {
         attribution: '&copy; OpenStreetMap &copy; CARTO (FIVEFOOD Radar)',
         subdomains: 'abcd',
         maxZoom: 20
@@ -199,30 +217,37 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
     }
   }, []);
 
+  
+  useEffect(() => {
+    if (mapInstance.current && mapInstance.current.tileLayer) {
+      mapInstance.current.tileLayer.setUrl(themeColors.mapTiles);
+    }
+  }, [themeColors.mapTiles]);
+
   return (
-    <div className="admin-dashboard fade-in" style={{ padding: '0', color: '#e2e8f0' }}>
+    <div className={`admin-dashboard fade-in ${isDark ? 'dark-mode' : 'light-mode'}`} style={{ padding: '0', color: themeColors.textMain }}>
       
       {/* Top Welcome Banner */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        background: 'linear-gradient(135deg, rgba(25, 33, 49, 0.9) 0%, rgba(15, 20, 31, 0.95) 100%)',
+        background: themeColors.bgBanner,
         padding: '26px 34px',
         borderRadius: '24px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 12px 35px rgba(0, 0, 0, 0.45)',
+        border: `1px solid ${themeColors.borderStrong}`,
+        boxShadow: themeColors.shadow,
         marginBottom: '32px',
         backdropFilter: 'blur(16px)',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ 
+          <h1 className="dashboard-main-title" style={{ 
             margin: 0, 
             fontSize: '28px', 
             fontWeight: '900',
-            background: 'linear-gradient(to right, #ffffff, #FFB300)',
+            background: isDark ? 'linear-gradient(to right, #ffffff, #FFB300)' : 'linear-gradient(to right, #be123c, #FFB300)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             display: 'flex',
@@ -231,7 +256,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
           }}>
             Trung Tâm Tối Ưu Hóa & Đánh Giá FIVEFOOD <Sparkles color="#FFB300" size={26} />
           </h1>
-          <p style={{ margin: '8px 0 0 0', color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>
+          <p style={{ margin: '8px 0 0 0', color: themeColors.textSecondary, fontSize: '15px', fontWeight: '500' }}>
             Hệ thống báo cáo chỉ số BI (Business Intelligence), bám sát vận đơn real-time toàn ranh giới tỉnh & biển đảo.
           </p>
         </div>
@@ -276,12 +301,12 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         
         {/* Doanh thu Card */}
         <div className="kpi-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(28, 35, 51, 0.9) 0%, rgba(18, 22, 34, 0.95) 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgCard,
+          border: `1px solid ${themeColors.border}`,
           borderTop: '4px solid #FFB300',
           padding: '26px',
           borderRadius: '20px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
+          boxShadow: themeColors.shadow,
           position: 'relative',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -289,8 +314,8 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <span style={{ color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Tổng Doanh Thu</span>
-              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: '#ffffff', fontWeight: '900', textShadow: '0 2px 10px rgba(255,179,0,0.25)' }}>
+              <span style={{ color: themeColors.textSecondary, fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Tổng Doanh Thu</span>
+              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: themeColors.textPrimary, fontWeight: '900', textShadow: '0 2px 10px rgba(255,179,0,0.25)' }}>
                 {stats.totalRevenue.toLocaleString('vi-VN')} đ
               </h2>
             </div>
@@ -306,12 +331,12 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* Đơn hàng Card */}
         <div className="kpi-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(28, 35, 51, 0.9) 0%, rgba(18, 22, 34, 0.95) 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgCard,
+          border: `1px solid ${themeColors.border}`,
           borderTop: '4px solid #10B981',
           padding: '26px',
           borderRadius: '20px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
+          boxShadow: themeColors.shadow,
           position: 'relative',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -319,9 +344,9 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <span style={{ color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Tổng Đơn Hàng</span>
-              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: '#ffffff', fontWeight: '900', textShadow: '0 2px 10px rgba(16,185,129,0.25)' }}>
-                {orders.length} <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>đơn</span>
+              <span style={{ color: themeColors.textSecondary, fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Tổng Đơn Hàng</span>
+              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: themeColors.textPrimary, fontWeight: '900', textShadow: '0 2px 10px rgba(16,185,129,0.25)' }}>
+                {orders.length} <span style={{ fontSize: '18px', color: themeColors.textSecondary, fontWeight: '600' }}>đơn</span>
               </h2>
             </div>
             <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(5,150,105,0.4) 100%)', border: '1px solid rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10B981', fontSize: '26px', boxShadow: '0 4px 15px rgba(16,185,129,0.3)' }}>
@@ -336,12 +361,12 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* Khách hàng Card */}
         <div className="kpi-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(28, 35, 51, 0.9) 0%, rgba(18, 22, 34, 0.95) 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgCard,
+          border: `1px solid ${themeColors.border}`,
           borderTop: '4px solid #3B82F6',
           padding: '26px',
           borderRadius: '20px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
+          boxShadow: themeColors.shadow,
           position: 'relative',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -349,9 +374,9 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <span style={{ color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Khách Hàng Đăng Ký</span>
-              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: '#ffffff', fontWeight: '900', textShadow: '0 2px 10px rgba(59,130,246,0.25)' }}>
-                {usersCount} <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>thành viên</span>
+              <span style={{ color: themeColors.textSecondary, fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Khách Hàng Đăng Ký</span>
+              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: themeColors.textPrimary, fontWeight: '900', textShadow: '0 2px 10px rgba(59,130,246,0.25)' }}>
+                {usersCount} <span style={{ fontSize: '18px', color: themeColors.textSecondary, fontWeight: '600' }}>thành viên</span>
               </h2>
             </div>
             <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(37,99,235,0.4) 100%)', border: '1px solid rgba(59,130,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', fontSize: '26px', boxShadow: '0 4px 15px rgba(59,130,246,0.3)' }}>
@@ -366,12 +391,12 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* Thực đơn Card */}
         <div className="kpi-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(28, 35, 51, 0.9) 0%, rgba(18, 22, 34, 0.95) 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgCard,
+          border: `1px solid ${themeColors.border}`,
           borderTop: '4px solid #EC4899',
           padding: '26px',
           borderRadius: '20px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
+          boxShadow: themeColors.shadow,
           position: 'relative',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -379,9 +404,9 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <span style={{ color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Thực Đơn Món Ăn</span>
-              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: '#ffffff', fontWeight: '900', textShadow: '0 2px 10px rgba(236,72,153,0.25)' }}>
-                {products.length} <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>món</span>
+              <span style={{ color: themeColors.textSecondary, fontSize: '13px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Thực Đơn Món Ăn</span>
+              <h2 style={{ margin: '10px 0 0 0', fontSize: '32px', color: themeColors.textPrimary, fontWeight: '900', textShadow: '0 2px 10px rgba(236,72,153,0.25)' }}>
+                {products.length} <span style={{ fontSize: '18px', color: themeColors.textSecondary, fontWeight: '600' }}>món</span>
               </h2>
             </div>
             <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(236,72,153,0.25) 0%, rgba(219,39,119,0.4) 100%)', border: '1px solid rgba(236,72,153,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EC4899', fontSize: '26px', boxShadow: '0 4px 15px rgba(236,72,153,0.3)' }}>
@@ -401,15 +426,15 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         
         {/* CHART 1: Area Chart Doanh Thu */}
         <div className="chart-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(22, 28, 42, 0.85) 0%, rgba(15, 19, 29, 0.95) 100%)', 
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgChart, 
+          border: `1px solid ${themeColors.border}`,
           borderRadius: '24px',
           padding: '28px',
           boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(16px)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ margin: 0, color: themeColors.textPrimary, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <TrendingUp size={22} color="#FFB300" /> XU HƯỚNG DOANH THU (7 NGÀY QUA)
             </h3>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px' }}>
@@ -429,10 +454,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis dataKey="displayDate" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: '700' }} axisLine={false} tickLine={false} dy={10} />
                 <YAxis stroke="#64748b" tickFormatter={(value) => `${value / 1000}k`} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: '600' }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,179,0,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,179,0,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 16px' }}
                   itemStyle={{ color: '#FFB300', fontWeight: 'bold', fontSize: '16px' }}
                   formatter={(value) => [`${value.toLocaleString('vi-VN')} đ`, "Doanh thu"]}
-                  labelStyle={{ color: '#94a3b8', marginBottom: '6px', fontWeight: 'bold' }}
+                  labelStyle={{ color: themeColors.textSecondary, marginBottom: '6px', fontWeight: 'bold' }}
                 />
                 <Area type="monotone" dataKey="Revenue" stroke="#FFB300" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" activeDot={{ r: 8, stroke: '#fff', strokeWidth: 3, fill: '#FF7A00', boxShadow: '0 0 15px #FFB300' }} name="Doanh thu" animationDuration={1500} />
               </AreaChart>
@@ -442,15 +467,15 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* CHART 2: Bar Chart Top Món Ăn Bán Chạy */}
         <div className="chart-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(22, 28, 42, 0.85) 0%, rgba(15, 19, 29, 0.95) 100%)', 
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgChart, 
+          border: `1px solid ${themeColors.border}`,
           borderRadius: '24px',
           padding: '28px',
           boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(16px)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ margin: 0, color: themeColors.textPrimary, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <BarChart2 size={22} color="#00F2FE" /> TOP MÓN ĂN BÁN CHẠY NHẤT (THEO LƯỢT GỌI)
             </h3>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px' }}>
@@ -464,7 +489,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: '600' }} axisLine={false} tickLine={false} dy={10} />
                 <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(0,242,254,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(0,242,254,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
                   itemStyle={{ color: '#00F2FE', fontWeight: 'bold', fontSize: '15px' }}
                   formatter={(value) => [`${value} lượt gọi món`, "Đã tiêu thụ"]}
                 />
@@ -480,15 +505,15 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* CHART 3: Pie Chart Cơ cấu Danh mục */}
         <div className="chart-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(22, 28, 42, 0.85) 0%, rgba(15, 19, 29, 0.95) 100%)', 
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgChart, 
+          border: `1px solid ${themeColors.border}`,
           borderRadius: '24px',
           padding: '28px',
           boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(16px)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ margin: 0, color: themeColors.textPrimary, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <PieIcon size={22} color="#3B82F6" /> CƠ CẤU DANH MỤC THỰC ĐƠN
             </h3>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px' }}>
@@ -515,11 +540,11 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                   ))}
                 </Pie>
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
-                  itemStyle={{ color: '#fff', fontWeight: 'bold', fontSize: '16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,255,255,0.2)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  itemStyle={{ color: themeColors.tooltipColor, fontWeight: 'bold', fontSize: '16px' }}
                   formatter={(value) => [`${value} món`, "Số lượng"]}
                 />
-                <Legend wrapperStyle={{ color: '#e2e8f0', fontSize: '13px', fontWeight: '600', paddingTop: '15px' }} iconType="circle" iconSize={10} />
+                <Legend wrapperStyle={{ color: themeColors.textMain, fontSize: '13px', fontWeight: '600', paddingTop: '15px' }} iconType="circle" iconSize={10} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -527,15 +552,15 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
         {/* CHART 4: Tình Trạng Phân Khối Đơn Hàng (OrderStatus Bar/Donut) */}
         <div className="chart-card" style={{ 
-          background: 'linear-gradient(145deg, rgba(22, 28, 42, 0.85) 0%, rgba(15, 19, 29, 0.95) 100%)', 
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: themeColors.bgChart, 
+          border: `1px solid ${themeColors.border}`,
           borderRadius: '24px',
           padding: '28px',
           boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(16px)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ margin: 0, color: themeColors.textPrimary, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Activity size={22} color="#EC4899" /> PHÂN TÍCH TÌNH TRẠNG VẬN ĐƠN
             </h3>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px' }}>
@@ -549,7 +574,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" stroke="#64748b" tick={{ fill: '#e2e8f0', fontSize: 14, fontWeight: '700' }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(236,72,153,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(236,72,153,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
                   itemStyle={{ color: '#EC4899', fontWeight: 'bold', fontSize: '15px' }}
                   formatter={(value) => [`${value} đơn`, "Số lượng"]}
                 />
@@ -567,8 +592,8 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
 
       {/* LEAFLET MAP SECTION - HOÀN THIỆN ĐỈNH CAO BAO QUÁT ĐẢO PHÚ QUÝ & TRẠM GIAO HÀNG */}
       <div style={{ 
-        background: 'linear-gradient(145deg, rgba(22, 28, 42, 0.92) 0%, rgba(14, 18, 28, 0.98) 100%)', 
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: themeColors.bgMap, 
+        border: `1px solid ${themeColors.borderStrong}`,
         borderRadius: '24px',
         padding: '30px',
         boxShadow: '0 15px 40px rgba(0,0,0,0.55)',
@@ -576,10 +601,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <h3 style={{ margin: 0, color: '#ffffff', fontSize: '20px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '0.5px' }}>
+            <h3 style={{ margin: 0, color: themeColors.textPrimary, fontSize: '20px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '0.5px' }}>
               <Globe size={26} color="#00F2FE" /> BẢN ĐỒ MẠNG LƯỚI CHI NHÁNH & BẾP TRUNG TÂM (CLOUD KITCHENS)
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '14px', margin: '6px 0 0 0', fontWeight: '500' }}>
+            <p style={{ color: themeColors.textSecondary, fontSize: '14px', margin: '6px 0 0 0', fontWeight: '500' }}>
               Phủ sóng 5 Chi nhánh tại Bình Thuận và <b>Đảo Phú Quý</b> • Đơn hàng tự động điều phối tại bếp địa phương (Bán kính 3-5km) nhằm đảm bảo món ăn 100% tươi nóng.
             </p>
           </div>
@@ -610,19 +635,13 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
       
       {/* Style injections cho hiệu ứng Hover cao cấp */}
       <style>{`
-        .kpi-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65) !important;
-          border-color: rgba(255, 179, 0, 0.5) !important;
-        }
-        .chart-card:hover {
-          border-color: rgba(255, 255, 255, 0.18) !important;
-          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55) !important;
-        }
-        .leaflet-container {
-          background-color: #080b11 !important;
-          font-family: 'Inter', system-ui, sans-serif !important;
-        }
+        .kpi-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important; border-color: rgba(255, 179, 0, 0.5) !important; }
+        .dark-mode .kpi-card:hover { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65) !important; }
+        .chart-card:hover { border-color: rgba(0, 0, 0, 0.1) !important; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.1) !important; }
+        .dark-mode .chart-card:hover { border-color: rgba(255, 255, 255, 0.18) !important; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55) !important; }
+        .leaflet-container { font-family: 'Inter', system-ui, sans-serif !important; }
+        .dark-mode .leaflet-container { background-color: #080b11 !important; }
+        .light-mode .leaflet-container { background-color: #f8fafc !important; }
         .executive-dark-popup .leaflet-popup-content-wrapper {
           background: rgba(15, 22, 36, 0.95) !important;
           border: 1px solid rgba(255, 179, 0, 0.4) !important;

@@ -18,6 +18,7 @@ import LiveChatModal from './components/LiveChat/LiveChatModal';
 import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import AdminBranches from './components/Admin/AdminBranches';
 import ProtectedRoute from './components/Common/ProtectedRoute';
 import AdminLogin from './components/Admin/AdminLogin';
 import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
@@ -216,7 +217,29 @@ function App() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [activeTabState, setActiveTabState] = useState('home'); // home, menu, orders, admin, login, register
+  const [activeTabState, setActiveTabState] = useState('home');
+
+  const [adminTheme, setAdminTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
+  const toggleAdminTheme = () => {
+    const newTheme = adminTheme === 'dark' ? 'light' : 'dark';
+    setAdminTheme(newTheme);
+    localStorage.setItem('admin_theme', newTheme);
+  };
+ // home, menu, orders, admin, login, register
+  const [branchesMap, setBranchesMap] = useState({});
+  const fetchBranchesMap = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/branches`);
+      const data = await res.json();
+      if (data) {
+        const bMap = {};
+        data.forEach(b => bMap[b.BranchID] = b.BranchName);
+        setBranchesMap(bMap);
+      }
+    } catch (err) {
+      console.error('Lỗi tải danh sách chi nhánh', err);
+    }
+  };
 
   const activeTab = activeTabState;
   const setActiveTab = (tab, customSubtab = null) => {
@@ -534,10 +557,13 @@ function App() {
     }
   };
 
-  const fetchAdminReviews = async () => {
+  const fetchAdminReviews = async (showToast = false) => {
     try {
       const data = await apiFetch(`${API_BASE_URL}/reviews/admin/all`);
       setAdminReviews(data || []);
+      if (showToast) {
+        toast.success('Đã tải lại danh sách đánh giá');
+      }
     } catch (err) {
       console.error('Lỗi khi tải đánh giá admin', err);
       setAdminError('Lỗi khi tải danh sách đánh giá');
@@ -1223,7 +1249,7 @@ function App() {
   }
 
   return (
-    <div className={`app-container ${isAdminRoute ? 'admin-theme-wrapper' : ''}`}>
+    <div className={`app-container ${isAdminRoute ? `admin-theme-wrapper ${adminTheme}-mode` : ''}`}>
       <Toaster position="bottom-right" />
       {/* Header */}
       {isAdminRoute ? (
@@ -1240,6 +1266,27 @@ function App() {
               </h1>
             </div>
             <div className="header-actions" style={{ gap: '16px', display: 'flex', alignItems: 'center' }}>
+
+              <button 
+                onClick={toggleAdminTheme}
+                style={{
+                  background: adminTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                  border: '1px solid ' + (adminTheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'),
+                  borderRadius: '50%',
+                  width: '38px',
+                  height: '38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: adminTheme === 'dark' ? '#fff' : '#0f172a',
+                  transition: 'all 0.3s'
+                }}
+                title="Chuyển Giao diện Sáng/Tối"
+              >
+                {adminTheme === 'dark' ? '☀️' : '🌙'}
+              </button>
+
               <button 
                 onClick={() => { setActiveTab('home'); navigate('/'); }} 
                 style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: '#ccc', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -2171,6 +2218,12 @@ function App() {
               >
                 📢 Marketing AI
               </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'branches' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('branches'); navigate('/admin/branches'); }}
+              >
+                🏢 Chi Nhánh
+              </button>
             </div>
 
             {adminSubtab === 'marketing' && (
@@ -2413,8 +2466,18 @@ function App() {
                 products={products} 
                 categories={categories} 
                 usersCount={adminUsersCount} 
-              />
-            )}
+                branchesMap={branchesMap}
+                isDark={adminTheme === 'dark'}
+                />
+              )}
+
+              {adminSubtab === 'branches' && (
+                <AdminBranches 
+                  apiFetch={apiFetch}
+                  API_BASE_URL={API_BASE_URL}
+                  fetchBranchesMap={fetchBranchesMap}
+                />
+              )}
 
             {adminSubtab === 'products' && (
               <>
@@ -2971,7 +3034,7 @@ function App() {
               <div className="glass-panel fade-in" style={{ padding: '28px', borderRadius: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ color: '#00e5ff', margin: 0 }}>Quản lý Đánh Giá & Bình Luận</h3>
-                  <button className="btn btn-secondary" onClick={fetchAdminReviews}>Làm mới</button>
+                  <button className="btn btn-secondary" onClick={() => fetchAdminReviews(true)}>🔄 Làm mới</button>
                 </div>
                 
                 <div className="admin-products-table-container">

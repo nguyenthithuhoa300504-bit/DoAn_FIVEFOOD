@@ -1,7 +1,7 @@
 # TÀI LIỆU THIẾT KẾ CÁC PHÂN HỆ HỆ THỐNG (DESIGN_MODULES)
 ## DỰ ÁN: PHÁT TRIỂN ỨNG DỤNG WEB ĐẶT VÀ GIAO ĐỒ ĂN TRỰC TUYẾN FIVEFOOD
 
-Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **11 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
+Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **12 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
 
 ---
 

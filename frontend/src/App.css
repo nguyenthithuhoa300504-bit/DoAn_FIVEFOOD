@@ -5450,3 +5450,324 @@ html, body {
   0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
   40% { transform: scale(1); opacity: 1; }
 }
+
+
+
+
+/* ========================================================
+   GIAO DIỆN LIGHT MODE (SÁNG CÓ ÁNH HỒNG) CHO TOÀN BỘ TRANG ADMIN
+   ======================================================== */
+.admin-theme-wrapper.light-mode {
+  background-color: #fff5f8 !important; 
+  color: #1e293b !important;
+}
+
+/* FIX LỖI TÀNG HÌNH CHỮ: Đảm bảo toàn bộ chữ đều dùng màu đen nhạt */
+.admin-theme-wrapper.light-mode *,
+.admin-theme-wrapper.light-mode h1,
+.admin-theme-wrapper.light-mode h2,
+.admin-theme-wrapper.light-mode h3,
+.admin-theme-wrapper.light-mode h4,
+.admin-theme-wrapper.light-mode h5,
+.admin-theme-wrapper.light-mode h6,
+.admin-theme-wrapper.light-mode p,
+.admin-theme-wrapper.light-mode span,
+.admin-theme-wrapper.light-mode label,
+.admin-theme-wrapper.light-mode div,
+.admin-theme-wrapper.light-mode strong,
+.admin-theme-wrapper.light-mode b,
+.admin-theme-wrapper.light-mode i,
+.admin-theme-wrapper.light-mode td {
+  color: #1e293b !important;
+}
+
+/* Các trường hợp ngoại lệ cần giữ nguyên màu trắng hoặc gradient */
+.admin-theme-wrapper.light-mode .subtab-btn.active,
+.admin-theme-wrapper.light-mode .subtab-btn.active span,
+.admin-theme-wrapper.light-mode .subtab-btn.active i,
+.admin-theme-wrapper.light-mode .btn-primary,
+.admin-theme-wrapper.light-mode .btn-primary span,
+.admin-theme-wrapper.light-mode .btn-checkout,
+.admin-theme-wrapper.light-mode .badge,
+.admin-theme-wrapper.light-mode .badge span {
+  color: #ffffff !important;
+}
+
+.admin-theme-wrapper.light-mode .list-header h2,
+.admin-theme-wrapper.light-mode .list-header h2 span {
+  background: linear-gradient(to right, #9f1239, #f43f5e) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Header */
+.admin-theme-wrapper.light-mode .header-bar {
+  background: #ffffff !important;
+  border-bottom: 2px solid #fecdd3 !important; 
+  box-shadow: 0 4px 15px rgba(255, 192, 203, 0.25) !important;
+}
+
+/* Subtabs (Thanh điều hướng) */
+.admin-theme-wrapper.light-mode .admin-subtabs {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(254, 205, 211, 0.8) !important;
+  box-shadow: 0 10px 30px rgba(254, 205, 211, 0.25) !important;
+}
+
+.admin-theme-wrapper.light-mode .subtab-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+.admin-theme-wrapper.light-mode .subtab-btn:hover {
+  background: #ffe4e6 !important; 
+}
+
+.admin-theme-wrapper.light-mode .subtab-btn.active {
+  background: linear-gradient(135deg, #f43f5e 0%, #fb923c 100%) !important;
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.35) !important;
+}
+
+/* Glass Panels & Forms */
+.admin-theme-wrapper.light-mode .glass-panel,
+.admin-theme-wrapper.light-mode .admin-form-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(254, 205, 211, 0.8) !important;
+  box-shadow: 0 12px 35px rgba(254, 205, 211, 0.2) !important;
+  border-radius: 20px !important;
+}
+
+.admin-theme-wrapper.light-mode .form-control,
+.admin-theme-wrapper.light-mode select,
+.admin-theme-wrapper.light-mode input,
+.admin-theme-wrapper.light-mode textarea {
+  background: #fff0f5 !important; 
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+  border-radius: 12px !important;
+}
+.admin-theme-wrapper.light-mode .form-control:focus,
+.admin-theme-wrapper.light-mode input:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.25) !important;
+  background: #ffffff !important;
+}
+
+/* KHUNG BẢNG BIỂU (Tâm điểm bắt mắt) */
+.admin-theme-wrapper.light-mode .admin-products-table-container,
+.admin-theme-wrapper.light-mode .admin-table-container {
+  background: #ffffff !important;
+  border: 1px solid rgba(254, 205, 211, 0.8) !important;
+  box-shadow: 0 15px 40px rgba(254, 205, 211, 0.25) !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+}
+
+.admin-theme-wrapper.light-mode table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+}
+
+.admin-theme-wrapper.light-mode th {
+  background: linear-gradient(90deg, #fff5f8 0%, #ffe4e6 100%) !important;
+  color: #9f1239 !important; 
+  border-bottom: 2px solid rgba(244, 63, 94, 0.4) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  padding: 16px 22px !important;
+}
+
+.admin-theme-wrapper.light-mode td {
+  border-bottom: 1px solid rgba(254, 205, 211, 0.5) !important;
+  padding: 18px 22px !important;
+  background: #ffffff !important;
+  transition: all 0.3s ease !important;
+}
+
+.admin-theme-wrapper.light-mode tr:hover td {
+  background: #fff0f5 !important; 
+  transform: scale(1.002);
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode tr:hover td * {
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode tr:hover td .btn-primary,
+.admin-theme-wrapper.light-mode tr:hover td .btn-primary span,
+.admin-theme-wrapper.light-mode tr:hover td .btn-checkout,
+.admin-theme-wrapper.light-mode tr:hover td .badge,
+.admin-theme-wrapper.light-mode tr:hover td .badge span {
+  color: #ffffff !important;
+}
+
+/* Thẻ thống kê (Stat Chips) */
+.admin-theme-wrapper.light-mode .admin-stat-chip {
+  background: linear-gradient(145deg, #ffffff 0%, #fff5f8 100%) !important;
+  border: 1px solid rgba(254, 205, 211, 0.8) !important;
+  border-left: 5px solid #f43f5e !important;
+  box-shadow: 0 10px 25px rgba(254, 205, 211, 0.25) !important;
+  border-radius: 18px !important;
+  transition: all 0.3s ease !important;
+}
+
+.admin-theme-wrapper.light-mode .admin-stat-chip:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 15px 35px rgba(244, 63, 94, 0.3) !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  border-left-color: #be123c !important;
+}
+
+.admin-theme-wrapper.light-mode .admin-stat-chip span {
+  color: #64748b !important;
+  font-weight: 700 !important;
+}
+
+.admin-theme-wrapper.light-mode .admin-stat-chip h3 {
+  color: #0f172a !important;
+}
+
+.admin-theme-wrapper.light-mode .admin-stat-chip:hover span,
+.admin-theme-wrapper.light-mode .admin-stat-chip:hover h3 {
+  color: #0f172a !important; 
+}
+
+/* Fix Status badges colors to pop up in light mode */
+.admin-theme-wrapper.light-mode .status-badge,
+.admin-theme-wrapper.light-mode .badge {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+}
+
+/* Ép tất cả các hover effect (nếu có) trên mọi thành phần ở light mode đều phải giữ chữ tối (ngoại trừ nút) */
+.admin-theme-wrapper.light-mode *:hover {
+  text-shadow: none !important;
+}
+.admin-theme-wrapper.light-mode *:hover > h1,
+.admin-theme-wrapper.light-mode *:hover > h2,
+.admin-theme-wrapper.light-mode *:hover > h3,
+.admin-theme-wrapper.light-mode *:hover > p,
+.admin-theme-wrapper.light-mode *:hover > span {
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode .subtab-btn:hover span,
+.admin-theme-wrapper.light-mode .subtab-btn:hover i {
+  color: #0f172a !important;
+}
+
+/* Đảm bảo lại lần nữa cho Table row */
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td,
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td *,
+.admin-theme-wrapper.light-mode tr:hover td,
+.admin-theme-wrapper.light-mode tr:hover td * {
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td .btn-primary,
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td .btn-primary span,
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td .btn-checkout,
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td .badge,
+.admin-theme-wrapper.light-mode .admin-table tbody tr:hover td .badge span {
+  color: #ffffff !important;
+}
+\n.admin-theme-wrapper.light-mode tr:hover td {
+  background: #fff0f5 !important; 
+  transform: scale(1.002);
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode tr:hover td * {
+  color: #1e293b !important;
+}
+
+.admin-theme-wrapper.light-mode tr:hover td .btn-primary,
+.admin-theme-wrapper.light-mode tr:hover td .btn-primary span,
+.admin-theme-wrapper.light-mode tr:hover td .btn-checkout,
+.admin-theme-wrapper.light-mode tr:hover td .badge,
+.admin-theme-wrapper.light-mode tr:hover td .badge span {
+  color: #ffffff !important;
+}
+/* Protect gradient titles from global hover color resets */
+.admin-theme-wrapper.light-mode .dashboard-main-title,
+.admin-theme-wrapper.light-mode *:hover > .dashboard-main-title {
+  color: transparent !important;
+}
+
+
+/* Global protect gradient titles from color overrides (Dark & Light) */
+.dashboard-main-title,
+*:hover > .dashboard-main-title {
+  color: transparent !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+}
+
+
+/* --- USER REQUEST: Product card styling overrides --- */
+/* Thicker border for light mode */
+.dbs-product-card {
+  border: 1.5px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Thicker border for dark mode */
+body.dark-theme .dbs-product-card {
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Move name to the left */
+.dbs-product-name {
+  text-align: left !important;
+}
+
+/* Move rating to the left (it's the 2nd child in .dbs-product-info) */
+.dbs-product-info > div:nth-child(2) {
+  justify-content: flex-start !important;
+}
+
+/* Move price to the left */
+.dbs-price-row {
+  align-items: flex-start !important;
+}
+
+
+/* --- USER REQUEST: Product card styling overrides V2 --- */
+/* Thicker and more visible border */
+.dbs-product-card {
+  border: 2px solid #cbd5e1 !important; /* Slate 300 - clearly visible */
+}
+
+/* Thicker border for dark mode */
+body.dark-theme .dbs-product-card {
+  border: 2px solid #475569 !important; /* Slate 600 - clearly visible */
+}
+
+/* Make product name bigger and bolder */
+.dbs-product-name {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  margin-bottom: 10px !important;
+}
+
+
+/* --- USER REQUEST: Product card shadow enhancement --- */
+/* Đổ bóng rõ nét hơn cho thẻ ở chế độ Sáng */
+.dbs-product-card {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Đổ bóng sâu hơn cho thẻ ở chế độ Tối */
+body.dark-theme .dbs-product-card {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Hiệu ứng nảy lên và bóng đổ màu cam đậm hơn khi di chuột (Hover) */
+.dbs-product-card:hover {
+  transform: translateY(-8px) !important;
+  box-shadow: 0 16px 40px rgba(255, 122, 0, 0.25) !important;
+}
+body.dark-theme .dbs-product-card:hover {
+  box-shadow: 0 16px 40px rgba(255, 122, 0, 0.4) !important;
+}
