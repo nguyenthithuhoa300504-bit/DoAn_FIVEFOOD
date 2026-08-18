@@ -354,6 +354,7 @@ function App() {
   const [appliedPromo, setAppliedPromo] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promoError, setPromoError] = useState('');
+  const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoSuccess, setPromoSuccess] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [checkoutError, setCheckoutError] = useState('');
@@ -708,12 +709,16 @@ function App() {
     setPromoError('');
     setPromoSuccess('');
     const finalCode = codeToApply?.trim();
-    if (!finalCode) return;
+    if (!finalCode) {
+      setDiscountAmount(0);
+      setAppliedPromo('');
+      return;
+    }
     try {
       const data = await apiFetch(`${API_BASE_URL}/orders/validate-promo`, {
         method: 'POST',
         body: JSON.stringify({
-          code: finalCode.toUpperCase(),
+          code: finalCode,
           totalAmount: totalPrice
         })
       });
@@ -2093,10 +2098,16 @@ function App() {
               </div>
 
               {cart.length === 0 ? (
-                <div className="empty-cart-view" style={{ padding: '50px 20px' }}>
-                  <span className="empty-emoji" style={{ fontSize: '60px' }}>🛒</span>
-                  <p style={{ fontSize: '18px', marginTop: '15px' }}>Giỏ hàng của bạn đang trống.</p>
-                  <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={() => setActiveTab('menu')}>Quay lại Trang Chủ để chọn món</button>
+                <div className="premium-empty-cart">
+                  <div className="empty-cart-illustration">
+                    <span className="empty-emoji bounce-animation">🛒</span>
+                    <div className="empty-cart-shadow"></div>
+                  </div>
+                  <h3 className="empty-cart-title">Giỏ hàng đang trống!</h3>
+                  <p className="empty-cart-desc">Vẫn còn rất nhiều món ngon đang chờ bạn khám phá. Hãy chọn cho mình một món thật ưng ý nhé!</p>
+                  <button className="premium-explore-btn" onClick={() => setActiveTab('menu')}>
+                    Khám phá Menu ngay <span className="arrow-icon">→</span>
+                  </button>
                 </div>
               ) : (
                 <div className="cart-items-list" style={{ gap: '15px' }}>
@@ -3341,58 +3352,25 @@ function App() {
               {/* Cột Phải: Voucher, Thanh Toán & Tổng Tiền */}
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  {/* Voucher Section */}
-                  <div className="form-group">
-                    <label style={{ fontWeight: 'bold' }}>🎟️ Mã Giảm Giá (Voucher)</label>
-                    <div className="promo-list">
-                      {activePromotions.map(promo => {
-                        const potentialDiscount = Math.min((totalPrice * promo.DiscountPercentage) / 100, promo.MaxDiscountAmount);
-                        const isExpensive = totalPrice >= 150000;
-                        const isEligible = totalPrice >= promo.MinOrderValue;
-                        
-                        return (
-                          <label 
-                            key={promo.PromotionID} 
-                            className={`promo-card ${promoCodeInput === promo.PromoCode ? 'selected' : ''} ${!isEligible ? 'disabled' : ''}`}
-                          >
-                            <input 
-                              type="radio" 
-                              name="promo" 
-                              value={promo.PromoCode}
-                              checked={promoCodeInput === promo.PromoCode}
-                              onChange={() => {
-                                if (isEligible) {
-                                  setPromoCodeInput(promo.PromoCode);
-                                  handleApplyPromo(promo.PromoCode);
-                                }
-                              }}
-                              disabled={!isEligible}
-                            />
-                            <div className="promo-card-content">
-                              <div className="promo-card-header">
-                                <span className="promo-code-badge">{promo.PromoCode}</span>
-                                {isEligible ? (
-                                  <span className="promo-discount-text">
-                                    {isExpensive 
-                                      ? `Giảm ngay ${potentialDiscount.toLocaleString('vi-VN')}đ` 
-                                      : `Giảm ${promo.DiscountPercentage}% (Tối đa ${promo.MaxDiscountAmount.toLocaleString('vi-VN')}đ)`}
-                                  </span>
-                                ) : (
-                                  <span className="promo-discount-text" style={{ color: '#aaa', fontSize: '12px' }}>
-                                    Đơn tối thiểu {promo.MinOrderValue.toLocaleString('vi-VN')}đ
-                                  </span>
-                                )}
-                              </div>
-                              {promo.Description && <div className="promo-desc">{promo.Description}</div>}
-                            </div>
-                          </label>
-                        );
-                      })}
-                      {activePromotions.length === 0 && <div style={{ fontSize: '13px', color: '#666', padding: '10px 0' }}>Không có mã giảm giá khả dụng.</div>}
+                                    {/* Voucher Section */}
+                  <div className="form-group" style={{ marginBottom: '15px' }}>
+                    <div 
+                      className="fivefood-voucher-trigger"
+                      onClick={() => setShowPromoModal(true)}
+                    >
+                      <div className="voucher-trigger-left">
+                        <span className="voucher-icon">🎟️</span>
+                        <div className="voucher-text">
+                          <span className="voucher-title">Giảm giá từ FIVEFOOD</span>
+                          {appliedPromo ? (
+                            <span className="voucher-applied-text">Đã chọn: {appliedPromo}</span>
+                          ) : (
+                            <span className="voucher-desc">Chọn hoặc nhập mã</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="voucher-arrow">&gt;</span>
                     </div>
-                    <button type="button" className="btn btn-secondary" onClick={() => handleApplyPromo()} style={{ marginTop: '10px', width: '100%' }}>Áp dụng Khuyến mãi</button>
-                    {promoError && <div style={{ color: '#ff5252', fontSize: '13px', marginTop: '5px' }}>⚠️ {promoError}</div>}
-                    {promoSuccess && <div className="promo-success">✓ {promoSuccess}</div>}
                   </div>
 
                   {/* Payment Methods */}
@@ -3741,6 +3719,127 @@ function App() {
           <p>&copy; {new Date().getFullYear()} FIVEFOOD. Tất cả các quyền được bảo lưu.</p>
         </div>
       </footer>
+      )}
+
+      
+      {/* FIVEFOOD VOUCHER MODAL */}
+      {showPromoModal && (
+        <div className="fivefood-voucher-overlay" onClick={() => setShowPromoModal(false)}>
+          <div className="fivefood-voucher-modal" onClick={e => e.stopPropagation()}>
+            <div className="fivefood-voucher-header">
+              <h2>Giảm giá từ FIVEFOOD</h2>
+              <button className="fivefood-voucher-close" onClick={() => setShowPromoModal(false)}>✕</button>
+            </div>
+            
+            <div className="fivefood-voucher-body">
+              <div className="fivefood-voucher-list">
+                {activePromotions.map(promo => {
+                  const potentialDiscount = Math.min((totalPrice * promo.DiscountPercentage) / 100, promo.MaxDiscountAmount);
+                  const isExpensive = totalPrice >= 150000;
+                  const isEligible = totalPrice >= promo.MinOrderValue;
+                  const isSelected = promoCodeInput === promo.PromoCode;
+
+                  return (
+                    <div key={promo.PromotionID} className={`fivefood-voucher-card ${!isEligible ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`}>
+                      <div className="fivefood-voucher-left">
+                        <span className="fivefood-ticket-icon">🎟️</span>
+                        <span className="fivefood-ticket-label">FIVEFOOD</span>
+                      </div>
+                      <div className="fivefood-voucher-right">
+                        <div className="fivefood-voucher-info">
+                          <div className="fivefood-voucher-tags">
+                            <span className="tag-limit">Quy đổi giới hạn</span>
+                            <span className="tag-source">Từ FIVEFOOD</span>
+                          </div>
+                          <h3 className="fivefood-voucher-title" style={{textTransform: 'uppercase'}}>
+                            {promo.PromoCode}
+                          </h3>
+                          <p className="fivefood-voucher-subtitle">
+                            Cho đơn trên {promo.MinOrderValue.toLocaleString('vi-VN')}đ{promo.MaxDiscountAmount < 1000000 ? `, giảm tối đa ${promo.MaxDiscountAmount.toLocaleString('vi-VN')}đ` : ''}
+                          </p>
+                          <p className="fivefood-voucher-note">
+                            Dành cho cửa hàng và khách hàng thân thiết.
+                          </p>
+                          {!isEligible && (
+                            <p className="fivefood-voucher-warning">
+                              <span style={{color: '#f97316', marginRight: 4, fontWeight: 'bold'}}>!</span> 
+                              Mua thêm {(promo.MinOrderValue - totalPrice).toLocaleString('vi-VN')}đ để dùng voucher...
+                            </p>
+                          )}
+                          <div className="fivefood-voucher-footer">
+                            <div className="fivefood-progress-bar">
+                              <div className="fivefood-progress-fill" style={{width: '77%'}}></div>
+                            </div>
+                            <div className="fivefood-footer-text">
+                              <span>Đã dùng 77%, Có hiệu lực ngay</span>
+                              <a href="#">Điều khoản & điều kiện</a>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="fivefood-voucher-action">
+                          <button 
+                            className={`fivefood-btn-apply ${isSelected ? 'applied' : ''}`}
+                            disabled={!isEligible}
+                            onClick={() => {
+                              if (isEligible) {
+                                setPromoCodeInput(promo.PromoCode);
+                                handleApplyPromo(promo.PromoCode);
+                              }
+                            }}
+                          >
+                            {isSelected ? 'Đang dùng' : 'Nhận'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div 
+                className="fivefood-voucher-options"
+                onClick={() => {
+                  setPromoCodeInput('');
+                  handleApplyPromo('');
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <label className="fivefood-no-voucher" style={{ cursor: 'pointer', margin: 0, width: '100%' }}>
+                  <span>Không dùng phiếu giảm giá</span>
+                  <input 
+                    type="radio" 
+                    name="promoModalOption" 
+                    checked={!appliedPromo} 
+                    readOnly
+                  />
+                </label>
+              </div>
+
+              <div className="fivefood-voucher-input-section">
+                <h4>Thêm mã khuyến mãi</h4>
+                <div className="fivefood-input-group">
+                  <input 
+                    type="text" 
+                    placeholder="Nhập mã" 
+                    value={promoCodeInput}
+                    onChange={(e) => setPromoCodeInput(e.target.value)}
+                  />
+                  <button onClick={() => {
+                    handleApplyPromo(promoCodeInput);
+                  }}>Áp dụng</button>
+                </div>
+                {promoError && <div style={{ color: '#ea580c', fontSize: '13px', marginTop: '8px' }}>⚠️ {promoError}</div>}
+                {promoSuccess && <div style={{ color: '#10b981', fontSize: '13px', marginTop: '8px' }}>✓ {promoSuccess}</div>}
+              </div>
+            </div>
+            
+            <div className="fivefood-voucher-submit-wrapper">
+              <div className="fivefood-voucher-submit">
+                <button onClick={() => setShowPromoModal(false)}>Xác nhận</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {!isAdminRoute && <Chatbot />}

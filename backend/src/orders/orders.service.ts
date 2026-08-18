@@ -29,7 +29,7 @@ export class OrdersService {
         { name: 'Latitude', type: sql.Decimal(9, 6), value: latitude || null },
         { name: 'Longitude', type: sql.Decimal(9, 6), value: longitude || null },
         { name: 'PaymentMethod', type: sql.NVarChar(50), value: paymentMethod },
-        { name: 'PromoCode', type: sql.VarChar(50), value: promoCode || null },
+        { name: 'PromoCode', type: sql.NVarChar(50), value: promoCode || null },
         { name: 'ShippingFee', type: sql.Decimal(18, 2), value: shippingFee }
       ];
 
@@ -247,14 +247,16 @@ export class OrdersService {
    * Kiểm tra nhanh voucher khuyến mãi từ phía Client
    */
   async validatePromotion(code: string, orderTotal: number) {
+    require('fs').appendFileSync('C:\\\\Users\\\\Admin\\\\Desktop\\\\DoAn\\\\backend\\\\promo_debug.log', 'Validate called with: "' + code + '"\\n');
     const result = await this.dbService.query(
       `SELECT PromotionID, PromoCode, DiscountPercentage, MaxDiscountAmount, MinOrderValue, UsageLimit, UsedCount, StartDate, EndDate
        FROM Promotions
        WHERE PromoCode = @Code`,
-      [{ name: 'Code', type: sql.VarChar(50), value: code }]
+      [{ name: 'Code', type: sql.NVarChar(50), value: code }]
     );
 
     if (result.recordset.length === 0) {
+      require('fs').appendFileSync('C:\\\\Users\\\\Admin\\\\Desktop\\\\DoAn\\\\backend\\\\promo_debug.log', 'Result 0 rows for: "' + code + '"\\n');
       return { valid: false, message: 'Mã giảm giá không tồn tại.' };
     }
 
