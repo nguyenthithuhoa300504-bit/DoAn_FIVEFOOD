@@ -19,6 +19,7 @@ import AdminLiveChat from './components/LiveChat/AdminLiveChat';
 import ProductDetailOverlay from './components/Product/ProductDetailOverlay';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import AdminBranches from './components/Admin/AdminBranches';
+import AdminPromotions from './components/Admin/AdminPromotions';
 import ProtectedRoute from './components/Common/ProtectedRoute';
 import AdminLogin from './components/Admin/AdminLogin';
 import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
@@ -2235,6 +2236,12 @@ function App() {
               >
                 🏢 Chi Nhánh
               </button>
+              <button 
+                className={`subtab-btn ${adminSubtab === 'promotions' ? 'active' : ''}`}
+                onClick={() => { setAdminSubtab('promotions'); navigate('/admin/promotions'); }}
+              >
+                🎟 Khuyến Mãi
+              </button>
             </div>
 
             {adminSubtab === 'marketing' && (
@@ -2487,6 +2494,13 @@ function App() {
                   apiFetch={apiFetch}
                   API_BASE_URL={API_BASE_URL}
                   fetchBranchesMap={fetchBranchesMap}
+                />
+              )}
+
+            {adminSubtab === 'promotions' && (
+                <AdminPromotions 
+                  apiFetch={apiFetch}
+                  API_BASE_URL={API_BASE_URL}
                 />
               )}
 

@@ -737,6 +737,10 @@ body.dark-theme .user-avatar {
 
 .admin-products-table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border-radius: 12px;
   border: 1px solid var(--panel-border);
   background: rgba(255,255,255,0.5);

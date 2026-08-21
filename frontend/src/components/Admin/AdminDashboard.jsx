@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
-import { MapPin, TrendingUp, Users, Package, Utensils, ShieldCheck, Calendar, Sparkles, Activity, Globe, BarChart2, PieChart as PieIcon, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Package, Utensils, ShieldCheck, Calendar, Sparkles, Activity, Globe, BarChart2, PieChart as PieIcon, CheckCircle2, AlertCircle, Sun, Moon, Download } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ComposedChart, Line
@@ -32,6 +32,35 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
   };
 
 
+
+  const exportOrdersToCSV = () => {
+    if (!orders || orders.length === 0) {
+      alert("Không có dữ liệu đơn hàng để xuất!");
+      return;
+    }
+    
+    const headers = ["Mã Đơn", "Khách Hàng (UserID)", "Ngày Đặt", "Tổng Tiền", "Thanh Toán", "Phương Thức", "Trạng Thái"];
+    const rows = orders.map(order => [
+      order.OrderID,
+      order.UserID,
+      new Date(order.OrderDate).toLocaleString('vi-VN'),
+      order.FinalAmount || order.TotalAmount || 0,
+      order.PaymentStatus,
+      order.PaymentMethod,
+      order.Status
+    ]);
+    
+    let csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `BaoCao_DonHang_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const stats = useMemo(() => {
     let totalRevenue = 0;

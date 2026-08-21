@@ -1,7 +1,7 @@
 # TÀI LIỆU THIẾT KẾ CÁC PHÂN HỆ HỆ THỐNG (DESIGN_MODULES)
 ## DỰ ÁN: PHÁT TRIỂN ỨNG DỤNG WEB ĐẶT VÀ GIAO ĐỒ ĂN TRỰC TUYẾN FIVEFOOD
 
-Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **12 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
+Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **13 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
 
 ---
 
@@ -12,6 +12,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 *   **Thiết kế & Giao diện**: TailwindCSS, sử dụng font chữ hiện đại (Google Fonts như Roboto), hiệu ứng Glassmorphism và chuyển động mượt mà (micro-animations).
 *   **Bản đồ số**: **Leaflet** & **React-Leaflet** tích hợp bản đồ mã nguồn mở **OpenStreetMap** để chọn địa chỉ nhận hàng và hiển thị shipper giao đơn.
 *   **Vẽ Đồ thị & Thống kê**: **Recharts** (hoặc Chart.js) phục vụ trực quan hóa dữ liệu trên Admin Dashboard.
+*   **Xử lý Giọng nói**: Tích hợp **Web Speech API** (Native HTML5) hỗ trợ nhận diện giọng nói (Voice-to-Text) cực nhạy cho Chatbot.
 *   **Kết nối Realtime**: **Sử dụng webSocket (Socket.io)** để nhận thông báo và tọa độ shipper thời gian thực.
 *   **Truy xuất API**: Hàm helper `apiFetch` (dựa trên Fetch API hoặc Axios) có cơ chế tự động gửi kèm JWT Token và tự xử lý hướng đăng nhập lại khi token hết hạn.
 
@@ -21,6 +22,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 *   **Giao tiếp Realtime**: **WebSockets** thông qua gói thư viện `@nestjs/websockets` và `@nestjs/platform-socket.io`.
 *   **Tích hợp AI**: Gọi trực tiếp API (Fetch API) chuẩn OpenAI-compatible để tương tác với mô hình **LLaMA-3.1-8B** siêu tốc trên nền tảng **Groq**.
 *   **Kết nối Database**: Sử dụng thư viện mssql để kết nối và thao tác dữ liệu (Gọi trực tiếp Stored Procedures/Triggers của SQL Server).
+*   **Tài liệu API Tự động**: Tích hợp **Swagger UI** (`@nestjs/swagger`) để tự động sinh trang tài liệu API chuẩn doanh nghiệp (OpenAPI).
 
 ### 3. Hệ quản trị Cơ sở dữ liệu (Database)
 *   **Hệ quản trị**: **Microsoft SQL Server 2022**.
@@ -46,6 +48,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 10. [Phân hệ 10: Theo dõi Hành vi & Gợi ý Nâng cao (User Action Logging)](#10-phan-he-10-theo-doi-hanh-vi--goi-y-nang-cao-user-action-logging)
 11. [Phân hệ 11: Marketing, Tăng trưởng & Tương tác (Marketing & Engagement)](#11-phan-he-11-marketing-tang-truong--tuong-tac-marketing--engagement)
 12. [Phân hệ 12: Quản lý Chi nhánh Động (Dynamic Branch Management)](#12-phan-he-12-quan-ly-chi-nhanh-dong-dynamic-branch-management)
+13. [Phân hệ 13: Quản trị Trung tâm & Báo cáo Thống kê (Admin Dashboard & Analytics)](#13-phan-he-13-quan-tri-trung-tam--bao-cao-thong-ke-admin-dashboard--analytics)
 
 ---
 
@@ -357,8 +360,9 @@ Bằng việc tích hợp bản đồ mã nguồn mở OpenStreetMap (qua thư v
     );
     ```
 
-### B. Tích hợp AI Chatbot (Groq API - LLaMA 3)
+### B. Tích hợp AI Chatbot (Groq API - LLaMA 3) & Voice-to-Text
 *   Backend gọi API của Groq (Mô hình LLaMA-3.1-8B tốc độ cao).
+*   **Công nghệ Voice-to-Text**: Tích hợp Web Speech API ở Frontend, cho phép Khách hàng dùng biểu tượng Micro để đọc lệnh bằng giọng nói, văn bản tự động điền vào khung chat, mang lại trải nghiệm Rảnh tay (Hands-free) hiện đại.
 *   Cung cấp System Prompt chứa danh sách món ăn, giá bán và các chương trình khuyến mãi hiện tại của cửa hàng để AI tư vấn chính xác thực đơn cho khách hàng.
 *   Lưu trữ lịch sử hội thoại (ChatbotLogs) và cung cấp giao diện quản trị (Admin Dashboard) cho phép Admin theo dõi, phân tích nhu cầu và hành vi tìm kiếm món ăn của khách hàng.
 
@@ -559,3 +563,21 @@ Phân hệ này cho phép Admin quản lý danh sách các chi nhánh của hệ
    - Thêm tab "Quản lý Chi nhánh" hỗ trợ đầy đủ các thao tác CRUD. Admin có thể nhập toạ độ (Lat, Lng) của chi nhánh mới và lưu vào DB.
 2. **Bản đồ Động (Dynamic Leaflet Map)**:
    - Các điểm marker trên trang chủ (`App.jsx`) và Admin Dashboard (`AdminDashboard.jsx`) sẽ tự động gọi API `GET /api/branches` để lấy tọa độ và vẽ lên thay vì khai báo mảng tĩnh. Khi có cập nhật từ Admin, bản đồ sẽ ngay lập tức đồng bộ.
+
+---
+
+## 13. PHÂN HỆ 13: QUẢN TRỊ TRUNG TÂM & BÁO CÁO THỐNG KÊ (Admin Dashboard & Analytics)
+
+### Tổng quan (Overview)
+Phân hệ dành riêng cho Ban quản trị (Admin) nhằm theo dõi bức tranh toàn cảnh về hoạt động kinh doanh của nhà hàng. Cung cấp các biểu đồ trực quan (Data Visualization) để phân tích cơ cấu danh mục, tình trạng đơn hàng và cung cấp tính năng xuất báo cáo ra file Excel/CSV chuẩn chỉnh, kèm theo tài liệu API chuyên nghiệp.
+
+### A. Chi tiết Tính năng
+1. **Biểu đồ Thống kê Trực quan (Sử dụng thư viện Recharts)**:
+   - **Tình trạng Vận đơn**: Biểu đồ hiển thị chi tiết số lượng đơn đang giao, chờ duyệt, hoàn thành hay đã hủy.
+   - **Cơ cấu Danh mục**: Biểu đồ tròn (Pie Chart) biểu diễn tỷ trọng các loại món ăn trong hệ thống.
+2. **Xuất báo cáo Doanh thu (Export to CSV)**:
+   - Tích hợp hàm chuyển đổi tự động toàn bộ dữ liệu Đơn hàng sang định dạng bảng tính `.csv`.
+   - Nút "Xuất Báo Cáo" cung cấp file tương thích hoàn toàn với Microsoft Excel (hỗ trợ mã BOM UTF-8 nên không bị lỗi font Tiếng Việt), giúp chủ cửa hàng dễ dàng đối soát tài chính.
+3. **Hệ thống Tài liệu API Tự Động (Swagger UI)**:
+   - Backend NestJS tích hợp Swagger để sinh tài liệu OpenAPI tại endpoint `/api/docs`.
+   - Minh bạch hóa toàn bộ cấu trúc API, thể hiện tư duy làm việc chuẩn mức doanh nghiệp (Enterprise-level).

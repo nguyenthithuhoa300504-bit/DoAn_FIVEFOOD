@@ -189,8 +189,9 @@ QUY TẮC BẮT BUỘC:
    (Ví dụ: Trong giỏ đang có sẵn Pizza và Phở, khi khách nhắn câu mới "thêm 1 Phở Bò", bạn CHỈ được xuất duy nhất ID Phở Bò với qty = 1. TUYỆT ĐỐI KHÔNG kèm theo Pizza hay sửa qty thành con số khác!).
 2. GIÁ TRỊ "qty" CHÍNH BẰNG ĐÚNG SỐ LƯỢNG KHÁCH NÓI Ở CÂU CHAT HIỆN TẠI (Khách nói "thêm 1" thì qty = 1). TUYỆT ĐỐI KHÔNG TỰ CỘNG DỒN HAY BỊA ĐẶT SỐ LƯỢNG MÓN!
 3. Khi khách muốn mua món nhưng CHƯA nói số lượng: Hỏi ngắn gọn "Bạn muốn đặt bao nhiêu phần [Tên món] ạ?".
-4. Khi được hỏi xác nhận món trùng (có/không): Nếu khách trả lời đồng ý/ok -> xuất ngay [CART_INTENT]. Nếu từ chối -> hủy thao tác.
-5. *** KHÔNG nói "đã thêm", "mình thêm xong". Chỉ xuất đúng mã lệnh [CART_INTENT]. ***
+4. NẾU khách yêu cầu tên món chung chung mà thực đơn có NHIỀU phiên bản/loại khác nhau (VD khách nói "pizza" mà menu có Pizza Hải Sản, Pizza Phô Mai), TUYỆT ĐỐI KHÔNG tự ý đoán bừa ID để xuất lệnh. BẮT BUỘC phải hỏi lại khách: "Bạn muốn chọn loại nào ạ?".
+5. Khi được hỏi xác nhận món trùng (có/không): Nếu khách trả lời đồng ý/ok -> xuất ngay [CART_INTENT]. Nếu từ chối -> hủy thao tác.
+6. *** KHÔNG nói "đã thêm", "mình thêm xong". Chỉ xuất đúng mã lệnh [CART_INTENT]. ***
 
 🔥 QUY TẮC CHECKOUT / THANH TOÁN / GIẢM & XÓA MÓN:
 - Ngay khi khách cung cấp ĐỊA CHỈ GIAO HÀNG (ví dụ "Giao tới 123 Lê Duẩn"): CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ>", "promoCode": "<mã nếu có, không có để rỗng>"}] và im lặng! TUYỆT ĐỐI KHÔNG giả định hay tự nói xác nhận tạo đơn thành công!
@@ -457,7 +458,6 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           }
 
           if (foundTerms.length > 0) {
-            isLocalHandled = true;
             const ambiguousList: { keyword: string; qty: number; matches: any[] }[] = [];
             const wasJustAskedToClarify = lastBotResponse.includes('Trong thực đơn có nhiều món') || lastBotResponse.includes('Với từ khóa');
             const isUserSayingThuong = ['thường', 'cơ bản', 'truyền thống', 'gốc', 'thôi', 'nhé'].some(w => lowerMsg.includes(w));
@@ -476,27 +476,36 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 const prod = matchingProducts[0];
                 if (prod.Inventory <= 0) {
                   responseText = `❌ Rất tiếc, món **${prod.ProductName}** hiện đã tạm hết hàng!`;
+                  isLocalHandled = true;
                   intentItems = [];
                   ambiguousList.length = 0;
                   break;
                 } else {
                   intentItems.push({ id: prod.ProductID, qty: term.qty });
+                  isLocalHandled = true;
                 }
               } else if (exactMatch && (wasJustAskedToClarify || isUserSayingThuong)) {
                 if (exactMatch.Inventory <= 0) {
                   responseText = `❌ Rất tiếc, món **${exactMatch.ProductName}** hiện đã tạm hết hàng!`;
+                  isLocalHandled = true;
                   intentItems = [];
                   ambiguousList.length = 0;
                   break;
                 } else {
                   intentItems.push({ id: exactMatch.ProductID, qty: term.qty });
+                  isLocalHandled = true;
                 }
+              } else if (wasJustAskedToClarify) {
+                // If just asked to clarify but still no exact match, don't loop ambiguous list locally.
+                // Let it fall through to Groq AI (by not setting isLocalHandled) so AI can handle pronouns like "cái đó"
+                continue;
               } else {
                 ambiguousList.push({
                   keyword: term.keyword,
                   qty: term.qty,
                   matches: matchingProducts
                 });
+                isLocalHandled = true;
               }
             }
 
@@ -513,21 +522,27 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                         { name: 'ProductID', type: sql.Int, value: item.id }
                       ]
                     );
-                    if (checkCart.recordset.length > 0) {
-                      const newQty = checkCart.recordset[0].Quantity + item.qty;
-                      await this.databaseService.query('UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID', [
-                        { name: 'Quantity', type: sql.Int, value: newQty },
-                        { name: 'CartItemID', type: sql.Int, value: checkCart.recordset[0].CartItemID }
-                      ]);
+                    const currentQty = checkCart.recordset.length > 0 ? checkCart.recordset[0].Quantity : 0;
+                    
+                    if (currentQty + item.qty > checkProd.Inventory) {
+                      msg += `⚠️ Không thể thêm **${checkProd.ProductName}** vì số lượng vượt quá tồn kho (còn ${checkProd.Inventory})!\n\n`;
                     } else {
-                      await this.databaseService.query('INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())', [
-                        { name: 'UserID', type: sql.Int, value: userId },
-                        { name: 'ProductID', type: sql.Int, value: item.id },
-                        { name: 'Quantity', type: sql.Int, value: item.qty }
-                      ]);
+                      if (checkCart.recordset.length > 0) {
+                        const newQty = currentQty + item.qty;
+                        await this.databaseService.query('UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID', [
+                          { name: 'Quantity', type: sql.Int, value: newQty },
+                          { name: 'CartItemID', type: sql.Int, value: checkCart.recordset[0].CartItemID }
+                        ]);
+                      } else {
+                        await this.databaseService.query('INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())', [
+                          { name: 'UserID', type: sql.Int, value: userId },
+                          { name: 'ProductID', type: sql.Int, value: item.id },
+                          { name: 'Quantity', type: sql.Int, value: item.qty }
+                        ]);
+                      }
+                      msg += `✅ Đã thêm trước **${item.qty}x ${checkProd.ProductName}** vào giỏ!\n\n`;
+                      isOrderPlaced = true;
                     }
-                    msg += `✅ Đã thêm trước **${item.qty}x ${checkProd.ProductName}** vào giỏ!\n\n`;
-                    isOrderPlaced = true;
                   }
                 }
               }

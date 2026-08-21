@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { apiFetch } from '../../utils/apiFetch';
 import { useCart } from '../../context/CartContext';
-import { Send, Trash2, X, Sparkles, MessageCircle, Bot, Zap } from 'lucide-react';
+import { Send, Trash2, X, Sparkles, MessageCircle, Bot, Zap, Mic } from 'lucide-react';
 import './Chatbot.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -65,6 +65,48 @@ const Chatbot = () => {
   const { user, isLoggedIn } = useCart();
   const prevUserRef = useRef(user);
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Trạng thái thu âm (Voice-to-Text)
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'vi-VN'; 
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputMessage(prev => prev ? prev + ' ' + transcript : transcript);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Lỗi nhận diện giọng nói:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const toggleListening = (e) => {
+    e.preventDefault();
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error('Không thể bắt đầu thu âm', err);
+      }
+    }
+  };
   
   // Trạng thái kéo thả
   const [position, setPosition] = useState({ bottom: 28 });
@@ -453,9 +495,19 @@ const Chatbot = () => {
 
           {/* Input Form */}
           <form className="chatbot-input-area" onSubmit={handleSendMessage}>
+            <button 
+              type="button" 
+              className="mic-btn" 
+              onClick={toggleListening}
+              title={isListening ? "Đang thu âm..." : "Bấm để nói"}
+              disabled={isLoading || !recognitionRef.current}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', color: isListening ? '#EF4444' : '#6B7280' }}
+            >
+              <Mic size={18} className={isListening ? 'pulse-anim' : ''} />
+            </button>
             <input 
               type="text" 
-              placeholder="Nhập tin nhắn..." 
+              placeholder={isListening ? "Đang nghe..." : "Nhập tin nhắn..."}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               disabled={isLoading}
