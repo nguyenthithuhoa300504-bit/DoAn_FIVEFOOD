@@ -57,12 +57,14 @@ export async function apiFetch(url, options = {}) {
 /**
  * Hàm gửi log hành vi người dùng lên server
  */
+const _API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 export async function logUserAction(actionType, productId = null, searchQuery = null) {
   try {
     const token = localStorage.getItem('token');
     if (!token) return; // Chỉ log khi đã đăng nhập
     
-    await apiFetch('http://localhost:3000/api/user-actions/log', {
+    await apiFetch(`${_API_BASE}/user-actions/log`, {
       method: 'POST',
       body: JSON.stringify({ actionType, productId, searchQuery })
     });

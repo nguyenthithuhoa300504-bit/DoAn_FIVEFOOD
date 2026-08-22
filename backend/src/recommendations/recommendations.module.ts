@@ -4,6 +4,6 @@ import { RecommendationsService } from './recommendations.service';
 
 @Module({
   controllers: [RecommendationsController],
-  providers: [RecommendationsService]
+  providers: [RecommendationsService],
 })
 export class RecommendationsModule {}

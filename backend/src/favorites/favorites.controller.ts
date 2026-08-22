@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Delete, Param, UseGuards, Request, ParseIntPipe, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  Body,
+} from '@nestjs/common';
 import { FavoritesService } from './favorites.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -14,13 +24,19 @@ export class FavoritesController {
   }
 
   @Post()
-  async addFavorite(@Request() req: any, @Body('productId', ParseIntPipe) productId: number) {
+  async addFavorite(
+    @Request() req: any,
+    @Body('productId', ParseIntPipe) productId: number,
+  ) {
     const userId = req.user.userId;
     return await this.favoritesService.addFavorite(userId, productId);
   }
 
   @Delete(':productId')
-  async removeFavorite(@Request() req: any, @Param('productId', ParseIntPipe) productId: number) {
+  async removeFavorite(
+    @Request() req: any,
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
     const userId = req.user.userId;
     return await this.favoritesService.removeFavorite(userId, productId);
   }

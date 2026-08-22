@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../orders/orders.service';
@@ -23,9 +27,15 @@ export class ChatbotService {
     }
   }
 
-  async processMessage(userId: number | null, message: string, sessionId?: string) {
+  async processMessage(
+    userId: number | null,
+    message: string,
+    sessionId?: string,
+  ) {
     if (!this.apiKey) {
-      throw new InternalServerErrorException('AI Chatbot is currently unavailable due to missing API key.');
+      throw new InternalServerErrorException(
+        'AI Chatbot is currently unavailable due to missing API key.',
+      );
     }
 
     try {
@@ -39,24 +49,36 @@ export class ChatbotService {
       `;
       const productsResult = await this.databaseService.query(productsQuery);
       // Format siêu gọn nhưng đầy đủ thuộc tính cho AI tư vấn chi tiết (Tiết kiệm 60% Token cho Groq)
-      const productsContext = productsResult.recordset.map(p => {
-        const ing = p.Ingredients ? (p.Ingredients.length > 50 ? p.Ingredients.substring(0, 50) + '...' : p.Ingredients) : 'N/A';
-        const status = p.Inventory <= 0 ? ' [HẾT HÀNG]' : '';
-        return `ID=${p.ProductID}|${p.ProductName}|Giá:${p.Price}đ|Thành phần:${ing}${status}`;
-      }).join('\n');
+      const productsContext = productsResult.recordset
+        .map((p) => {
+          const ing = p.Ingredients
+            ? p.Ingredients.length > 50
+              ? p.Ingredients.substring(0, 50) + '...'
+              : p.Ingredients
+            : 'N/A';
+          const status = p.Inventory <= 0 ? ' [HẾT HÀNG]' : '';
+          return `ID=${p.ProductID}|${p.ProductName}|Giá:${p.Price}đ|Thành phần:${ing}${status}`;
+        })
+        .join('\n');
 
       // 1.5 Lấy thông tin tài khoản khách hàng (nếu đã đăng nhập) để AI biết tên và xưng hô thân thiết
-      let userContext = '\nKHÁCH HÀNG HIỆN TẠI: Khách vãng lai (Chưa đăng nhập tài khoản).';
+      let userContext =
+        '\nKHÁCH HÀNG HIỆN TẠI: Khách vãng lai (Chưa đăng nhập tài khoản).';
       if (userId) {
         try {
           const userQuery = `SELECT FullName, Email FROM Users WHERE UserID = @UserID`;
-          const userResult = await this.databaseService.query(userQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          const userResult = await this.databaseService.query(userQuery, [
+            { name: 'UserID', type: sql.Int, value: userId },
+          ]);
           if (userResult.recordset.length > 0) {
             const u = userResult.recordset[0];
             userContext = `\nKHÁCH HÀNG HIỆN TẠI: "${u.FullName}" (Email: ${u.Email}).\n👉 YÊU CẦU XƯNG HÔ CỦA AI: Khi trò chuyện bình thường hoặc tư vấn món, hãy gọi khách bằng tên "${u.FullName}". TUY NHIÊN, khi khách xuất hiện ý định THÊM MÓN VÀO GIỎ, THANH TOÁN hoặc XÓA GIỎ, bạn BẮT BUỘC CHỈ XUẤT ĐÚNG MÃ LỆNH KỸ THUẬT ([CART_INTENT], [CHECKOUT_INTENT], [CLEAR_CART_INTENT]) VÀ IM LẶNG, TUYỆT ĐỐI KHÔNG CHÀO HỌA HAY GIẢI THÍCH DỀ DÀ!`;
           }
         } catch (e) {
-          this.logger.warn('Không thể tải thông tin user cho chatbot:', e.message);
+          this.logger.warn(
+            'Không thể tải thông tin user cho chatbot:',
+            e.message,
+          );
         }
       }
 
@@ -72,13 +94,20 @@ export class ChatbotService {
             WHERE o.UserID = @UserID
             ORDER BY o.OrderDate DESC
           `;
-          const historyResult = await this.databaseService.query(historyQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          const historyResult = await this.databaseService.query(historyQuery, [
+            { name: 'UserID', type: sql.Int, value: userId },
+          ]);
           if (historyResult.recordset.length > 0) {
-            const pastItems = historyResult.recordset.map(r => r.ProductName).join(', ');
+            const pastItems = historyResult.recordset
+              .map((r) => r.ProductName)
+              .join(', ');
             historyContext = `\nLỊCH SỬ ĐƠN HÀNG ĐÃ MUA TRONG QUÁ KHỨ (KHÔNG PHẢI GIỎ HÀNG HIỆN TẠI): ${pastItems}. Chỉ dùng để gợi ý món ăn khi khách hỏi "hôm nay ăn gì", KHÔNG PHẢI món đang nằm trong giỏ hàng hiện tại.`;
           }
         } catch (e) {
-          this.logger.warn('Không thể tải lịch sử đơn hàng cho chatbot:', e.message);
+          this.logger.warn(
+            'Không thể tải lịch sử đơn hàng cho chatbot:',
+            e.message,
+          );
         }
       }
 
@@ -92,11 +121,21 @@ export class ChatbotService {
             INNER JOIN Products p ON c.ProductID = p.ProductID
             WHERE c.UserID = @UserID
           `;
-          const cartResult = await this.databaseService.query(cartQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          const cartResult = await this.databaseService.query(cartQuery, [
+            { name: 'UserID', type: sql.Int, value: userId },
+          ]);
           if (cartResult.recordset.length > 0) {
             // Liệt kê rõ từng món kèm ID để AI đọc đúng
-            const cartLines = cartResult.recordset.map(r => `- ${r.Quantity}x ${r.ProductName} (ID sản phẩm=${r.ProductID}, Giá:${r.Price}đ)`).join('\n');
-            const subtotal = cartResult.recordset.reduce((sum, r) => sum + (r.Price * r.Quantity), 0);
+            const cartLines = cartResult.recordset
+              .map(
+                (r) =>
+                  `- ${r.Quantity}x ${r.ProductName} (ID sản phẩm=${r.ProductID}, Giá:${r.Price}đ)`,
+              )
+              .join('\n');
+            const subtotal = cartResult.recordset.reduce(
+              (sum, r) => sum + r.Price * r.Quantity,
+              0,
+            );
             const shippingFee = 15000;
             const totalAmount = subtotal + shippingFee;
             cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI ĐANG CÓ SẴN (${cartResult.recordset.length} món) ===\n${cartLines}\nTổng: ${subtotal}đ | Ship: ${shippingFee}đ | Tổng TT: ${totalAmount}đ\n⚠️ LƯU Ý TỐI QUAN TRỌNG CHO AI: Đây là danh sách món ĐÃ CÓ SẴN trong giỏ từ trước. Khi khách nhắn xin THÊM MÓN MỚI (ví dụ: "thêm 1 phở bò"), bạn TUYỆT ĐỐI KHÔNG mang các món trong bảng này ra xuất lại vào lệnh [CART_INTENT], mà chỉ xuất DUY NHẤT món mới khách vừa nhắn ở câu hiện tại!\n===================================`;
@@ -119,7 +158,12 @@ export class ChatbotService {
         `;
         const promoResult = await this.databaseService.query(promoQuery);
         if (promoResult.recordset.length > 0) {
-          const promos = promoResult.recordset.map(p => `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`).join('\n');
+          const promos = promoResult.recordset
+            .map(
+              (p) =>
+                `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`,
+            )
+            .join('\n');
           promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI: Khi khách bày tỏ ý muốn đặt hàng, thanh toán hoặc hỏi về giỏ hàng (mà chưa đưa địa chỉ), BẮT BUỘC bạn phải dựa vào Tổng tiền giỏ hàng hiện tại để đề xuất ngay cho khách mã giảm giá phù hợp nhất và chủ động hỏi: "Bạn có muốn áp dụng mã giảm giá [Tên mã] này cho đơn hàng không ạ? Nếu có, hãy nhắn cho mình địa chỉ giao hàng kèm tên mã nhé!"`;
         }
       } catch (e) {
@@ -137,23 +181,33 @@ export class ChatbotService {
             WHERE UserID = @UserID
             ORDER BY OrderDate DESC
           `;
-          const trackingResult = await this.databaseService.query(trackingQuery, [{ name: 'UserID', type: sql.Int, value: userId }]);
+          const trackingResult = await this.databaseService.query(
+            trackingQuery,
+            [{ name: 'UserID', type: sql.Int, value: userId }],
+          );
           recentOrders = trackingResult.recordset;
           if (recentOrders.length > 0) {
-            const trackingInfo = recentOrders.map((o) => {
-              const time = new Date(o.OrderDate).toLocaleString('vi-VN');
-              return `• Đơn #${o.OrderID} (${time}): Tổng ${Number(o.FinalAmount || 0).toLocaleString('vi-VN')}đ -> Trạng thái: ${o.Status}`;
-            }).join('\n');
+            const trackingInfo = recentOrders
+              .map((o) => {
+                const time = new Date(o.OrderDate).toLocaleString('vi-VN');
+                return `• Đơn #${o.OrderID} (${time}): Tổng ${Number(o.FinalAmount || 0).toLocaleString('vi-VN')}đ -> Trạng thái: ${o.Status}`;
+              })
+              .join('\n');
             orderTrackingContext = `\nDanh sách đơn hàng gần đây của khách:\n${trackingInfo}\nNếu khách hỏi về đơn hàng, hãy trả lời tự nhiên, thân thiện và lịch sự bằng Tiếng Việt.`;
           }
         } catch (e) {
-          this.logger.warn('Không thể tải trạng thái đơn hàng cho chatbot:', e.message);
+          this.logger.warn(
+            'Không thể tải trạng thái đơn hàng cho chatbot:',
+            e.message,
+          );
         }
       }
 
       // 2.8 Thời gian thực (Time Context)
       const now = new Date();
-      const timeString = now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      const timeString = now.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+      });
       const hour = now.getHours();
       let sessionOfDay = 'Tối';
       if (hour >= 5 && hour < 11) sessionOfDay = 'Sáng';
@@ -210,9 +264,7 @@ Khách: "xóa giỏ hàng cho mình" (hoặc "xóa giỏ", "dọn sạch giỏ h
 Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "promoCode": "GIAM20K"}]"`;
 
       // 3.5 Lấy lịch sử chat (nếu có sessionId) để AI nhớ ngữ cảnh - giới hạn 3 lượt để tiết kiệm token
-      const chatMessages: any[] = [
-        { role: 'system', content: systemPrompt }
-      ];
+      const chatMessages: any[] = [{ role: 'system', content: systemPrompt }];
 
       let lastBotResponse = '';
       if (sessionId) {
@@ -222,10 +274,14 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           WHERE SessionID = @SessionID
           ORDER BY CreatedAt DESC
         `;
-        const chatLogsResult = await this.databaseService.query(chatLogsQuery, [{ name: 'SessionID', type: sql.VarChar(100), value: sessionId }]);
+        const chatLogsResult = await this.databaseService.query(chatLogsQuery, [
+          { name: 'SessionID', type: sql.VarChar(100), value: sessionId },
+        ]);
         if (chatLogsResult.recordset.length > 0) {
           try {
-            const lastRow = JSON.parse(chatLogsResult.recordset[0].ConversationData);
+            const lastRow = JSON.parse(
+              chatLogsResult.recordset[0].ConversationData,
+            );
             lastBotResponse = lastRow.botResponse || '';
           } catch (e) {}
 
@@ -234,14 +290,19 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           for (const row of historyRows) {
             try {
               const parsed = JSON.parse(row.ConversationData);
-              if (parsed.userMessage) chatMessages.push({ role: 'user', content: parsed.userMessage });
+              if (parsed.userMessage)
+                chatMessages.push({
+                  role: 'user',
+                  content: parsed.userMessage,
+                });
               if (parsed.botResponse) {
                 // Rút gọn bớt tin nhắn lịch sử của Bot nếu quá dài để tiết kiệm Token
                 let botRep = parsed.botResponse;
-                if (botRep.length > 200) botRep = botRep.substring(0, 200) + '...';
+                if (botRep.length > 200)
+                  botRep = botRep.substring(0, 200) + '...';
                 chatMessages.push({ role: 'assistant', content: botRep });
               }
-            } catch(e) {}
+            } catch (e) {}
           }
         }
       }
@@ -253,8 +314,31 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       let isLocalHandled = false;
       let cartMatch: RegExpMatchArray | null = null;
 
-      const wasAskingConfirmation = lastBotResponse.includes('Giỏ hàng của bạn đang có') || lastBotResponse.includes('bạn có chắc muốn thêm') || lastBotResponse.includes('trong giỏ đang có') || lastBotResponse.includes('Món đã có trong giỏ');
-      const isUserConfirming = ['có', 'ừ', 'ok', 'dạ có', 'thêm', 'ừ thêm', 'đồng ý', 'có nhé', 'mình đồng ý', 'ok nhé', 'ừm', 'có nha', 'ok e', 'ok shop'].some(w => message.toLowerCase().trim() === w || message.toLowerCase().trim().startsWith(w));
+      const wasAskingConfirmation =
+        lastBotResponse.includes('Giỏ hàng của bạn đang có') ||
+        lastBotResponse.includes('bạn có chắc muốn thêm') ||
+        lastBotResponse.includes('trong giỏ đang có') ||
+        lastBotResponse.includes('Món đã có trong giỏ');
+      const isUserConfirming = [
+        'có',
+        'ừ',
+        'ok',
+        'dạ có',
+        'thêm',
+        'ừ thêm',
+        'đồng ý',
+        'có nhé',
+        'mình đồng ý',
+        'ok nhé',
+        'ừm',
+        'có nha',
+        'ok e',
+        'ok shop',
+      ].some(
+        (w) =>
+          message.toLowerCase().trim() === w ||
+          message.toLowerCase().trim().startsWith(w),
+      );
       const lowerMsg = message.toLowerCase();
 
       // ====================================================================================================
@@ -262,13 +346,27 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       // ====================================================================================================
 
       // 1.1 Xác nhận thêm món trùng (Khách vừa được hỏi và trả lời "có / ừ / ok") -> Xử lý ngay tức khắc 0ms không gọi AI!
-      if (wasAskingConfirmation && isUserConfirming && userId && productsResult.recordset.length > 0) {
+      if (
+        wasAskingConfirmation &&
+        isUserConfirming &&
+        userId &&
+        productsResult.recordset.length > 0
+      ) {
         for (const prod of productsResult.recordset) {
-          const escapedName = prod.ProductName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          const regex = new RegExp(`${escapedName}[\\s\\S]*?muốn thêm\\s*\\**(\\d+)\\**`, 'i');
+          const escapedName = prod.ProductName.replace(
+            /[-/\\^$*+?.()|[\]{}]/g,
+            '\\$&',
+          );
+          const regex = new RegExp(
+            `${escapedName}[\\s\\S]*?muốn thêm\\s*\\**(\\d+)\\**`,
+            'i',
+          );
           const match = regex.exec(lastBotResponse);
           if (match) {
-            intentItems.push({ id: prod.ProductID, qty: parseInt(match[1], 10) || 1 });
+            intentItems.push({
+              id: prod.ProductID,
+              qty: parseInt(match[1], 10) || 1,
+            });
           }
         }
         if (intentItems.length > 0) {
@@ -277,10 +375,29 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       }
 
       // 1.2 Lệnh Giảm / Xóa số lượng từng món trong giỏ (Chống hiểu nhầm thành Xóa toàn bộ giỏ) -> Xử lý ngay 0ms!
-      const isUserAskingReduceOrRemoveItem = !isLocalHandled && (
-        ['bớt', 'giảm', 'xóa 1', 'xóa 2', 'xóa 3', 'xóa một', 'phần khỏi giỏ', 'tô khỏi giỏ', 'ly khỏi giỏ', 'bỏ món', 'hủy món'].some(kw => lowerMsg.includes(kw)) ||
-        (lowerMsg.includes('xóa') && !['xóa giỏ', 'dọn giỏ', 'xóa hết giỏ', 'dọn sạch', 'làm trống giỏ'].some(c => lowerMsg.includes(c)))
-      );
+      const isUserAskingReduceOrRemoveItem =
+        !isLocalHandled &&
+        ([
+          'bớt',
+          'giảm',
+          'xóa 1',
+          'xóa 2',
+          'xóa 3',
+          'xóa một',
+          'phần khỏi giỏ',
+          'tô khỏi giỏ',
+          'ly khỏi giỏ',
+          'bỏ món',
+          'hủy món',
+        ].some((kw) => lowerMsg.includes(kw)) ||
+          (lowerMsg.includes('xóa') &&
+            ![
+              'xóa giỏ',
+              'dọn giỏ',
+              'xóa hết giỏ',
+              'dọn sạch',
+              'làm trống giỏ',
+            ].some((c) => lowerMsg.includes(c))));
 
       if (isUserAskingReduceOrRemoveItem) {
         isLocalHandled = true;
@@ -288,11 +405,12 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           try {
             const currentCart = await this.databaseService.query(
               'SELECT ci.CartItemID, ci.ProductID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }]
+              [{ name: 'UserID', type: sql.Int, value: userId }],
             );
 
             if (currentCart.recordset.length === 0) {
-              responseText = '❌ **Giỏ hàng trống!** Hiện không có món nào để bớt hoặc xóa.';
+              responseText =
+                '❌ **Giỏ hàng trống!** Hiện không có món nào để bớt hoặc xóa.';
               isOrderPlaced = false;
             } else {
               let targetItem: any = null;
@@ -301,7 +419,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
               for (const item of currentCart.recordset) {
                 const iName = item.ProductName.toLowerCase();
                 const shortName = iName.split(' ')[0]; // VD "pizza" từ "pizza hải sản"
-                if (lowerMsg.includes(iName) || (lowerMsg.includes(shortName) && shortName.length >= 4)) {
+                if (
+                  lowerMsg.includes(iName) ||
+                  (lowerMsg.includes(shortName) && shortName.length >= 4)
+                ) {
                   targetItem = item;
                   break;
                 }
@@ -313,49 +434,94 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
 
               if (targetItem) {
                 const qtyMatch = lowerMsg.match(/(\d+)/);
-                if (qtyMatch && !lowerMsg.includes('xóa hết') && !lowerMsg.includes('bỏ hết')) {
+                if (
+                  qtyMatch &&
+                  !lowerMsg.includes('xóa hết') &&
+                  !lowerMsg.includes('bỏ hết')
+                ) {
                   removeQty = parseInt(qtyMatch[1], 10);
-                } else if (lowerMsg.includes('xóa hết') || lowerMsg.includes('bỏ hết') || lowerMsg.includes('hủy món') || (!lowerMsg.includes('bớt') && !lowerMsg.includes('giảm') && !qtyMatch && !lowerMsg.includes('1 phần'))) {
+                } else if (
+                  lowerMsg.includes('xóa hết') ||
+                  lowerMsg.includes('bỏ hết') ||
+                  lowerMsg.includes('hủy món') ||
+                  (!lowerMsg.includes('bớt') &&
+                    !lowerMsg.includes('giảm') &&
+                    !qtyMatch &&
+                    !lowerMsg.includes('1 phần'))
+                ) {
                   removeQty = targetItem.Quantity;
                 }
 
                 if (targetItem.Quantity <= removeQty || removeQty <= 0) {
-                  await this.databaseService.query('DELETE FROM CartItems WHERE CartItemID = @CartItemID', [{ name: 'CartItemID', type: sql.Int, value: targetItem.CartItemID }]);
+                  await this.databaseService.query(
+                    'DELETE FROM CartItems WHERE CartItemID = @CartItemID',
+                    [
+                      {
+                        name: 'CartItemID',
+                        type: sql.Int,
+                        value: targetItem.CartItemID,
+                      },
+                    ],
+                  );
                   responseText = `✅ **Đã xóa ${targetItem.ProductName}** khỏi giỏ hàng!`;
                 } else {
                   const newQty = targetItem.Quantity - removeQty;
-                  await this.databaseService.query('UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID', [
-                    { name: 'Quantity', type: sql.Int, value: newQty },
-                    { name: 'CartItemID', type: sql.Int, value: targetItem.CartItemID }
-                  ]);
+                  await this.databaseService.query(
+                    'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
+                    [
+                      { name: 'Quantity', type: sql.Int, value: newQty },
+                      {
+                        name: 'CartItemID',
+                        type: sql.Int,
+                        value: targetItem.CartItemID,
+                      },
+                    ],
+                  );
                   responseText = `✅ **Đã bớt ${removeQty} ${targetItem.ProductName}!** (Hiện trong giỏ còn: **${newQty}** phần).`;
                 }
 
                 isOrderPlaced = true;
               } else if (currentCart.recordset.length > 1) {
-                const itemsList = currentCart.recordset.map(i => `- **${i.ProductName}** (${i.Quantity} phần)`).join('\n');
+                const itemsList = currentCart.recordset
+                  .map((i) => `- **${i.ProductName}** (${i.Quantity} phần)`)
+                  .join('\n');
                 responseText = `⚠️ **Giỏ hàng đang có nhiều món:**\n${itemsList}\n\n👉 Bạn muốn bớt món nào? *(VD: "Bớt 1 ${currentCart.recordset[0].ProductName}")*`;
                 isOrderPlaced = false;
               }
             }
           } catch (err) {
             this.logger.error('Lỗi khi giảm/xóa món từ Chatbot', err);
-            responseText = '❌ Lỗi khi thao tác giảm món. Vui lòng kiểm tra trên giao diện giỏ hàng!';
+            responseText =
+              '❌ Lỗi khi thao tác giảm món. Vui lòng kiểm tra trên giao diện giỏ hàng!';
           }
         } else {
-          responseText = '❌ Vui lòng **Đăng nhập** để AI thao tác giỏ hàng của bạn!';
+          responseText =
+            '❌ Vui lòng **Đăng nhập** để AI thao tác giỏ hàng của bạn!';
         }
       }
 
       // 1.3 Lệnh Xóa toàn bộ giỏ hàng -> Xử lý ngay 0ms!
-      const isUserAskingClear = !isLocalHandled && ['xóa giỏ', 'dọn giỏ', 'xóa hết giỏ', 'làm trống giỏ', 'dọn sạch giỏ', 'xóa toàn bộ giỏ'].some(kw => lowerMsg.includes(kw));
+      const isUserAskingClear =
+        !isLocalHandled &&
+        [
+          'xóa giỏ',
+          'dọn giỏ',
+          'xóa hết giỏ',
+          'làm trống giỏ',
+          'dọn sạch giỏ',
+          'xóa toàn bộ giỏ',
+        ].some((kw) => lowerMsg.includes(kw));
       if (isUserAskingClear) {
         isLocalHandled = true;
         if (userId) {
           try {
-            await this.databaseService.query('DELETE FROM CartItems WHERE UserID = @UserID', [{ name: 'UserID', type: sql.Int, value: userId }]);
+            await this.databaseService.query(
+              'DELETE FROM CartItems WHERE UserID = @UserID',
+              [{ name: 'UserID', type: sql.Int, value: userId }],
+            );
             isOrderPlaced = true;
-            responseText = '✅ **Đã dọn sạch giỏ hàng!** Bạn muốn dùng món gì tiếp theo?';
+            responseText =
+              '✅ **Đã dọn sạch giỏ hàng!** Bạn muốn dùng món gì tiếp theo?';
           } catch (err) {
             this.logger.error('Lỗi khi xóa giỏ hàng từ Chatbot', err);
             responseText = '❌ Lỗi hệ thống khi xóa giỏ hàng.';
@@ -366,21 +532,66 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       }
 
       // 1.35 Lệnh Tra cứu trạng thái đơn hàng & Shipper di chuyển -> Xử lý ngay 0ms!
-      const isOrderInquiry = !isLocalHandled && ['đơn hàng', 'đơn của mình', 'đơn của tôi', 'tới đâu rồi', 'đang ở đâu', 'trạng thái đơn', 'giao chưa', 'đang giao', 'khi nào giao', 'theo dõi đơn', 'chưa tới', 'bao lâu nữa', 'mới nhất', 'shipper', 'ship', 'di chuyển', 'chạy tới đâu', 'giao tới đâu', 'tới đâu', 'đi tới đâu', 'đến đâu', 'ở đâu rồi', 'khúc nào', 'đang chạy', 'bao lâu'].some(kw => lowerMsg.includes(kw));
-      if (isOrderInquiry && !lowerMsg.includes('đặt') && !lowerMsg.includes('hủy') && !lowerMsg.includes('xóa')) {
+      const isOrderInquiry =
+        !isLocalHandled &&
+        [
+          'đơn hàng',
+          'đơn của mình',
+          'đơn của tôi',
+          'tới đâu rồi',
+          'đang ở đâu',
+          'trạng thái đơn',
+          'giao chưa',
+          'đang giao',
+          'khi nào giao',
+          'theo dõi đơn',
+          'chưa tới',
+          'bao lâu nữa',
+          'mới nhất',
+          'shipper',
+          'ship',
+          'di chuyển',
+          'chạy tới đâu',
+          'giao tới đâu',
+          'tới đâu',
+          'đi tới đâu',
+          'đến đâu',
+          'ở đâu rồi',
+          'khúc nào',
+          'đang chạy',
+          'bao lâu',
+        ].some((kw) => lowerMsg.includes(kw));
+      if (
+        isOrderInquiry &&
+        !lowerMsg.includes('đặt') &&
+        !lowerMsg.includes('hủy') &&
+        !lowerMsg.includes('xóa')
+      ) {
         isLocalHandled = true;
         if (!userId) {
-          responseText = '❌ Vui lòng **Đăng nhập** để theo dõi trạng thái đơn hàng của bạn nhé!';
+          responseText =
+            '❌ Vui lòng **Đăng nhập** để theo dõi trạng thái đơn hàng của bạn nhé!';
         } else if (!recentOrders || recentOrders.length === 0) {
-          responseText = 'ℹ️ Bạn hiện chưa có đơn hàng nào trong lịch sử. Hãy khám phá thực đơn và đặt những món yêu thích nhé! 😊';
+          responseText =
+            'ℹ️ Bạn hiện chưa có đơn hàng nào trong lịch sử. Hãy khám phá thực đơn và đặt những món yêu thích nhé! 😊';
         } else {
           const o = recentOrders[0];
-          const time = new Date(o.OrderDate).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+          const time = new Date(o.OrderDate).toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
           const amount = Number(o.FinalAmount || 0).toLocaleString('vi-VN');
-          
+
           if (o.Status === 'Chờ xác nhận') {
             responseText = `⏳ **Đơn hàng #${o.OrderID}** (Đặt lúc ${time}) hiện đang **Chờ xác nhận**.\n\n💰 Tổng tiền: **${amount}đ**\n📌 Nhà hàng đang chuẩn bị tiếp nhận đơn, bạn đợi trong giây lát nhé!`;
-          } else if (o.Status === 'Đang nấu' || o.Status === 'Đã duyệt' || o.Status === 'Chờ chế biến') {
+          } else if (
+            o.Status === 'Đang nấu' ||
+            o.Status === 'Đã duyệt' ||
+            o.Status === 'Chờ chế biến'
+          ) {
             responseText = `🍳 **Đơn hàng #${o.OrderID}** (Đặt lúc ${time}) đã được duyệt và **Đang chế biến** trong bếp.\n\n💰 Tổng tiền: **${amount}đ**\n👨‍🍳 Món ăn đang được nấu ráo riết, sắp xong để bàn giao cho Shipper nhé!`;
           } else if (o.Status === 'Đang giao' || o.Status === 'Shipping') {
             responseText = `🛵 **Đơn hàng #${o.OrderID}** (Đặt lúc ${time}) hiện **Đang được Shipper di chuyển giao tới bạn**!\n\n💰 Tổng tiền: **${amount}đ**\n📍 **Theo dõi vị trí:** Bạn hãy bấm vào **Hóa Đơn / Chi tiết đơn** trên màn hình chính để mở **Bản Đồ Định Vị (Live GPS Map)** xem xe của Shipper đang di chuyển trực tuyến đến nhà mình nhé!\n📞 Shipper có thể gọi cho bạn trong vài phút tới, bạn để ý chuông nhé!`;
@@ -396,16 +607,67 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
 
       // 1.4 NLP Parser Bóc tách đặt món trực tiếp (Hỗ trợ số lượng chính xác & hỏi làm rõ nếu món bị trùng tên) -> Xử lý ngay 0ms!
       if (!isLocalHandled && userId && productsResult.recordset.length > 0) {
-        const isExcluded = ['xóa', 'dọn', 'hủy', 'bớt', 'giảm', 'bỏ', 'đừng', 'không lấy', 'mấy giờ', 'phí ship', 'ở đâu', 'chữa', 'tại sao', 'giới thiệu', 'gì ngon', 'tư vấn', 'có món gì', 'là gì', 'bảo hành', 'hotline', 'chính sách'].some(kw => lowerMsg.includes(kw));
+        const isExcluded = [
+          'xóa',
+          'dọn',
+          'hủy',
+          'bớt',
+          'giảm',
+          'bỏ',
+          'đừng',
+          'không lấy',
+          'mấy giờ',
+          'phí ship',
+          'ở đâu',
+          'chữa',
+          'tại sao',
+          'giới thiệu',
+          'gì ngon',
+          'tư vấn',
+          'có món gì',
+          'là gì',
+          'bảo hành',
+          'hotline',
+          'chính sách',
+        ].some((kw) => lowerMsg.includes(kw));
 
         if (!isExcluded) {
-          const singleKeywords = ['phở', 'bún', 'cơm', 'mì', 'hủ tiếu', 'pizza', 'burger', 'sushi', 'salad', 'soda', 'cà phê', 'trà sữa', 'trà', 'lẩu', 'bánh mì', 'bánh', 'kem', 'chè', 'gà rán', 'gà', 'khoai tây', 'canh', 'bò bít tết', 'nước ép', 'sinh tố', 'bia', 'pepsi', 'coca'];
-          
+          const singleKeywords = [
+            'phở',
+            'bún',
+            'cơm',
+            'mì',
+            'hủ tiếu',
+            'pizza',
+            'burger',
+            'sushi',
+            'salad',
+            'soda',
+            'cà phê',
+            'trà sữa',
+            'trà',
+            'lẩu',
+            'bánh mì',
+            'bánh',
+            'kem',
+            'chè',
+            'gà rán',
+            'gà',
+            'khoai tây',
+            'canh',
+            'bò bít tết',
+            'nước ép',
+            'sinh tố',
+            'bia',
+            'pepsi',
+            'coca',
+          ];
+
           const phraseSet = new Set<string>();
           for (const prod of productsResult.recordset) {
             const pName = prod.ProductName.toLowerCase().trim();
             phraseSet.add(pName);
-            
+
             const words = pName.split(/\s+/);
             for (let len = words.length - 1; len >= 1; len--) {
               const prefix = words.slice(0, len).join(' ');
@@ -418,28 +680,44 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             phraseSet.add(kw);
           }
 
-          const sortedPhrases = Array.from(phraseSet).sort((a, b) => b.length - a.length);
+          const sortedPhrases = Array.from(phraseSet).sort(
+            (a, b) => b.length - a.length,
+          );
           let tempMsg = lowerMsg;
-          
-          const foundTerms: { keyword: string; qty: number; idx: number }[] = [];
-          const notLetterBefore = '(?:^|[^a-zA-ZàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđĐ])';
-          const notLetterAfter = '(?:$|[^a-zA-ZàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđĐ])';
+
+          const foundTerms: { keyword: string; qty: number; idx: number }[] =
+            [];
+          const notLetterBefore =
+            '(?:^|[^a-zA-ZàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđĐ])';
+          const notLetterAfter =
+            '(?:$|[^a-zA-ZàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđĐ])';
 
           for (const phrase of sortedPhrases) {
-            if (phrase.length < 2 && !['mì', 'gà', 'bò', ' trà', 'chè', 'kem'].includes(phrase)) continue;
-            
-            const regex = new RegExp(`${notLetterBefore}${phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}${notLetterAfter}`, 'i');
+            if (
+              phrase.length < 2 &&
+              !['mì', 'gà', 'bò', ' trà', 'chè', 'kem'].includes(phrase)
+            )
+              continue;
+
+            const regex = new RegExp(
+              `${notLetterBefore}${phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}${notLetterAfter}`,
+              'i',
+            );
             if (regex.test(tempMsg)) {
               const matchIdx = tempMsg.indexOf(phrase);
               if (matchIdx !== -1) {
                 let qty = 1;
                 const beforeStr = tempMsg.substring(0, matchIdx).trim();
-                const afterStr = tempMsg.substring(matchIdx + phrase.length).trim();
-                
+                const afterStr = tempMsg
+                  .substring(matchIdx + phrase.length)
+                  .trim();
+
                 // Khớp số lượng chính xác NGAY TRƯỚC hoặc NGAY SAU tên món (chống lấy nhầm số lượng của món khác!)
-                const beforeRegex = /(\d+)\s*(?:phần|tô|ly|cốc|cái|suất|dĩa|đĩa|hộp|túi|combo|chai|lon|món|chiếc|bát)?\s*$/i;
-                const afterRegex = /^(\d+)\s*(?:phần|tô|ly|cốc|cái|suất|dĩa|đĩa|hộp|túi|combo|chai|lon|món|chiếc|bát)?/i;
-                
+                const beforeRegex =
+                  /(\d+)\s*(?:phần|tô|ly|cốc|cái|suất|dĩa|đĩa|hộp|túi|combo|chai|lon|món|chiếc|bát)?\s*$/i;
+                const afterRegex =
+                  /^(\d+)\s*(?:phần|tô|ly|cốc|cái|suất|dĩa|đĩa|hộp|túi|combo|chai|lon|món|chiếc|bát)?/i;
+
                 const bMatch = beforeStr.match(beforeRegex);
                 const aMatch = afterStr.match(afterRegex);
 
@@ -451,27 +729,50 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 if (qty <= 0) qty = 1;
 
                 foundTerms.push({ keyword: phrase, qty: qty, idx: matchIdx });
-                
-                tempMsg = tempMsg.substring(0, matchIdx) + ' '.repeat(phrase.length) + tempMsg.substring(matchIdx + phrase.length);
+
+                tempMsg =
+                  tempMsg.substring(0, matchIdx) +
+                  ' '.repeat(phrase.length) +
+                  tempMsg.substring(matchIdx + phrase.length);
               }
             }
           }
 
           if (foundTerms.length > 0) {
-            const ambiguousList: { keyword: string; qty: number; matches: any[] }[] = [];
-            const wasJustAskedToClarify = lastBotResponse.includes('Trong thực đơn có nhiều món') || lastBotResponse.includes('Với từ khóa');
-            const isUserSayingThuong = ['thường', 'cơ bản', 'truyền thống', 'gốc', 'thôi', 'nhé'].some(w => lowerMsg.includes(w));
+            const ambiguousList: {
+              keyword: string;
+              qty: number;
+              matches: any[];
+            }[] = [];
+            const wasJustAskedToClarify =
+              lastBotResponse.includes('Trong thực đơn có nhiều món') ||
+              lastBotResponse.includes('Với từ khóa');
+            const isUserSayingThuong = [
+              'thường',
+              'cơ bản',
+              'truyền thống',
+              'gốc',
+              'thôi',
+              'nhé',
+            ].some((w) => lowerMsg.includes(w));
 
             for (const term of foundTerms) {
-              const matchingProducts = productsResult.recordset.filter(prod => {
-                const pLower = prod.ProductName.toLowerCase().trim();
-                return pLower === term.keyword || pLower.includes(term.keyword);
-              });
+              const matchingProducts = productsResult.recordset.filter(
+                (prod) => {
+                  const pLower = prod.ProductName.toLowerCase().trim();
+                  return (
+                    pLower === term.keyword || pLower.includes(term.keyword)
+                  );
+                },
+              );
 
               if (matchingProducts.length === 0) continue;
 
-              const exactMatch = matchingProducts.find(prod => prod.ProductName.toLowerCase().trim() === term.keyword);
-              
+              const exactMatch = matchingProducts.find(
+                (prod) =>
+                  prod.ProductName.toLowerCase().trim() === term.keyword,
+              );
+
               if (matchingProducts.length === 1) {
                 const prod = matchingProducts[0];
                 if (prod.Inventory <= 0) {
@@ -484,7 +785,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                   intentItems.push({ id: prod.ProductID, qty: term.qty });
                   isLocalHandled = true;
                 }
-              } else if (exactMatch && (wasJustAskedToClarify || isUserSayingThuong)) {
+              } else if (
+                exactMatch &&
+                (wasJustAskedToClarify || isUserSayingThuong)
+              ) {
                 if (exactMatch.Inventory <= 0) {
                   responseText = `❌ Rất tiếc, món **${exactMatch.ProductName}** hiện đã tạm hết hàng!`;
                   isLocalHandled = true;
@@ -503,7 +807,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 ambiguousList.push({
                   keyword: term.keyword,
                   qty: term.qty,
-                  matches: matchingProducts
+                  matches: matchingProducts,
                 });
                 isLocalHandled = true;
               }
@@ -513,32 +817,55 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
               let msg = '';
               if (intentItems.length > 0) {
                 for (const item of intentItems) {
-                  const checkProd = productsResult.recordset.find(p => p.ProductID === item.id);
+                  const checkProd = productsResult.recordset.find(
+                    (p) => p.ProductID === item.id,
+                  );
                   if (checkProd) {
                     const checkCart = await this.databaseService.query(
                       'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                       [
                         { name: 'UserID', type: sql.Int, value: userId },
-                        { name: 'ProductID', type: sql.Int, value: item.id }
-                      ]
+                        { name: 'ProductID', type: sql.Int, value: item.id },
+                      ],
                     );
-                    const currentQty = checkCart.recordset.length > 0 ? checkCart.recordset[0].Quantity : 0;
-                    
+                    const currentQty =
+                      checkCart.recordset.length > 0
+                        ? checkCart.recordset[0].Quantity
+                        : 0;
+
                     if (currentQty + item.qty > checkProd.Inventory) {
                       msg += `⚠️ Không thể thêm **${checkProd.ProductName}** vì số lượng vượt quá tồn kho (còn ${checkProd.Inventory})!\n\n`;
                     } else {
                       if (checkCart.recordset.length > 0) {
                         const newQty = currentQty + item.qty;
-                        await this.databaseService.query('UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID', [
-                          { name: 'Quantity', type: sql.Int, value: newQty },
-                          { name: 'CartItemID', type: sql.Int, value: checkCart.recordset[0].CartItemID }
-                        ]);
+                        await this.databaseService.query(
+                          'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
+                          [
+                            { name: 'Quantity', type: sql.Int, value: newQty },
+                            {
+                              name: 'CartItemID',
+                              type: sql.Int,
+                              value: checkCart.recordset[0].CartItemID,
+                            },
+                          ],
+                        );
                       } else {
-                        await this.databaseService.query('INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())', [
-                          { name: 'UserID', type: sql.Int, value: userId },
-                          { name: 'ProductID', type: sql.Int, value: item.id },
-                          { name: 'Quantity', type: sql.Int, value: item.qty }
-                        ]);
+                        await this.databaseService.query(
+                          'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                          [
+                            { name: 'UserID', type: sql.Int, value: userId },
+                            {
+                              name: 'ProductID',
+                              type: sql.Int,
+                              value: item.id,
+                            },
+                            {
+                              name: 'Quantity',
+                              type: sql.Int,
+                              value: item.qty,
+                            },
+                          ],
+                        );
                       }
                       msg += `✅ Đã thêm trước **${item.qty}x ${checkProd.ProductName}** vào giỏ!\n\n`;
                       isOrderPlaced = true;
@@ -547,7 +874,8 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 }
               }
 
-              msg += '⚠️ **Trong thực đơn có nhiều món liên quan đến yêu cầu của bạn:**\n';
+              msg +=
+                '⚠️ **Trong thực đơn có nhiều món liên quan đến yêu cầu của bạn:**\n';
               for (const amb of ambiguousList) {
                 msg += `\n• Với từ khóa **"${amb.keyword}"** (bạn muốn đặt **${amb.qty}** phần):\n`;
                 for (const m of amb.matches) {
@@ -555,7 +883,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 }
               }
               msg += '\n👉 Bạn muốn đặt cụ thể loại nào và bao nhiêu phần ạ?';
-              
+
               responseText = msg;
               intentItems = [];
             }
@@ -566,26 +894,35 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       // ====================================================================================================
       // TẦNG 2: GỌI GROQ AI CHO HỘI THOẠI HẠY CHECKOUT NẾU KHÔNG THAO TÁC GIỏ HÀNG NỘI BỘ
       // ====================================================================================================
-      if (!isLocalHandled && intentItems.length === 0 && !responseText.startsWith('❌ Rất tiếc')) {
+      if (
+        !isLocalHandled &&
+        intentItems.length === 0 &&
+        !responseText.startsWith('❌ Rất tiếc')
+      ) {
         const callGroqAPI = async (retryCount = 0): Promise<any> => {
-          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${this.apiKey}`
+          const res = await fetch(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${this.apiKey}`,
+              },
+              body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                messages: chatMessages,
+                temperature: 0.7,
+                max_tokens: 350,
+              }),
             },
-            body: JSON.stringify({
-              model: 'llama-3.1-8b-instant',
-              messages: chatMessages,
-              temperature: 0.7,
-              max_tokens: 350,
-            })
-          });
+          );
 
           if (res.status === 429 && retryCount < 3) {
             const delay = 3000 * (retryCount + 1);
-            this.logger.warn(`Rate limit hit, retrying in ${delay / 1000}s... (attempt ${retryCount + 1}/3)`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            this.logger.warn(
+              `Rate limit hit, retrying in ${delay / 1000}s... (attempt ${retryCount + 1}/3)`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
             return callGroqAPI(retryCount + 1);
           }
           return res;
@@ -598,9 +935,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           this.logger.error(`Groq API Error: ${errorData}`);
           if (response.status === 429) {
             return {
-              reply: '⚡ Hệ thống AI đang bận xử lý nhiều yêu cầu cùng lúc. Vui lòng bấm gửi lại sau vài giây nhé!',
+              reply:
+                '⚡ Hệ thống AI đang bận xử lý nhiều yêu cầu cùng lúc. Vui lòng bấm gửi lại sau vài giây nhé!',
               sessionId: sessionId || uuidv4(),
-              orderPlaced: false
+              orderPlaced: false,
             };
           }
           throw new Error('Groq API returned an error');
@@ -609,20 +947,30 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         const data = await response.json();
         responseText = data.choices[0].message.content;
 
-        cartMatch = typeof responseText === 'string' ? responseText.match(/\[CART_INTENT:\s*(\{.*\})\]/s) : null;
+        cartMatch =
+          typeof responseText === 'string'
+            ? responseText.match(/\[CART_INTENT:\s*(\{.*\})\]/s)
+            : null;
         if (cartMatch) {
           try {
             const parsedData = JSON.parse(cartMatch[1]);
-            if (parsedData && Array.isArray(parsedData.items)) intentItems = parsedData.items;
-          } catch(e) {}
+            if (parsedData && Array.isArray(parsedData.items))
+              intentItems = parsedData.items;
+          } catch (e) {}
         }
 
-        const clearCartMatch = typeof responseText === 'string' && responseText.match(/\[CLEAR_CART_INTENT\]/);
+        const clearCartMatch =
+          typeof responseText === 'string' &&
+          responseText.match(/\[CLEAR_CART_INTENT\]/);
         if (clearCartMatch && userId) {
           try {
-            await this.databaseService.query('DELETE FROM CartItems WHERE UserID = @UserID', [{ name: 'UserID', type: sql.Int, value: userId }]);
+            await this.databaseService.query(
+              'DELETE FROM CartItems WHERE UserID = @UserID',
+              [{ name: 'UserID', type: sql.Int, value: userId }],
+            );
             isOrderPlaced = true;
-            responseText = '✅ **Đã dọn sạch giỏ hàng thành công!**\nGiỏ hàng của bạn hiện tại đã hoàn toàn trống trải! Bạn có muốn đặt món gì mới không ạ? 😊';
+            responseText =
+              '✅ **Đã dọn sạch giỏ hàng thành công!**\nGiỏ hàng của bạn hiện tại đã hoàn toàn trống trải! Bạn có muốn đặt món gì mới không ạ? 😊';
           } catch (err) {
             this.logger.error('Lỗi khi xóa giỏ hàng từ Chatbot', err);
             responseText = '❌ Quá trình xóa giỏ hàng đã xảy ra lỗi.';
@@ -634,194 +982,250 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
 
       if (intentItems.length > 0 && userId) {
         try {
-            // === Kiểm tra tồn kho và từng món xem đã có trong giỏ chưa ===
-            const duplicateItems: { name: string; currentQty: number; addQty: number; id: number }[] = [];
-            const newItems: { id: number; qty: number; name: string }[] = [];
-            const outOfStockItems: string[] = [];
+          // === Kiểm tra tồn kho và từng món xem đã có trong giỏ chưa ===
+          const duplicateItems: {
+            name: string;
+            currentQty: number;
+            addQty: number;
+            id: number;
+          }[] = [];
+          const newItems: { id: number; qty: number; name: string }[] = [];
+          const outOfStockItems: string[] = [];
 
-            for (const item of intentItems) {
-              const prodCheck = await this.databaseService.query(
-                'SELECT ProductName, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
-                [{ name: 'ProductID', type: sql.Int, value: item.id }]
+          for (const item of intentItems) {
+            const prodCheck = await this.databaseService.query(
+              'SELECT ProductName, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
+              [{ name: 'ProductID', type: sql.Int, value: item.id }],
+            );
+            if (prodCheck.recordset.length === 0) continue;
+            const product = prodCheck.recordset[0];
+
+            const checkCart = await this.databaseService.query(
+              'SELECT ci.CartItemID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID AND ci.ProductID = @ProductID',
+              [
+                { name: 'UserID', type: sql.Int, value: userId },
+                { name: 'ProductID', type: sql.Int, value: item.id },
+              ],
+            );
+
+            const currentQty =
+              checkCart.recordset.length > 0
+                ? checkCart.recordset[0].Quantity
+                : 0;
+
+            // Lỗi #4: Kiểm tra giới hạn tồn kho trước khi thêm hoặc tăng số lượng
+            if (
+              product.Inventory <= 0 ||
+              currentQty + item.qty > product.Inventory
+            ) {
+              outOfStockItems.push(
+                `${product.ProductName} (Tồn kho hiện chỉ còn: ${product.Inventory})`,
               );
-              if (prodCheck.recordset.length === 0) continue;
-              const product = prodCheck.recordset[0];
+              continue;
+            }
 
+            if (checkCart.recordset.length > 0) {
+              duplicateItems.push({
+                name: checkCart.recordset[0].ProductName,
+                currentQty: checkCart.recordset[0].Quantity,
+                addQty: item.qty,
+                id: item.id,
+              });
+            } else {
+              newItems.push({
+                id: item.id,
+                qty: item.qty,
+                name: product.ProductName,
+              });
+            }
+          }
+
+          if (
+            outOfStockItems.length > 0 &&
+            newItems.length === 0 &&
+            duplicateItems.length === 0
+          ) {
+            responseText = `❌ Rất tiếc, các món sau không đủ tồn kho:\n${outOfStockItems.map((m) => `- **${m}**`).join('\n')}\nVui lòng chọn số lượng ít hơn hoặc món khác nhé!`;
+            isOrderPlaced = false;
+          } else if (duplicateItems.length > 0 && !wasAskingConfirmation) {
+            // Lỗi #2: Nếu có món mới (newItems), thực hiện thêm ngay lập tức vào giỏ hàng trước để không bị nuốt mất món khi dừng lại hỏi xác nhận
+            let addedNewMsg = '';
+            if (newItems.length > 0) {
+              for (const nItem of newItems) {
+                await this.databaseService.query(
+                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                  [
+                    { name: 'UserID', type: sql.Int, value: userId },
+                    { name: 'ProductID', type: sql.Int, value: nItem.id },
+                    { name: 'Quantity', type: sql.Int, value: nItem.qty },
+                  ],
+                );
+              }
+              isOrderPlaced = true;
+              const names = newItems
+                .map((ni) => `**${ni.qty}x ${ni.name}**`)
+                .join(', ');
+              addedNewMsg = `✅ Đã thêm trước ${names} vào giỏ!\n\n`;
+            } else {
+              isOrderPlaced = false;
+            }
+
+            // Hỏi xác nhận cho các món trùng
+            const confirmLines = duplicateItems
+              .map(
+                (d) =>
+                  `• **${d.name}** (trong giỏ đang có **${d.currentQty}** phần. Bạn có chắc muốn thêm **${d.addQty}** nữa không?)`,
+              )
+              .join('\n');
+
+            let outOfStockMsg = '';
+            if (outOfStockItems.length > 0) {
+              outOfStockMsg = `\n⚠️ Lưu ý: ${outOfStockItems.join(', ')} không đủ tồn kho nên chưa thêm.`;
+            }
+
+            responseText = `${addedNewMsg}⚠️ **Món đã có trong giỏ:**\n${confirmLines}${outOfStockMsg}\n\n👉 Bạn muốn cộng dồn không? (*"Có"* hoặc *"Không"*)`;
+          } else {
+            // Thêm toàn bộ (món mới + món đã xác nhận trùng)
+            const itemsToProcess = [
+              ...newItems,
+              ...duplicateItems.map((d) => ({
+                id: d.id,
+                qty: d.addQty,
+                name: d.name,
+              })),
+            ];
+
+            for (const item of itemsToProcess) {
               const checkCart = await this.databaseService.query(
-                'SELECT ci.CartItemID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID AND ci.ProductID = @ProductID',
+                'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                 [
                   { name: 'UserID', type: sql.Int, value: userId },
-                  { name: 'ProductID', type: sql.Int, value: item.id }
-                ]
+                  { name: 'ProductID', type: sql.Int, value: item.id },
+                ],
               );
-              
-              const currentQty = checkCart.recordset.length > 0 ? checkCart.recordset[0].Quantity : 0;
-
-              // Lỗi #4: Kiểm tra giới hạn tồn kho trước khi thêm hoặc tăng số lượng
-              if (product.Inventory <= 0 || (currentQty + item.qty > product.Inventory)) {
-                outOfStockItems.push(`${product.ProductName} (Tồn kho hiện chỉ còn: ${product.Inventory})`);
-                continue;
-              }
-
               if (checkCart.recordset.length > 0) {
-                duplicateItems.push({
-                  name: checkCart.recordset[0].ProductName,
-                  currentQty: checkCart.recordset[0].Quantity,
-                  addQty: item.qty,
-                  id: item.id
-                });
+                const newQty = checkCart.recordset[0].Quantity + item.qty;
+                await this.databaseService.query(
+                  'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
+                  [
+                    { name: 'Quantity', type: sql.Int, value: newQty },
+                    { name: 'UserID', type: sql.Int, value: userId },
+                    { name: 'ProductID', type: sql.Int, value: item.id },
+                  ],
+                );
               } else {
-                newItems.push({ id: item.id, qty: item.qty, name: product.ProductName });
+                await this.databaseService.query(
+                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                  [
+                    { name: 'UserID', type: sql.Int, value: userId },
+                    { name: 'ProductID', type: sql.Int, value: item.id },
+                    { name: 'Quantity', type: sql.Int, value: item.qty },
+                  ],
+                );
               }
             }
 
-            if (outOfStockItems.length > 0 && newItems.length === 0 && duplicateItems.length === 0) {
-              responseText = `❌ Rất tiếc, các món sau không đủ tồn kho:\n${outOfStockItems.map(m => `- **${m}**`).join('\n')}\nVui lòng chọn số lượng ít hơn hoặc món khác nhé!`;
-              isOrderPlaced = false;
-            } else if (duplicateItems.length > 0 && !wasAskingConfirmation) {
-              // Lỗi #2: Nếu có món mới (newItems), thực hiện thêm ngay lập tức vào giỏ hàng trước để không bị nuốt mất món khi dừng lại hỏi xác nhận
-              let addedNewMsg = '';
-              if (newItems.length > 0) {
-                for (const nItem of newItems) {
-                  await this.databaseService.query(
-                    'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
-                    [
-                      { name: 'UserID', type: sql.Int, value: userId },
-                      { name: 'ProductID', type: sql.Int, value: nItem.id },
-                      { name: 'Quantity', type: sql.Int, value: nItem.qty }
-                    ]
-                  );
-                }
-                isOrderPlaced = true;
-                const names = newItems.map(ni => `**${ni.qty}x ${ni.name}**`).join(', ');
-                addedNewMsg = `✅ Đã thêm trước ${names} vào giỏ!\n\n`;
-              } else {
-                isOrderPlaced = false;
-              }
+            isOrderPlaced = true;
 
-              // Hỏi xác nhận cho các món trùng
-              const confirmLines = duplicateItems.map(d =>
-                `• **${d.name}** (trong giỏ đang có **${d.currentQty}** phần. Bạn có chắc muốn thêm **${d.addQty}** nữa không?)`
-              ).join('\n');
-              
-              let outOfStockMsg = '';
-              if (outOfStockItems.length > 0) {
-                outOfStockMsg = `\n⚠️ Lưu ý: ${outOfStockItems.join(', ')} không đủ tồn kho nên chưa thêm.`;
-              }
+            // Tự động kiểm tra tổng giỏ hàng và tư vấn mã giảm giá thông minh cho khách
+            const updatedCartResult = await this.databaseService.query(
+              'SELECT SUM(c.Quantity * p.Price) as Subtotal FROM CartItems c INNER JOIN Products p ON c.ProductID = p.ProductID WHERE c.UserID = @UserID',
+              [{ name: 'UserID', type: sql.Int, value: userId }],
+            );
+            const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
 
-              responseText = `${addedNewMsg}⚠️ **Món đã có trong giỏ:**\n${confirmLines}${outOfStockMsg}\n\n👉 Bạn muốn cộng dồn không? (*"Có"* hoặc *"Không"*)`;
-            } else {
-              // Thêm toàn bộ (món mới + món đã xác nhận trùng)
-              const itemsToProcess = [
-                ...newItems,
-                ...(duplicateItems.map(d => ({ id: d.id, qty: d.addQty, name: d.name })))
-              ];
-
-              for (const item of itemsToProcess) {
-                const checkCart = await this.databaseService.query(
-                  'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
-                  [
-                    { name: 'UserID', type: sql.Int, value: userId },
-                    { name: 'ProductID', type: sql.Int, value: item.id }
-                  ]
-                );
-                if (checkCart.recordset.length > 0) {
-                  const newQty = checkCart.recordset[0].Quantity + item.qty;
-                  await this.databaseService.query(
-                    'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
-                    [
-                      { name: 'Quantity', type: sql.Int, value: newQty },
-                      { name: 'UserID', type: sql.Int, value: userId },
-                      { name: 'ProductID', type: sql.Int, value: item.id }
-                    ]
-                  );
-                } else {
-                  await this.databaseService.query(
-                    'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
-                    [
-                      { name: 'UserID', type: sql.Int, value: userId },
-                      { name: 'ProductID', type: sql.Int, value: item.id },
-                      { name: 'Quantity', type: sql.Int, value: item.qty }
-                    ]
-                  );
-                }
-              }
-
-              isOrderPlaced = true;
-
-              // Tự động kiểm tra tổng giỏ hàng và tư vấn mã giảm giá thông minh cho khách
-              const updatedCartResult = await this.databaseService.query(
-                'SELECT SUM(c.Quantity * p.Price) as Subtotal FROM CartItems c INNER JOIN Products p ON c.ProductID = p.ProductID WHERE c.UserID = @UserID',
-                [{ name: 'UserID', type: sql.Int, value: userId }]
-              );
-              const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
-
-              // Lấy danh sách voucher đủ điều kiện áp dụng
-              const validPromos = await this.databaseService.query(
-                `SELECT TOP 2 PromoCode, Description, MinOrderValue 
+            // Lấy danh sách voucher đủ điều kiện áp dụng
+            const validPromos = await this.databaseService.query(
+              `SELECT TOP 2 PromoCode, Description, MinOrderValue 
                  FROM Promotions 
                  WHERE GETDATE() BETWEEN StartDate AND EndDate 
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue <= @Subtotal
                  ORDER BY MinOrderValue DESC`,
-                [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }]
-              );
+              [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }],
+            );
 
-              // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
-              const nextPromos = await this.databaseService.query(
-                `SELECT TOP 1 PromoCode, Description, MinOrderValue 
+            // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
+            const nextPromos = await this.databaseService.query(
+              `SELECT TOP 1 PromoCode, Description, MinOrderValue 
                  FROM Promotions 
                  WHERE GETDATE() BETWEEN StartDate AND EndDate 
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue > @Subtotal
                  ORDER BY MinOrderValue ASC`,
-                [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }]
-              );
+              [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }],
+            );
 
-              let promoMsg = '';
-              if (validPromos.recordset.length > 0) {
-                const codes = validPromos.recordset.map(p => `**${p.PromoCode}** (${p.Description})`).join(', ');
-                promoMsg = `\n🎁 **Mã ưu đãi khả dụng:** ${codes}\n💡 Nhắn **Địa chỉ kèm tên mã** để đặt đơn *(VD: "Giao tới 123 Lê Duẩn, mã ${validPromos.recordset[0].PromoCode}")*`;
-              } else if (nextPromos.recordset.length > 0) {
-                const nextP = nextPromos.recordset[0];
-                const diff = nextP.MinOrderValue - subtotal;
-                promoMsg = `\n🔥 **Mẹo ưu đãi:** Mua thêm **${diff.toLocaleString('vi-VN')}đ** để đủ ĐK dùng mã **${nextP.PromoCode}** (${nextP.Description})!`;
-              } else {
-                promoMsg = `\n💡 Nhắn **Địa chỉ giao hàng** khi bạn sẵn sàng đặt đơn nhé!`;
-              }
-
-              let outOfStockMsg = '';
-              if (outOfStockItems.length > 0) {
-                outOfStockMsg = `\n⚠️ Lưu ý: ${outOfStockItems.join(', ')} không đủ tồn kho nên chưa được thêm.`;
-              }
-
-              responseText = `✅ **Đã thêm vào giỏ hàng!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)${promoMsg}${outOfStockMsg}`;
+            let promoMsg = '';
+            if (validPromos.recordset.length > 0) {
+              const codes = validPromos.recordset
+                .map((p) => `**${p.PromoCode}** (${p.Description})`)
+                .join(', ');
+              promoMsg = `\n🎁 **Mã ưu đãi khả dụng:** ${codes}\n💡 Nhắn **Địa chỉ kèm tên mã** để đặt đơn *(VD: "Giao tới 123 Lê Duẩn, mã ${validPromos.recordset[0].PromoCode}")*`;
+            } else if (nextPromos.recordset.length > 0) {
+              const nextP = nextPromos.recordset[0];
+              const diff = nextP.MinOrderValue - subtotal;
+              promoMsg = `\n🔥 **Mẹo ưu đãi:** Mua thêm **${diff.toLocaleString('vi-VN')}đ** để đủ ĐK dùng mã **${nextP.PromoCode}** (${nextP.Description})!`;
+            } else {
+              promoMsg = `\n💡 Nhắn **Địa chỉ giao hàng** khi bạn sẵn sàng đặt đơn nhé!`;
             }
+
+            let outOfStockMsg = '';
+            if (outOfStockItems.length > 0) {
+              outOfStockMsg = `\n⚠️ Lưu ý: ${outOfStockItems.join(', ')} không đủ tồn kho nên chưa được thêm.`;
+            }
+
+            responseText = `✅ **Đã thêm vào giỏ hàng!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)${promoMsg}${outOfStockMsg}`;
+          }
         } catch (err) {
           this.logger.error('Lỗi khi tự động thêm giỏ hàng từ Chatbot', err);
-          responseText = '❌ Lỗi tự động thêm giỏ hàng. Vui lòng thao tác trực tiếp trên giao diện!';
+          responseText =
+            '❌ Lỗi tự động thêm giỏ hàng. Vui lòng thao tác trực tiếp trên giao diện!';
         }
-      } else if ((intentItems.length > 0 || cartMatch) && !userId && !responseText.startsWith('❌ Rất tiếc')) {
+      } else if (
+        (intentItems.length > 0 || cartMatch) &&
+        !userId &&
+        !responseText.startsWith('❌ Rất tiếc')
+      ) {
         // Có ý định đặt hàng nhưng khách chưa đăng nhập
-        responseText = '❌ Vui lòng **Đăng nhập** để AI tự động thêm món vào giỏ!';
+        responseText =
+          '❌ Vui lòng **Đăng nhập** để AI tự động thêm món vào giỏ!';
       }
 
-
       // 5.3 Xử lý Thanh toán (Checkout) tự động
-      const checkoutMatch = responseText.match(/\[CHECKOUT_INTENT:\s*(\{.*\})\]/s);
+      const checkoutMatch = responseText.match(
+        /\[CHECKOUT_INTENT:\s*(\{.*\})\]/s,
+      );
       if (checkoutMatch && userId) {
         try {
           const intentData = JSON.parse(checkoutMatch[1]);
           if (intentData.address) {
             // Check nếu giỏ hàng rỗng
-            const cartCheck = await this.databaseService.query('SELECT COUNT(*) as count FROM CartItems WHERE UserID = @UserID', [{ name: 'UserID', type: sql.Int, value: userId }]);
+            const cartCheck = await this.databaseService.query(
+              'SELECT COUNT(*) as count FROM CartItems WHERE UserID = @UserID',
+              [{ name: 'UserID', type: sql.Int, value: userId }],
+            );
             if (cartCheck.recordset[0].count === 0) {
-              responseText = '❌ **Giỏ hàng trống!** Vui lòng thêm món trước khi thanh toán.';
+              responseText =
+                '❌ **Giỏ hàng trống!** Vui lòng thêm món trước khi thanh toán.';
             } else {
-              const appliedPromo = intentData.promoCode ? intentData.promoCode : null;
-              await this.ordersService.createOrder(userId, intentData.address, null, null, 'Tiền mặt', appliedPromo, 15000);
+              const appliedPromo = intentData.promoCode
+                ? intentData.promoCode
+                : null;
+              await this.ordersService.createOrder(
+                userId,
+                intentData.address,
+                null,
+                null,
+                'Tiền mặt',
+                appliedPromo,
+                15000,
+              );
               isOrderPlaced = true;
-              let successMsg = '✅ **Đặt hàng thành công!** Đơn sẽ được giao tới: **' + intentData.address + '**';
+              let successMsg =
+                '✅ **Đặt hàng thành công!** Đơn sẽ được giao tới: **' +
+                intentData.address +
+                '**';
               if (appliedPromo) {
                 successMsg += ` *(Mã giảm giá: ${appliedPromo})*`;
               }
@@ -830,14 +1234,17 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           }
         } catch (err) {
           this.logger.error('Lỗi khi checkout từ Chatbot', err);
-          responseText = '❌ Lỗi thanh toán tự động, bạn vui lòng sử dụng nút Thanh Toán trên website!';
+          responseText =
+            '❌ Lỗi thanh toán tự động, bạn vui lòng sử dụng nút Thanh Toán trên website!';
         }
       } else if (checkoutMatch && !userId) {
         responseText = '❌ Vui lòng **Đăng nhập** để AI đặt hàng cho bạn!';
       }
 
       // 5.4 Xử lý Hủy đơn hàng tự động
-      const cancelMatch = responseText.match(/\[CANCEL_ORDER_INTENT:\s*(\{.*\})\]/s);
+      const cancelMatch = responseText.match(
+        /\[CANCEL_ORDER_INTENT:\s*(\{.*\})\]/s,
+      );
       if (cancelMatch && userId) {
         try {
           const intentData = JSON.parse(cancelMatch[1]);
@@ -853,7 +1260,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
 
       // Làm sạch văn bản AI: Không để lộ nhãn ID kỹ thuật ra ngoài cho khách thấy
       if (typeof responseText === 'string') {
-        responseText = responseText.replace(/\s*\(\s*ID=\d+\s*\)/ig, '').replace(/\s*ID=\d+\s*\|/ig, '').trim();
+        responseText = responseText
+          .replace(/\s*\(\s*ID=\d+\s*\)/gi, '')
+          .replace(/\s*ID=\d+\s*\|/gi, '')
+          .trim();
       }
 
       // 6. Lưu vào Log
@@ -862,28 +1272,34 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         userMessage: message,
         botResponse: responseText,
         timestamp: new Date().toISOString(),
-        orderPlaced: isOrderPlaced
+        orderPlaced: isOrderPlaced,
       });
 
       const insertQuery = `
         INSERT INTO ChatbotLogs (UserID, SessionID, ConversationData)
         VALUES (@UserID, @SessionID, @ConversationData)
       `;
-      
+
       await this.databaseService.query(insertQuery, [
         { name: 'UserID', type: sql.Int, value: userId || null },
         { name: 'SessionID', type: sql.VarChar(100), value: currentSessionId },
-        { name: 'ConversationData', type: sql.NVarChar(sql.MAX), value: conversationData }
+        {
+          name: 'ConversationData',
+          type: sql.NVarChar(sql.MAX),
+          value: conversationData,
+        },
       ]);
 
       return {
         reply: responseText,
         sessionId: currentSessionId,
-        orderPlaced: isOrderPlaced
+        orderPlaced: isOrderPlaced,
       };
     } catch (error) {
       this.logger.error('Error in processMessage', error);
-      throw new InternalServerErrorException('Failed to process message with AI');
+      throw new InternalServerErrorException(
+        'Failed to process message with AI',
+      );
     }
   }
 
@@ -896,7 +1312,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         ORDER BY c.CreatedAt DESC
       `;
       const result = await this.databaseService.query(query);
-      return result.recordset.map(row => {
+      return result.recordset.map((row) => {
         let parsedData = {};
         try {
           parsedData = JSON.parse(row.ConversationData);
@@ -909,7 +1325,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           CreatedAt: row.CreatedAt,
           FullName: row.FullName || 'Khách vãng lai',
           Email: row.Email || '',
-          ...parsedData
+          ...parsedData,
         };
       });
     } catch (error) {
@@ -918,8 +1334,18 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
     }
   }
 
-  async generatePromotionContent(data: { productName: string, type: string, discount?: string, event?: string, platform: string, style: string, length: string, description?: string }) {
-    if (!this.apiKey) throw new InternalServerErrorException('Missing API key.');
+  async generatePromotionContent(data: {
+    productName: string;
+    type: string;
+    discount?: string;
+    event?: string;
+    platform: string;
+    style: string;
+    length: string;
+    description?: string;
+  }) {
+    if (!this.apiKey)
+      throw new InternalServerErrorException('Missing API key.');
     const prompt = `Bạn là một chuyên gia Marketing cho nhà hàng FIVEFOOD. Hãy viết nội dung quảng cáo dựa trên các yêu cầu sau:
 
 THÔNG TIN ĐẦU VÀO:
@@ -954,7 +1380,8 @@ TRẢ VỀ ĐÚNG ĐỊNH DẠNG JSON SAU (KHÔNG THÊM BẤT KỲ VĂN BẢN N�
   }
 
   async generateProductDescription(productName: string, ingredients: string) {
-    if (!this.apiKey) throw new InternalServerErrorException('Missing API key.');
+    if (!this.apiKey)
+      throw new InternalServerErrorException('Missing API key.');
     const prompt = `Bạn là một chuyên gia ẩm thực chuyên viết mô tả món ăn cho menu nhà hàng FIVEFOOD.
 Hãy viết mô tả thật hấp dẫn, kích thích vị giác cho món ăn sau:
 - Tên món: ${productName}
@@ -969,15 +1396,15 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: expectJson ? 1500 : 500,
         temperature: 0.7,
-        ...(expectJson && { response_format: { type: "json_object" } })
-      })
+        ...(expectJson && { response_format: { type: 'json_object' } }),
+      }),
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -990,7 +1417,14 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
 
   async setWebsiteAnnouncement(content: string, productId?: number) {
     const filePath = path.join(process.cwd(), 'announcement.json');
-    fs.writeFileSync(filePath, JSON.stringify({ content, productId, timestamp: new Date().toISOString() }));
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        content,
+        productId,
+        timestamp: new Date().toISOString(),
+      }),
+    );
     return { success: true };
   }
 

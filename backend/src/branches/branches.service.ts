@@ -34,12 +34,42 @@ export class BranchesService {
       const result = await this.databaseService.query(query, [
         { name: '0', type: sql.NVarChar, value: createBranchDto.BranchName },
         { name: '1', type: sql.Decimal(9, 6), value: createBranchDto.Latitude },
-        { name: '2', type: sql.Decimal(9, 6), value: createBranchDto.Longitude },
-        { name: '3', type: sql.NVarChar, value: createBranchDto.Address || null },
-        { name: '4', type: sql.Int, value: createBranchDto.CoverageRadius || 5 },
-        { name: '5', type: sql.NVarChar, value: createBranchDto.Description || null },
-        { name: '6', type: sql.Bit, value: createBranchDto.IsActive !== undefined ? createBranchDto.IsActive : 1 },
-        { name: '7', type: sql.Bit, value: createBranchDto.IsHeadquarters !== undefined ? createBranchDto.IsHeadquarters : 0 }
+        {
+          name: '2',
+          type: sql.Decimal(9, 6),
+          value: createBranchDto.Longitude,
+        },
+        {
+          name: '3',
+          type: sql.NVarChar,
+          value: createBranchDto.Address || null,
+        },
+        {
+          name: '4',
+          type: sql.Int,
+          value: createBranchDto.CoverageRadius || 5,
+        },
+        {
+          name: '5',
+          type: sql.NVarChar,
+          value: createBranchDto.Description || null,
+        },
+        {
+          name: '6',
+          type: sql.Bit,
+          value:
+            createBranchDto.IsActive !== undefined
+              ? createBranchDto.IsActive
+              : 1,
+        },
+        {
+          name: '7',
+          type: sql.Bit,
+          value:
+            createBranchDto.IsHeadquarters !== undefined
+              ? createBranchDto.IsHeadquarters
+              : 0,
+        },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -59,13 +89,43 @@ export class BranchesService {
       const result = await this.databaseService.query(query, [
         { name: '0', type: sql.NVarChar, value: updateBranchDto.BranchName },
         { name: '1', type: sql.Decimal(9, 6), value: updateBranchDto.Latitude },
-        { name: '2', type: sql.Decimal(9, 6), value: updateBranchDto.Longitude },
-        { name: '3', type: sql.NVarChar, value: updateBranchDto.Address || null },
-        { name: '4', type: sql.Int, value: updateBranchDto.CoverageRadius || 5 },
-        { name: '5', type: sql.NVarChar, value: updateBranchDto.Description || null },
-        { name: '6', type: sql.Bit, value: updateBranchDto.IsActive !== undefined ? updateBranchDto.IsActive : 1 },
-        { name: '7', type: sql.Bit, value: updateBranchDto.IsHeadquarters !== undefined ? updateBranchDto.IsHeadquarters : 0 },
-        { name: '8', type: sql.Int, value: id }
+        {
+          name: '2',
+          type: sql.Decimal(9, 6),
+          value: updateBranchDto.Longitude,
+        },
+        {
+          name: '3',
+          type: sql.NVarChar,
+          value: updateBranchDto.Address || null,
+        },
+        {
+          name: '4',
+          type: sql.Int,
+          value: updateBranchDto.CoverageRadius || 5,
+        },
+        {
+          name: '5',
+          type: sql.NVarChar,
+          value: updateBranchDto.Description || null,
+        },
+        {
+          name: '6',
+          type: sql.Bit,
+          value:
+            updateBranchDto.IsActive !== undefined
+              ? updateBranchDto.IsActive
+              : 1,
+        },
+        {
+          name: '7',
+          type: sql.Bit,
+          value:
+            updateBranchDto.IsHeadquarters !== undefined
+              ? updateBranchDto.IsHeadquarters
+              : 0,
+        },
+        { name: '8', type: sql.Int, value: id },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -83,7 +143,7 @@ export class BranchesService {
         WHERE BranchID = @0
       `;
       await this.databaseService.query(query, [
-        { name: '0', type: sql.Int, value: id }
+        { name: '0', type: sql.Int, value: id },
       ]);
       return { success: true, message: 'Branch deactivated' };
     } catch (error) {

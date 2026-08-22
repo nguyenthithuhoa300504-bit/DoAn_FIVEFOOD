@@ -8,6 +8,6 @@ import { OrdersController, AdminOrdersController } from './orders.controller';
   imports: [DatabaseModule, GatewayModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
-  exports: [OrdersService]
+  exports: [OrdersService],
 })
 export class OrdersModule {}

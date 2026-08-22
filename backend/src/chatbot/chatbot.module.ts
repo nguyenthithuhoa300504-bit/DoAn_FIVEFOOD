@@ -7,6 +7,6 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [OrdersModule, AuthModule],
   controllers: [ChatbotController],
-  providers: [ChatbotService]
+  providers: [ChatbotService],
 })
 export class ChatbotModule {}

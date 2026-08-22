@@ -16,7 +16,7 @@ export class CartService {
        INNER JOIN Products p ON c.ProductID = p.ProductID
        WHERE c.UserID = @UserID
        ORDER BY c.UpdatedAt DESC`,
-      [{ name: 'UserID', type: sql.Int, value: userId }]
+      [{ name: 'UserID', type: sql.Int, value: userId }],
     );
     return result.recordset;
   }
@@ -30,8 +30,8 @@ export class CartService {
       `SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
         { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ProductID', type: sql.Int, value: productId }
-      ]
+        { name: 'ProductID', type: sql.Int, value: productId },
+      ],
     );
 
     if (existing.recordset.length > 0) {
@@ -50,8 +50,8 @@ export class CartService {
         [
           { name: 'UserID', type: sql.Int, value: userId },
           { name: 'ProductID', type: sql.Int, value: productId },
-          { name: 'Quantity', type: sql.Int, value: newQuantity }
-        ]
+          { name: 'Quantity', type: sql.Int, value: newQuantity },
+        ],
       );
     } else {
       // Chưa tồn tại -> Kiểm tra nếu số lượng đầu vào nhỏ hơn hoặc bằng 0 thì không thêm
@@ -66,8 +66,8 @@ export class CartService {
         [
           { name: 'UserID', type: sql.Int, value: userId },
           { name: 'ProductID', type: sql.Int, value: productId },
-          { name: 'Quantity', type: sql.Int, value: quantity }
-        ]
+          { name: 'Quantity', type: sql.Int, value: quantity },
+        ],
       );
     }
 
@@ -77,7 +77,11 @@ export class CartService {
   /**
    * Thiết lập số lượng chính xác cho sản phẩm trong giỏ hàng (sử dụng cho PUT /api/cart/update)
    */
-  async updateCartQuantity(userId: number, productId: number, quantity: number) {
+  async updateCartQuantity(
+    userId: number,
+    productId: number,
+    quantity: number,
+  ) {
     if (quantity <= 0) {
       return await this.removeFromCart(userId, productId);
     }
@@ -87,8 +91,8 @@ export class CartService {
       `SELECT CartItemID FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
         { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ProductID', type: sql.Int, value: productId }
-      ]
+        { name: 'ProductID', type: sql.Int, value: productId },
+      ],
     );
 
     if (existing.recordset.length > 0) {
@@ -99,8 +103,8 @@ export class CartService {
         [
           { name: 'UserID', type: sql.Int, value: userId },
           { name: 'ProductID', type: sql.Int, value: productId },
-          { name: 'Quantity', type: sql.Int, value: quantity }
-        ]
+          { name: 'Quantity', type: sql.Int, value: quantity },
+        ],
       );
     } else {
       // Nếu chưa có, thêm mới
@@ -110,8 +114,8 @@ export class CartService {
         [
           { name: 'UserID', type: sql.Int, value: userId },
           { name: 'ProductID', type: sql.Int, value: productId },
-          { name: 'Quantity', type: sql.Int, value: quantity }
-        ]
+          { name: 'Quantity', type: sql.Int, value: quantity },
+        ],
       );
     }
 
@@ -126,8 +130,8 @@ export class CartService {
       `DELETE FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
         { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ProductID', type: sql.Int, value: productId }
-      ]
+        { name: 'ProductID', type: sql.Int, value: productId },
+      ],
     );
     return await this.getCart(userId);
   }
@@ -135,7 +139,10 @@ export class CartService {
   /**
    * Đồng bộ hóa giỏ hàng từ localStorage lên database sau khi đăng nhập
    */
-  async syncCart(userId: number, items: { productId: number; quantity: number }[]) {
+  async syncCart(
+    userId: number,
+    items: { productId: number; quantity: number }[],
+  ) {
     for (const item of items) {
       if (item.productId && item.quantity > 0) {
         // Kiểm tra xem món ăn này đã có sẵn trong DB chưa
@@ -143,8 +150,8 @@ export class CartService {
           `SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
           [
             { name: 'UserID', type: sql.Int, value: userId },
-            { name: 'ProductID', type: sql.Int, value: item.productId }
-          ]
+            { name: 'ProductID', type: sql.Int, value: item.productId },
+          ],
         );
 
         if (existing.recordset.length > 0) {
@@ -157,8 +164,8 @@ export class CartService {
             [
               { name: 'UserID', type: sql.Int, value: userId },
               { name: 'ProductID', type: sql.Int, value: item.productId },
-              { name: 'Quantity', type: sql.Int, value: newQuantity }
-            ]
+              { name: 'Quantity', type: sql.Int, value: newQuantity },
+            ],
           );
         } else {
           // Thêm mới
@@ -168,8 +175,8 @@ export class CartService {
             [
               { name: 'UserID', type: sql.Int, value: userId },
               { name: 'ProductID', type: sql.Int, value: item.productId },
-              { name: 'Quantity', type: sql.Int, value: item.quantity }
-            ]
+              { name: 'Quantity', type: sql.Int, value: item.quantity },
+            ],
           );
         }
       }

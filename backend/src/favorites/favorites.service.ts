@@ -1,4 +1,9 @@
-import { Injectable, Logger, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 
@@ -69,7 +74,9 @@ export class FavoritesService {
       ]);
 
       if (result.rowsAffected[0] === 0) {
-        throw new NotFoundException('Sản phẩm không nằm trong danh sách yêu thích');
+        throw new NotFoundException(
+          'Sản phẩm không nằm trong danh sách yêu thích',
+        );
       }
 
       return { success: true, message: 'Đã xóa khỏi danh sách yêu thích' };

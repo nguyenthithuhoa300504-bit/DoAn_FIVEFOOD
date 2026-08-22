@@ -1,17 +1,17 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
-  UseGuards, 
-  ParseIntPipe, 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
   NotFoundException,
   HttpCode,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -39,7 +39,12 @@ export class ProductsController {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
     const catId = categoryId ? parseInt(categoryId, 10) : undefined;
-    return await this.productsService.getProducts(search, catId, pageNum, limitNum);
+    return await this.productsService.getProducts(
+      search,
+      catId,
+      pageNum,
+      limitNum,
+    );
   }
 
   /**
@@ -61,7 +66,7 @@ export class ProductsController {
     }
     return {
       message: 'Lấy chi tiết món ăn thành công.',
-      product
+      product,
     };
   }
 
@@ -78,7 +83,11 @@ export class ProductsController {
   @HttpCode(HttpStatus.CREATED)
   async createCategory(@Body() body: any) {
     const { categoryName, description, imageUrl } = body;
-    return await this.productsService.createCategory(categoryName, description, imageUrl);
+    return await this.productsService.createCategory(
+      categoryName,
+      description,
+      imageUrl,
+    );
   }
 
   /**
@@ -87,15 +96,25 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
   @Put('admin/categories/:id')
-  async updateCategory(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+  async updateCategory(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+  ) {
     const { categoryName, description, imageUrl } = body;
-    const updated = await this.productsService.updateCategory(id, categoryName, description, imageUrl);
+    const updated = await this.productsService.updateCategory(
+      id,
+      categoryName,
+      description,
+      imageUrl,
+    );
     if (!updated) {
-      throw new NotFoundException(`Không tìm thấy danh mục với ID ${id} để cập nhật.`);
+      throw new NotFoundException(
+        `Không tìm thấy danh mục với ID ${id} để cập nhật.`,
+      );
     }
     return {
       message: 'Cập nhật danh mục thành công.',
-      category: updated
+      category: updated,
     };
   }
 
@@ -107,8 +126,24 @@ export class ProductsController {
   @Post('admin/products')
   @HttpCode(HttpStatus.CREATED)
   async createProduct(@Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl, ingredients, description } = body;
-    return await this.productsService.createProduct(productName, categoryId, price, inventory, imageUrl, ingredients, description);
+    const {
+      productName,
+      categoryId,
+      price,
+      inventory,
+      imageUrl,
+      ingredients,
+      description,
+    } = body;
+    return await this.productsService.createProduct(
+      productName,
+      categoryId,
+      price,
+      inventory,
+      imageUrl,
+      ingredients,
+      description,
+    );
   }
 
   /**
@@ -117,15 +152,37 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
   @Put('admin/products/:id')
-  async updateProduct(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
-    const { productName, categoryId, price, inventory, imageUrl, ingredients, description } = body;
-    const updated = await this.productsService.updateProduct(id, productName, categoryId, price, inventory, imageUrl, ingredients, description);
+  async updateProduct(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+  ) {
+    const {
+      productName,
+      categoryId,
+      price,
+      inventory,
+      imageUrl,
+      ingredients,
+      description,
+    } = body;
+    const updated = await this.productsService.updateProduct(
+      id,
+      productName,
+      categoryId,
+      price,
+      inventory,
+      imageUrl,
+      ingredients,
+      description,
+    );
     if (!updated) {
-      throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để cập nhật.`);
+      throw new NotFoundException(
+        `Không tìm thấy món ăn với ID ${id} để cập nhật.`,
+      );
     }
     return {
       message: 'Cập nhật món ăn thành công.',
-      product: updated
+      product: updated,
     };
   }
 
@@ -138,11 +195,13 @@ export class ProductsController {
   async deleteProduct(@Param('id', ParseIntPipe) id: number) {
     const updated = await this.productsService.toggleProductStatus(id, false);
     if (!updated) {
-      throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để xóa mềm.`);
+      throw new NotFoundException(
+        `Không tìm thấy món ăn với ID ${id} để xóa mềm.`,
+      );
     }
     return {
       message: 'Ngừng bán món ăn thành công (Xóa mềm).',
-      product: updated
+      product: updated,
     };
   }
 
@@ -152,14 +211,22 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
   @Put('admin/products/:id/status')
-  async toggleProductStatus(@Param('id', ParseIntPipe) id: number, @Body('isActive') isActive: boolean) {
-    const updated = await this.productsService.toggleProductStatus(id, isActive);
+  async toggleProductStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('isActive') isActive: boolean,
+  ) {
+    const updated = await this.productsService.toggleProductStatus(
+      id,
+      isActive,
+    );
     if (!updated) {
-      throw new NotFoundException(`Không tìm thấy món ăn với ID ${id} để cập nhật trạng thái.`);
+      throw new NotFoundException(
+        `Không tìm thấy món ăn với ID ${id} để cập nhật trạng thái.`,
+      );
     }
     return {
       message: `${isActive ? 'Bật lại' : 'Ngừng bán'} món ăn thành công.`,
-      product: updated
+      product: updated,
     };
   }
 
@@ -177,7 +244,7 @@ export class ProductsController {
     const history = await this.productsService.getProductHistory(id);
     return {
       message: `Lấy lịch sử biến động giá và tồn kho của món ăn [${product.ProductName}] thành công.`,
-      history
+      history,
     };
   }
 }

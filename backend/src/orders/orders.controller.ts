@@ -1,15 +1,15 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Body, 
-  Param, 
-  UseGuards, 
-  Request, 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Request,
   ParseIntPipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,7 +28,14 @@ export class OrdersController {
   @Post()
   async createOrder(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
-    const { shippingAddress, latitude, longitude, paymentMethod, promoCode, shippingFee } = body;
+    const {
+      shippingAddress,
+      latitude,
+      longitude,
+      paymentMethod,
+      promoCode,
+      shippingFee,
+    } = body;
     return await this.ordersService.createOrder(
       userId,
       shippingAddress,
@@ -36,7 +43,7 @@ export class OrdersController {
       longitude ? parseFloat(longitude) : null,
       paymentMethod,
       promoCode,
-      shippingFee ? parseFloat(shippingFee) : 0
+      shippingFee ? parseFloat(shippingFee) : 0,
     );
   }
 
@@ -67,7 +74,10 @@ export class OrdersController {
   @HttpCode(HttpStatus.OK)
   async validatePromotion(@Body() body: any) {
     const { code, totalAmount } = body;
-    return await this.ordersService.validatePromotion(code, parseFloat(totalAmount));
+    return await this.ordersService.validatePromotion(
+      code,
+      parseFloat(totalAmount),
+    );
   }
 
   /**
@@ -112,7 +122,10 @@ export class AdminOrdersController {
    */
   @Get(':id')
   @Roles('Admin')
-  async getAdminOrderDetails(@Request() req, @Param('id', ParseIntPipe) id: number) {
+  async getAdminOrderDetails(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const userId = req.user.userId;
     return await this.ordersService.getOrderDetails(userId, id, true);
   }
@@ -126,7 +139,7 @@ export class AdminOrdersController {
   async updateOrderStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body('status') status: string,
-    @Body('cancelReason') cancelReason?: string
+    @Body('cancelReason') cancelReason?: string,
   ) {
     return await this.ordersService.updateOrderStatus(id, status, cancelReason);
   }

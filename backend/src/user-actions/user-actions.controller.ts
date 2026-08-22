@@ -10,10 +10,16 @@ export class UserActionsController {
   @Post('log')
   async logAction(
     @Req() req: any,
-    @Body() body: { actionType: string; productId?: number; searchQuery?: string }
+    @Body()
+    body: { actionType: string; productId?: number; searchQuery?: string },
   ) {
     const userId = req.user.userId;
     const { actionType, productId, searchQuery } = body;
-    return await this.userActionsService.logAction(userId, actionType, productId, searchQuery);
+    return await this.userActionsService.logAction(
+      userId,
+      actionType,
+      productId,
+      searchQuery,
+    );
   }
 }

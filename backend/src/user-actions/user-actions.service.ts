@@ -8,7 +8,12 @@ export class UserActionsService {
 
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async logAction(userId: number, actionType: string, productId?: number, searchQuery?: string) {
+  async logAction(
+    userId: number,
+    actionType: string,
+    productId?: number,
+    searchQuery?: string,
+  ) {
     try {
       const query = `
         INSERT INTO UserActionLogs (UserID, ActionType, ProductID, SearchQuery)
@@ -18,7 +23,11 @@ export class UserActionsService {
         { name: 'UserID', type: sql.Int, value: userId },
         { name: 'ActionType', type: sql.NVarChar(50), value: actionType },
         { name: 'ProductID', type: sql.Int, value: productId || null },
-        { name: 'SearchQuery', type: sql.NVarChar(255), value: searchQuery || null },
+        {
+          name: 'SearchQuery',
+          type: sql.NVarChar(255),
+          value: searchQuery || null,
+        },
       ]);
       return { success: true };
     } catch (error) {

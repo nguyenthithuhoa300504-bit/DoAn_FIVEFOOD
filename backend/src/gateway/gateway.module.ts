@@ -18,6 +18,6 @@ import { ChatModule } from '../chat/chat.module';
     }),
   ],
   providers: [EventsGateway],
-  exports: [EventsGateway]
+  exports: [EventsGateway],
 })
 export class GatewayModule {}

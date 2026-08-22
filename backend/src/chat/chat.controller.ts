@@ -1,4 +1,12 @@
-import { Controller, Get, Put, Param, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Param,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,7 +19,10 @@ export class ChatController {
 
   // Lấy lịch sử chat với 1 user cụ thể
   @Get('history/:targetUserId')
-  async getHistory(@Request() req: any, @Param('targetUserId', ParseIntPipe) targetUserId: number) {
+  async getHistory(
+    @Request() req: any,
+    @Param('targetUserId', ParseIntPipe) targetUserId: number,
+  ) {
     const currentUserId = req.user.userId;
     return await this.chatService.getChatHistory(currentUserId, targetUserId);
   }
@@ -34,7 +45,10 @@ export class ChatController {
 
   // Đánh dấu thông báo đã đọc
   @Put('notifications/:id/read')
-  async markNotificationAsRead(@Request() req: any, @Param('id', ParseIntPipe) notifId: number) {
+  async markNotificationAsRead(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) notifId: number,
+  ) {
     const userId = req.user.userId;
     return await this.chatService.markAsRead(notifId, userId);
   }

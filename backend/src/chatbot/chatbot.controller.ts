@@ -6,11 +6,14 @@ import { JwtService } from '@nestjs/jwt';
 export class ChatbotController {
   constructor(
     private readonly chatbotService: ChatbotService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   @Post()
-  async handleChat(@Body() body: { message: string; sessionId?: string }, @Req() req: any) {
+  async handleChat(
+    @Body() body: { message: string; sessionId?: string },
+    @Req() req: any,
+  ) {
     let userId = null;
     try {
       const authHeader = req.headers.authorization;
@@ -22,11 +25,15 @@ export class ChatbotController {
     } catch (e) {
       // Bỏ qua lỗi token (ví dụ hết hạn), coi như là guest
     }
-    
-    const result = await this.chatbotService.processMessage(userId, body.message, body.sessionId);
+
+    const result = await this.chatbotService.processMessage(
+      userId,
+      body.message,
+      body.sessionId,
+    );
     return {
       success: true,
-      data: result
+      data: result,
     };
   }
 
@@ -35,25 +42,45 @@ export class ChatbotController {
     const logs = await this.chatbotService.getLogs();
     return {
       success: true,
-      data: logs
+      data: logs,
     };
   }
 
   @Post('generate-promo')
-  async generatePromo(@Body() body: { productName: string; type: string; discount?: string; event?: string; platform: string; style: string; length: string; description?: string }) {
+  async generatePromo(
+    @Body()
+    body: {
+      productName: string;
+      type: string;
+      discount?: string;
+      event?: string;
+      platform: string;
+      style: string;
+      length: string;
+      description?: string;
+    },
+  ) {
     const content = await this.chatbotService.generatePromotionContent(body);
     return { success: true, data: content };
   }
 
   @Post('generate-desc')
-  async generateDesc(@Body() body: { productName: string; ingredients: string }) {
-    const content = await this.chatbotService.generateProductDescription(body.productName, body.ingredients);
+  async generateDesc(
+    @Body() body: { productName: string; ingredients: string },
+  ) {
+    const content = await this.chatbotService.generateProductDescription(
+      body.productName,
+      body.ingredients,
+    );
     return { success: true, data: content };
   }
 
   @Post('announcement')
-  async setAnnouncement(@Body() body: { content: string, productId?: number }) {
-    const result = await this.chatbotService.setWebsiteAnnouncement(body.content, body.productId);
+  async setAnnouncement(@Body() body: { content: string; productId?: number }) {
+    const result = await this.chatbotService.setWebsiteAnnouncement(
+      body.content,
+      body.productId,
+    );
     return result;
   }
 

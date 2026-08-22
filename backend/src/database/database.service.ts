@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as sql from 'mssql';
 
@@ -18,7 +23,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       port: parseInt(this.configService.get<string>('DB_PORT') || '1433', 10),
       options: {
         encrypt: this.configService.get<string>('DB_ENCRYPT') === 'true',
-        trustServerCertificate: this.configService.get<string>('DB_TRUST_SERVER_CERTIFICATE') === 'true',
+        trustServerCertificate:
+          this.configService.get<string>('DB_TRUST_SERVER_CERTIFICATE') ===
+          'true',
       },
       connectionTimeout: 15000,
       requestTimeout: 30000,
@@ -35,18 +42,28 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        this.logger.log(`Connecting to SQL Server (attempt ${attempt}/${maxRetries})...`);
+        this.logger.log(
+          `Connecting to SQL Server (attempt ${attempt}/${maxRetries})...`,
+        );
         this.pool = await new sql.ConnectionPool(config).connect();
-        this.logger.log('Connected to SQL Server successfully (Database: ' + config.database + ').');
+        this.logger.log(
+          'Connected to SQL Server successfully (Database: ' +
+            config.database +
+            ').',
+        );
         return; // Kết nối thành công, thoát vòng lặp
       } catch (err) {
-        this.logger.warn(`Connection attempt ${attempt} failed: ${err.message}`);
+        this.logger.warn(
+          `Connection attempt ${attempt} failed: ${err.message}`,
+        );
         if (attempt === maxRetries) {
-          this.logger.error('All connection attempts failed. Could not connect to SQL Server.');
+          this.logger.error(
+            'All connection attempts failed. Could not connect to SQL Server.',
+          );
           throw err;
         }
         this.logger.log(`Retrying in ${retryDelayMs / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
       }
     }
   }
@@ -65,11 +82,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   /**
    * Thực thi câu lệnh SQL với các tham số đầu vào (Inputs)
    */
-  async query(queryText: string, params?: { name: string; type: any; value: any }[]) {
+  async query(
+    queryText: string,
+    params?: { name: string; type: any; value: any }[],
+  ) {
     try {
       const request = this.pool.request();
       if (params) {
-        params.forEach(p => {
+        params.forEach((p) => {
           request.input(p.name, p.type, p.value);
         });
       }
@@ -86,23 +106,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async executeProcedure(
     procedureName: string,
     inputs?: { name: string; type: any; value: any }[],
-    outputs?: { name: string; type: any }[]
+    outputs?: { name: string; type: any }[],
   ) {
     try {
       const request = this.pool.request();
       if (inputs) {
-        inputs.forEach(p => {
+        inputs.forEach((p) => {
           request.input(p.name, p.type, p.value);
         });
       }
       if (outputs) {
-        outputs.forEach(p => {
+        outputs.forEach((p) => {
           request.output(p.name, p.type);
         });
       }
       return await request.execute(procedureName);
     } catch (err) {
-      this.logger.error(`Stored Procedure execution failed: ${procedureName}`, err);
+      this.logger.error(
+        `Stored Procedure execution failed: ${procedureName}`,
+        err,
+      );
       throw err;
     }
   }

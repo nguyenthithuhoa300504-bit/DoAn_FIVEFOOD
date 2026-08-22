@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  ParseIntPipe,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { CartService } from './cart.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -26,7 +39,11 @@ export class CartController {
   async addToCart(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
     const { productId, quantity } = body;
-    return await this.cartService.addToCart(userId, parseInt(productId, 10), parseInt(quantity, 10));
+    return await this.cartService.addToCart(
+      userId,
+      parseInt(productId, 10),
+      parseInt(quantity, 10),
+    );
   }
 
   /**
@@ -38,7 +55,11 @@ export class CartController {
   async updateCartQuantity(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
     const { productId, quantity } = body;
-    return await this.cartService.updateCartQuantity(userId, parseInt(productId, 10), parseInt(quantity, 10));
+    return await this.cartService.updateCartQuantity(
+      userId,
+      parseInt(productId, 10),
+      parseInt(quantity, 10),
+    );
   }
 
   /**
@@ -46,7 +67,10 @@ export class CartController {
    * DELETE /api/cart/remove/:productId
    */
   @Delete('remove/:productId')
-  async removeFromCart(@Request() req, @Param('productId', ParseIntPipe) productId: number) {
+  async removeFromCart(
+    @Request() req,
+    @Param('productId', ParseIntPipe) productId: number,
+  ) {
     const userId = req.user.userId;
     return await this.cartService.removeFromCart(userId, productId);
   }
@@ -59,9 +83,9 @@ export class CartController {
   @HttpCode(HttpStatus.OK)
   async syncCart(@Request() req, @Body('items') items: any[]) {
     const userId = req.user.userId;
-    const formattedItems = (items || []).map(item => ({
+    const formattedItems = (items || []).map((item) => ({
       productId: parseInt(item.productId, 10),
-      quantity: parseInt(item.quantity, 10)
+      quantity: parseInt(item.quantity, 10),
     }));
     return await this.cartService.syncCart(userId, formattedItems);
   }

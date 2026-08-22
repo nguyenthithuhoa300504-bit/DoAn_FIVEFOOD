@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 
@@ -36,7 +41,7 @@ export class ReviewsService {
 
       return {
         reviews: reviewsResult.recordset,
-        stats: statsResult.recordset[0]
+        stats: statsResult.recordset[0],
       };
     } catch (error) {
       this.logger.error('Error fetching reviews', error);
@@ -44,7 +49,13 @@ export class ReviewsService {
     }
   }
 
-  async addReview(userId: number, productId: number, orderId: number, rating: number, comment: string) {
+  async addReview(
+    userId: number,
+    productId: number,
+    orderId: number,
+    rating: number,
+    comment: string,
+  ) {
     try {
       if (rating < 1 || rating > 5) {
         throw new BadRequestException('Điểm đánh giá phải từ 1 đến 5 sao.');
@@ -60,14 +71,19 @@ export class ReviewsService {
           AND od.ProductID = @ProductID 
           AND o.Status = N'Hoàn thành'
       `;
-      const checkEligibility = await this.databaseService.query(checkEligibilityQuery, [
-        { name: 'OrderID', type: sql.Int, value: orderId },
-        { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ProductID', type: sql.Int, value: productId },
-      ]);
+      const checkEligibility = await this.databaseService.query(
+        checkEligibilityQuery,
+        [
+          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'UserID', type: sql.Int, value: userId },
+          { name: 'ProductID', type: sql.Int, value: productId },
+        ],
+      );
 
       if (checkEligibility.recordset.length === 0) {
-        throw new BadRequestException('Bạn không đủ điều kiện đánh giá sản phẩm này. Đơn hàng chưa hoàn thành hoặc sản phẩm không nằm trong đơn hàng.');
+        throw new BadRequestException(
+          'Bạn không đủ điều kiện đánh giá sản phẩm này. Đơn hàng chưa hoàn thành hoặc sản phẩm không nằm trong đơn hàng.',
+        );
       }
 
       // 2. Kiểm tra xem user đã đánh giá cho sản phẩm này trong đơn hàng này chưa
@@ -75,13 +91,18 @@ export class ReviewsService {
         SELECT 1 FROM Reviews 
         WHERE OrderID = @OrderID AND ProductID = @ProductID
       `;
-      const checkDuplicate = await this.databaseService.query(checkDuplicateQuery, [
-        { name: 'OrderID', type: sql.Int, value: orderId },
-        { name: 'ProductID', type: sql.Int, value: productId },
-      ]);
+      const checkDuplicate = await this.databaseService.query(
+        checkDuplicateQuery,
+        [
+          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'ProductID', type: sql.Int, value: productId },
+        ],
+      );
 
       if (checkDuplicate.recordset.length > 0) {
-        throw new ConflictException('Bạn đã đánh giá sản phẩm này trong đơn hàng này rồi.');
+        throw new ConflictException(
+          'Bạn đã đánh giá sản phẩm này trong đơn hàng này rồi.',
+        );
       }
 
       // 3. Insert review
@@ -126,16 +147,16 @@ export class ReviewsService {
     try {
       const checkQuery = `SELECT IsHidden FROM Reviews WHERE ReviewID = @ReviewID`;
       const checkResult = await this.databaseService.query(checkQuery, [
-        { name: 'ReviewID', type: sql.Int, value: reviewId }
+        { name: 'ReviewID', type: sql.Int, value: reviewId },
       ]);
-      
+
       if (checkResult.recordset.length === 0) {
         throw new BadRequestException('Đánh giá không tồn tại');
       }
-      
+
       const currentStatus = checkResult.recordset[0].IsHidden;
       const newStatus = currentStatus ? 0 : 1;
-      
+
       const updateQuery = `
         UPDATE Reviews 
         SET IsHidden = @NewStatus 
@@ -143,10 +164,14 @@ export class ReviewsService {
       `;
       await this.databaseService.query(updateQuery, [
         { name: 'NewStatus', type: sql.Bit, value: newStatus },
-        { name: 'ReviewID', type: sql.Int, value: reviewId }
+        { name: 'ReviewID', type: sql.Int, value: reviewId },
       ]);
-      
-      return { success: true, isHidden: newStatus === 1, message: newStatus ? 'Đã ẩn đánh giá' : 'Đã hiển thị đánh giá' };
+
+      return {
+        success: true,
+        isHidden: newStatus === 1,
+        message: newStatus ? 'Đã ẩn đánh giá' : 'Đã hiển thị đánh giá',
+      };
     } catch (error) {
       this.logger.error('Error toggling review visibility', error);
       throw error;

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Query, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Req,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -13,25 +22,23 @@ export class PaymentController {
    */
   @UseGuards(JwtAuthGuard)
   @Post('create-vnpay-url')
-  async createPaymentUrl(
-    @Req() req: any,
-    @Body('orderId') orderId: number,
-  ) {
+  async createPaymentUrl(@Req() req: any, @Body('orderId') orderId: number) {
     if (!orderId) {
       throw new BadRequestException('Mã hóa đơn (orderId) là bắt buộc.');
     }
 
     // Lấy địa chỉ IP của Client
-    let ipAddr = req.headers['x-forwarded-for'] || 
-                 req.connection.remoteAddress || 
-                 req.socket.remoteAddress || 
-                 req.ip || 
-                 '127.0.0.1';
-                 
+    let ipAddr =
+      req.headers['x-forwarded-for'] ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      req.ip ||
+      '127.0.0.1';
+
     if (Array.isArray(ipAddr)) {
       ipAddr = ipAddr[0];
     }
-    
+
     // Nếu có nhiều IP do qua proxy, lấy IP đầu tiên
     if (ipAddr && ipAddr.includes(',')) {
       ipAddr = ipAddr.split(',')[0].trim();
@@ -43,8 +50,12 @@ export class PaymentController {
     }
 
     const userId = req.user.userId;
-    const paymentUrl = await this.paymentService.createPaymentUrl(userId, orderId, ipAddr);
-    
+    const paymentUrl = await this.paymentService.createPaymentUrl(
+      userId,
+      orderId,
+      ipAddr,
+    );
+
     return { paymentUrl };
   }
 

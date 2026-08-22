@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -13,11 +17,18 @@ export class AuthService {
   /**
    * Đăng ký tài khoản khách hàng mới
    */
-  async register(fullName: string, email: string, phone: string, password: string) {
+  async register(
+    fullName: string,
+    email: string,
+    phone: string,
+    password: string,
+  ) {
     // 1. Kiểm tra xem Email đã tồn tại chưa
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
-      throw new ConflictException('Email này đã được sử dụng bởi một tài khoản khác.');
+      throw new ConflictException(
+        'Email này đã được sử dụng bởi một tài khoản khác.',
+      );
     }
 
     // 2. Băm mật khẩu bằng bcrypt
@@ -25,7 +36,13 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, salt);
 
     // 3. Tạo user mới trong DB (mặc định vai trò là 'Client')
-    const newUser = await this.usersService.createUser(fullName, email, phone, passwordHash, 'Client');
+    const newUser = await this.usersService.createUser(
+      fullName,
+      email,
+      phone,
+      passwordHash,
+      'Client',
+    );
     return {
       message: 'Đăng ký tài khoản thành công.',
       user: newUser,
@@ -44,7 +61,9 @@ export class AuthService {
 
     // 2. Kiểm tra trạng thái khóa tài khoản
     if (user.IsLocked) {
-      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.');
+      throw new UnauthorizedException(
+        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.',
+      );
     }
 
     // 3. Kiểm tra tính đúng đắn của mật khẩu
@@ -54,7 +73,11 @@ export class AuthService {
     }
 
     // 4. Ký tạo mã JWT Token
-    const payload = { sub: user.UserID, email: user.Email, role: user.RoleName };
+    const payload = {
+      sub: user.UserID,
+      email: user.Email,
+      role: user.RoleName,
+    };
     const accessToken = await this.jwtService.signAsync(payload);
 
     return {
@@ -72,7 +95,11 @@ export class AuthService {
   /**
    * Thay đổi mật khẩu người dùng
    */
-  async changePassword(userId: number, oldPassword: string, newPassword: string) {
+  async changePassword(
+    userId: number,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new UnauthorizedException('Người dùng không tồn tại.');
@@ -81,7 +108,10 @@ export class AuthService {
     // Đọc thông tin user hoàn chỉnh từ DB (để lấy PasswordHash)
     const userFull = await this.usersService.findByEmail(user.Email);
 
-    const isPasswordValid = await bcrypt.compare(oldPassword, userFull.PasswordHash);
+    const isPasswordValid = await bcrypt.compare(
+      oldPassword,
+      userFull.PasswordHash,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Mật khẩu cũ không chính xác.');
     }
@@ -91,7 +121,7 @@ export class AuthService {
 
     await this.usersService.updatePassword(userId, newPasswordHash);
     return {
-      message: 'Đổi mật khẩu thành công.'
+      message: 'Đổi mật khẩu thành công.',
     };
   }
 }

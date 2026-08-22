@@ -5,7 +5,7 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
@@ -29,7 +29,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private jwtService: JwtService,
     private configService: ConfigService,
     private dbService: DatabaseService,
-    private chatService: ChatService
+    private chatService: ChatService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -39,11 +39,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.disconnect();
         return;
       }
-      
+
       const secret = this.configService.get<string>('JWT_SECRET');
       const payload = this.jwtService.verify(token, { secret });
       const userId = payload.sub; // UserID
-      
+
       // Cho user join vào một room riêng để gửi dữ liệu cá nhân
       client.join(`room_user_${userId}`);
       console.log(`Client connected: ${client.id} - UserID: ${userId}`);
@@ -58,62 +58,84 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Bắt đầu mô phỏng Shipper chạy
-  startDeliverySimulation(orderId: number, userId: number, startLat: number, startLng: number, endLat: number, endLng: number) {
+  startDeliverySimulation(
+    orderId: number,
+    userId: number,
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+  ) {
     const steps = 20; // Tổng số bước
     const stepLat = (endLat - startLat) / steps;
     const stepLng = (endLng - startLng) / steps;
     let currentStep = 0;
-    
+
     console.log(`Bắt đầu giao đơn hàng #${orderId} cho User #${userId}...`);
 
     const interval = setInterval(() => {
       currentStep++;
-      const currentLat = startLat + (stepLat * currentStep);
-      const currentLng = startLng + (stepLng * currentStep);
+      const currentLat = startLat + stepLat * currentStep;
+      const currentLng = startLng + stepLng * currentStep;
 
       // Phát sự kiện tọa độ mới tới phòng user
       this.server.to(`room_user_${userId}`).emit('shipperLocation', {
         orderId,
         lat: currentLat,
         lng: currentLng,
-        progress: (currentStep / steps) * 100
+        progress: (currentStep / steps) * 100,
       });
 
       if (currentStep >= steps) {
         clearInterval(interval);
-        
+
         // Tự động cập nhật DB sang Hoàn thành (và Đã thanh toán) khi đến nơi
-        this.dbService.query(
-          `UPDATE Orders SET Status = N'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = N'Chưa thanh toán' THEN N'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
-          [{ name: 'OrderID', type: sql.Int, value: orderId }]
-        ).then(() => {
-          this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {
-            orderId,
-            status: 'Hoàn thành'
+        this.dbService
+          .query(
+            `UPDATE Orders SET Status = N'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = N'Chưa thanh toán' THEN N'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
+            [{ name: 'OrderID', type: sql.Int, value: orderId }],
+          )
+          .then(() => {
+            this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {
+              orderId,
+              status: 'Hoàn thành',
+            });
+            this.server
+              .to(`room_user_${userId}`)
+              .emit('deliveryCompleted', { orderId });
+            console.log(
+              `Đơn hàng #${orderId} đã giao thành công và cập nhật DB.`,
+            );
+          })
+          .catch((err) => {
+            console.error(
+              `Lỗi cập nhật đơn hàng #${orderId} thành Hoàn thành:`,
+              err,
+            );
           });
-          this.server.to(`room_user_${userId}`).emit('deliveryCompleted', { orderId });
-          console.log(`Đơn hàng #${orderId} đã giao thành công và cập nhật DB.`);
-        }).catch(err => {
-          console.error(`Lỗi cập nhật đơn hàng #${orderId} thành Hoàn thành:`, err);
-        });
       }
     }, 3000); // Cứ mỗi 3 giây nhích 1 đoạn, 20 bước -> 60 giây
   }
 
   // Gửi thông báo cập nhật trạng thái đơn hàng
-  notifyOrderStatusUpdate(userId: number, orderId: number, status: string, cancelReason?: string) {
+  notifyOrderStatusUpdate(
+    userId: number,
+    orderId: number,
+    status: string,
+    cancelReason?: string,
+  ) {
     this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {
       orderId,
       status,
-      cancelReason
+      cancelReason,
     });
-    
+
     // Ghi vào DB thông báo luôn
     let msg = `Đơn hàng #${orderId} của bạn đã chuyển sang trạng thái: ${status}`;
     if (status === 'Đã hủy' && cancelReason) {
       msg = `Đơn hàng #${orderId} của bạn đã bị hủy với lý do: ${cancelReason}`;
     }
-    
+
     this.chatService.addNotification(userId, 'Cập nhật đơn hàng', msg);
     this.server.to(`room_user_${userId}`).emit('newNotification');
   }
@@ -125,7 +147,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { receiverId: number; text: string }
+    @MessageBody() payload: { receiverId: number; text: string },
   ) {
     try {
       const token = client.handshake.auth.token;
@@ -134,7 +156,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const senderId = parseInt(decoded.sub);
 
       // Lưu tin nhắn vào Database
-      const result = await this.chatService.saveMessage(senderId, payload.receiverId, payload.text);
+      const result = await this.chatService.saveMessage(
+        senderId,
+        payload.receiverId,
+        payload.text,
+      );
 
       const messageObj = {
         MessageID: result.MessageID,
@@ -142,40 +168,49 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         ReceiverID: payload.receiverId,
         MessageText: payload.text,
         SentAt: result.SentAt,
-        IsRead: false
+        IsRead: false,
       };
 
       // Gửi lại cho người gửi (để hiển thị luôn lên UI của họ)
       client.emit('receiveMessage', messageObj);
-      
+
       // Gửi cho người nhận
-      this.server.to(`room_user_${payload.receiverId}`).emit('receiveMessage', messageObj);
+      this.server
+        .to(`room_user_${payload.receiverId}`)
+        .emit('receiveMessage', messageObj);
 
       // --- AUTOMATIC REPLY LOGIC ---
       if (payload.receiverId === 1 && senderId !== 1) {
         const now = Date.now();
         const lastReply = this.lastAutoReplyTime.get(senderId) || 0;
-        
+
         // Gửi tự động phản hồi nếu chưa gửi trong vòng 5 phút (300000ms)
         if (now - lastReply > 300000) {
           this.lastAutoReplyTime.set(senderId, now);
-          
+
           // Giả lập độ trễ đánh máy của Admin (3 giây)
           setTimeout(async () => {
-            const autoReplyMsg = "Cảm ơn bạn đã liên hệ FIVEFOOD! Hiện tại các tư vấn viên đang bận, chúng tôi sẽ phản hồi bạn trong vài phút tới nhé. Chúc bạn một ngày vui vẻ! ❤️";
+            const autoReplyMsg =
+              'Cảm ơn bạn đã liên hệ FIVEFOOD! Hiện tại các tư vấn viên đang bận, chúng tôi sẽ phản hồi bạn trong vài phút tới nhé. Chúc bạn một ngày vui vẻ! ❤️';
             try {
-              const autoReplyResult = await this.chatService.saveMessage(1, senderId, autoReplyMsg);
+              const autoReplyResult = await this.chatService.saveMessage(
+                1,
+                senderId,
+                autoReplyMsg,
+              );
               const autoObj = {
                 MessageID: autoReplyResult.MessageID,
                 SenderID: 1,
                 ReceiverID: senderId,
                 MessageText: autoReplyResult.MessageText,
                 SentAt: autoReplyResult.SentAt,
-                IsRead: false
+                IsRead: false,
               };
-              
+
               // Gửi tin nhắn tự động tới khách hàng
-              this.server.to(`room_user_${senderId}`).emit('receiveMessage', autoObj);
+              this.server
+                .to(`room_user_${senderId}`)
+                .emit('receiveMessage', autoObj);
               // Gửi cả tới phòng của Admin để giao diện Admin cũng cập nhật
               this.server.to(`room_user_1`).emit('receiveMessage', autoObj);
             } catch (err) {
@@ -193,7 +228,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('typing')
   async handleTyping(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { receiverId: number; isTyping: boolean }
+    @MessageBody() payload: { receiverId: number; isTyping: boolean },
   ) {
     try {
       const token = client.handshake.auth.token;
@@ -204,7 +239,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Chuyển tiếp trạng thái typing đến phòng của người nhận
       this.server.to(`room_user_${payload.receiverId}`).emit('typingStatus', {
         senderId,
-        isTyping: payload.isTyping
+        isTyping: payload.isTyping,
       });
     } catch (err) {
       console.error('Error handling typing event:', err);

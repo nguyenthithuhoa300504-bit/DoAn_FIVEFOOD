@@ -12,7 +12,7 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.Email = @Email`,
-      [{ name: 'Email', type: sql.VarChar(100), value: email }]
+      [{ name: 'Email', type: sql.VarChar(100), value: email }],
     );
     return result.recordset[0] || null;
   }
@@ -23,16 +23,22 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.UserID = @UserID`,
-      [{ name: 'UserID', type: sql.Int, value: id }]
+      [{ name: 'UserID', type: sql.Int, value: id }],
     );
     return result.recordset[0] || null;
   }
 
-  async createUser(fullName: string, email: string, phone: string, passwordHash: string, roleName: string = 'Client') {
+  async createUser(
+    fullName: string,
+    email: string,
+    phone: string,
+    passwordHash: string,
+    roleName: string = 'Client',
+  ) {
     // 1. Tìm hoặc tự tạo RoleID nếu chưa có sẵn trong DB
-    let roleResult = await this.dbService.query(
+    const roleResult = await this.dbService.query(
       `SELECT RoleID FROM Roles WHERE RoleName = @RoleName`,
-      [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }]
+      [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }],
     );
 
     let roleId = roleResult.recordset[0]?.RoleID;
@@ -40,7 +46,7 @@ export class UsersService {
     if (!roleId) {
       const insertRole = await this.dbService.query(
         `INSERT INTO Roles (RoleName) OUTPUT inserted.RoleID VALUES (@RoleName)`,
-        [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }]
+        [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }],
       );
       roleId = insertRole.recordset[0].RoleID;
     }
@@ -55,8 +61,8 @@ export class UsersService {
         { name: 'Email', type: sql.VarChar(100), value: email },
         { name: 'Phone', type: sql.VarChar(15), value: phone },
         { name: 'PasswordHash', type: sql.VarChar(255), value: passwordHash },
-        { name: 'RoleID', type: sql.Int, value: roleId }
-      ]
+        { name: 'RoleID', type: sql.Int, value: roleId },
+      ],
     );
 
     return result.recordset[0];
@@ -74,8 +80,8 @@ export class UsersService {
       [
         { name: 'UserID', type: sql.Int, value: id },
         { name: 'FullName', type: sql.NVarChar(100), value: fullName },
-        { name: 'Phone', type: sql.VarChar(15), value: phone }
-      ]
+        { name: 'Phone', type: sql.VarChar(15), value: phone },
+      ],
     );
     return result.recordset[0] || null;
   }
@@ -90,8 +96,8 @@ export class UsersService {
        WHERE UserID = @UserID`,
       [
         { name: 'UserID', type: sql.Int, value: id },
-        { name: 'PasswordHash', type: sql.VarChar(255), value: passwordHash }
-      ]
+        { name: 'PasswordHash', type: sql.VarChar(255), value: passwordHash },
+      ],
     );
     return true;
   }
@@ -109,8 +115,8 @@ export class UsersService {
        OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY`,
       [
         { name: 'Offset', type: sql.Int, value: offset },
-        { name: 'Limit', type: sql.Int, value: limit }
-      ]
+        { name: 'Limit', type: sql.Int, value: limit },
+      ],
     );
 
     const users = result.recordset;
@@ -123,8 +129,8 @@ export class UsersService {
         totalItems: totalCount,
         totalPages,
         currentPage: page,
-        itemsPerPage: limit
-      }
+        itemsPerPage: limit,
+      },
     };
   }
 
@@ -139,8 +145,8 @@ export class UsersService {
        WHERE UserID = @UserID`,
       [
         { name: 'UserID', type: sql.Int, value: id },
-        { name: 'IsLocked', type: sql.Bit, value: isLocked }
-      ]
+        { name: 'IsLocked', type: sql.Bit, value: isLocked },
+      ],
     );
     return result.recordset[0] || null;
   }

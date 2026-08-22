@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Put, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Body,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
@@ -7,7 +17,7 @@ import { UsersService } from '../users/users.service';
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private usersService: UsersService
+    private usersService: UsersService,
   ) {}
 
   /**
@@ -51,7 +61,11 @@ export class AuthController {
   async updateProfile(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
     const { fullName, phone } = body;
-    const updated = await this.usersService.updateProfile(userId, fullName, phone);
+    const updated = await this.usersService.updateProfile(
+      userId,
+      fullName,
+      phone,
+    );
     return {
       message: 'Cập nhật thông tin cá nhân thành công.',
       user: updated,
@@ -66,6 +80,10 @@ export class AuthController {
   async changePassword(@Request() req, @Body() body: any) {
     const userId = req.user.userId;
     const { oldPassword, newPassword } = body;
-    return await this.authService.changePassword(userId, oldPassword, newPassword);
+    return await this.authService.changePassword(
+      userId,
+      oldPassword,
+      newPassword,
+    );
   }
 }

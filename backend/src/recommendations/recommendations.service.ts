@@ -22,15 +22,20 @@ export class RecommendationsService {
             AND CreatedAt >= DATEADD(DAY, -7, GETDATE()) 
             AND SearchQuery IS NOT NULL
         `;
-        const searchResult = await this.databaseService.query(searchIntentQuery, [
-          { name: 'UserID', type: sql.Int, value: userId }
-        ]);
-        const searchQueries = searchResult.recordset.map(r => r.SearchQuery).filter(q => q && q.trim().length > 0);
+        const searchResult = await this.databaseService.query(
+          searchIntentQuery,
+          [{ name: 'UserID', type: sql.Int, value: userId }],
+        );
+        const searchQueries = searchResult.recordset
+          .map((r) => r.SearchQuery)
+          .filter((q) => q && q.trim().length > 0);
 
         // Tạo điều kiện LIKE động cho Search Intent
         let searchScoreSql = '0';
         if (searchQueries.length > 0) {
-          const likeConditions = searchQueries.map(q => `p.ProductName LIKE N'%${q.replace(/'/g, "''")}%'`).join(' OR ');
+          const likeConditions = searchQueries
+            .map((q) => `p.ProductName LIKE N'%${q.replace(/'/g, "''")}%'`)
+            .join(' OR ');
           searchScoreSql = `CASE WHEN (${likeConditions}) THEN 5 ELSE 0 END`;
         }
 
@@ -75,7 +80,7 @@ export class RecommendationsService {
           ORDER BY TotalScore DESC
         `;
         const personalResult = await this.databaseService.query(personalQuery, [
-          { name: 'UserID', type: sql.Int, value: userId }
+          { name: 'UserID', type: sql.Int, value: userId },
         ]);
         recommendedProducts = personalResult.recordset;
       }
@@ -90,7 +95,8 @@ export class RecommendationsService {
           WHERE p.IsActive = 1
           ORDER BY v.TotalSold DESC
         `;
-        const topSellingResult = await this.databaseService.query(topSellingQuery);
+        const topSellingResult =
+          await this.databaseService.query(topSellingQuery);
         recommendedProducts = topSellingResult.recordset;
       }
 
@@ -110,7 +116,10 @@ export class RecommendationsService {
       return recommendedProducts;
     } catch (error) {
       this.logger.error('Error fetching recommendations', error);
-      require('fs').writeFileSync('recs_error.log', (error ? error.stack : 'Unknown error') + '');
+      require('fs').writeFileSync(
+        'recs_error.log',
+        (error ? error.stack : 'Unknown error') + '',
+      );
       throw error;
     }
   }
