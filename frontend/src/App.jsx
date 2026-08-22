@@ -2153,17 +2153,17 @@ function App() {
                       <span style={{ fontWeight: 'bold' }}>Tổng tiền thanh toán:</span>
                       <span className="total-amount" style={{ color: 'var(--primary-color)', fontSize: '24px' }}>{totalPrice.toLocaleString('vi-VN')} đ</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '15px' }}>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                       <button 
                         className="btn btn-secondary"
-                        style={{ flex: 1, padding: '15px', fontSize: '16px' }}
+                        style={{ flex: '1 1 130px', padding: '12px', fontSize: '14px', whiteSpace: 'nowrap' }}
                         onClick={() => setActiveTab('menu')}
                       >
                         Tiếp tục mua hàng
                       </button>
                       <button 
                         className="btn btn-primary btn-checkout"
-                        style={{ flex: 2, padding: '15px', fontSize: '18px' }}
+                        style={{ flex: '2 1 150px', padding: '12px', fontSize: '15px', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (!isLoggedIn) {
                             toast('Vui lòng đăng nhập để tiến hành đặt hàng.');

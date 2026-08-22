@@ -162,9 +162,8 @@ function AdminPromotions({ apiFetch, API_BASE_URL }) {
             <p style={{ color: '#94a3b8', margin: '5px 0 0 0', fontSize: '13px' }}>Quản lý các chương trình ưu đãi giảm giá dành cho khách hàng</p>
           </div>
           <button 
-            className="action-btn" 
             onClick={() => handleOpenModal()}
-            style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', borderRadius: '25px', border: 'none', boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)', transition: 'all 0.3s', whiteSpace: 'nowrap', flexShrink: 0 }}
+            style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', borderRadius: '25px', border: 'none', boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)', transition: 'all 0.3s', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer' }}
           >
             + TẠO MÃ MỚI
           </button>

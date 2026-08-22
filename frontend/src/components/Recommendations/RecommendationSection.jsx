@@ -53,19 +53,19 @@ const RecommendationSection = ({ isLoggedIn }) => {
       <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)', borderRadius: '50%', zIndex: 0 }}></div>
       <div style={{ position: 'absolute', bottom: '-80px', left: '-20px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(255,193,7,0.2) 0%, transparent 70%)', borderRadius: '50%', zIndex: 0 }}></div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: 'linear-gradient(135deg, #ff9800 0%, #ff5722 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', boxShadow: '0 6px 20px rgba(255, 87, 34, 0.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px', marginBottom: '30px', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: '1 1 min-content' }}>
+          <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: 'linear-gradient(135deg, #ff9800 0%, #ff5722 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', boxShadow: '0 6px 20px rgba(255, 87, 34, 0.4)', flexShrink: 0 }}>
             🔥
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', background: 'linear-gradient(90deg, #e65100, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 2px 4px rgba(255,87,34,0.1)' }}>
+            <h2 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 24px)', fontWeight: '900', background: 'linear-gradient(90deg, #e65100, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 2px 4px rgba(255,87,34,0.1)' }}>
               Món Ngon Dành Riêng Cho Bạn
             </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#d84315', fontWeight: '600' }}>Tuyển chọn từ khẩu vị & lịch sử của bạn</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#d84315', fontWeight: '600' }}>Tuyển chọn từ khẩu vị & lịch sử của bạn</p>
           </div>
         </div>
-        <span style={{ padding: '8px 20px', background: 'linear-gradient(90deg, #ff9800, #ff5722)', borderRadius: '30px', fontSize: '13px', color: '#fff', fontWeight: '800', boxShadow: '0 4px 15px rgba(255, 87, 34, 0.4)', animation: 'pulse 2s infinite', letterSpacing: '1px' }}>
+        <span style={{ padding: '8px 20px', background: 'linear-gradient(90deg, #ff9800, #ff5722)', borderRadius: '30px', fontSize: '13px', color: '#fff', fontWeight: '800', boxShadow: '0 4px 15px rgba(255, 87, 34, 0.4)', animation: 'pulse 2s infinite', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0 }}>
           HOT NHẤT 🔥
         </span>
       </div>
