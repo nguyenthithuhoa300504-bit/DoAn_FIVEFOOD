@@ -36,8 +36,8 @@ export default function OrderProgressStepper({ status }) {
         <div className="stepper-progress-fill" style={{ width: `calc(${fillPercentage} - 70px)` }} />
         
         {STEPS.map((step, idx) => {
-          const isCompleted = idx < currentStep || (idx === 3 && currentStep === 3);
-          const isActive = idx === currentStep && currentStep < 3;
+          const isCompleted = idx < currentStep;
+          const isActive = idx === currentStep;
           let itemClass = 'step-item';
           if (isCompleted) itemClass += ' completed';
           if (isActive) itemClass += ' active';

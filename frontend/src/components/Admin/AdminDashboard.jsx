@@ -483,10 +483,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis dataKey="displayDate" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: '700' }} axisLine={false} tickLine={false} dy={10} />
                 <YAxis stroke="#64748b" tickFormatter={(value) => `${value / 1000}k`} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: '600' }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,179,0,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,179,0,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 16px' }}
                   itemStyle={{ color: '#FFB300', fontWeight: 'bold', fontSize: '16px' }}
                   formatter={(value) => [`${value.toLocaleString('vi-VN')} đ`, "Doanh thu"]}
-                  labelStyle={{ color: themeColors.textSecondary, marginBottom: '6px', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#fff', marginBottom: '6px', fontWeight: 'bold' }}
                 />
                 <Area type="monotone" dataKey="Revenue" stroke="#FFB300" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" activeDot={{ r: 8, stroke: '#fff', strokeWidth: 3, fill: '#FF7A00', boxShadow: '0 0 15px #FFB300' }} name="Doanh thu" animationDuration={1500} />
               </AreaChart>
@@ -518,8 +518,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: '600' }} axisLine={false} tickLine={false} dy={10} />
                 <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(0,242,254,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(0,242,254,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
                   itemStyle={{ color: '#00F2FE', fontWeight: 'bold', fontSize: '15px' }}
+                  labelStyle={{ color: '#fff', marginBottom: '6px', fontWeight: 'bold' }}
                   formatter={(value) => [`${value} lượt gọi món`, "Đã tiêu thụ"]}
                 />
                 <Bar dataKey="Sales" fill="#00F2FE" radius={[8, 8, 0, 0]} animationDuration={1500} barSize={35}>
@@ -569,8 +571,8 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                   ))}
                 </Pie>
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,255,255,0.2)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
-                  itemStyle={{ color: themeColors.tooltipColor, fontWeight: 'bold', fontSize: '16px' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  itemStyle={{ color: '#fff', fontWeight: 'bold', fontSize: '16px' }}
                   formatter={(value) => [`${value} món`, "Số lượng"]}
                 />
                 <Legend wrapperStyle={{ color: themeColors.textMain, fontSize: '13px', fontWeight: '600', paddingTop: '15px' }} iconType="circle" iconSize={10} />
@@ -603,8 +605,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
                 <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" stroke="#64748b" tick={{ fill: '#e2e8f0', fontSize: 14, fontWeight: '700' }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(236,72,153,0.4)', color: themeColors.tooltipColor, borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
+                  cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
+                  contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(236,72,153,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
                   itemStyle={{ color: '#EC4899', fontWeight: 'bold', fontSize: '15px' }}
+                  labelStyle={{ color: '#fff', marginBottom: '6px', fontWeight: 'bold' }}
                   formatter={(value) => [`${value} đơn`, "Số lượng"]}
                 />
                 <Bar dataKey="count" radius={[0, 12, 12, 0]} barSize={28} animationDuration={1500}>

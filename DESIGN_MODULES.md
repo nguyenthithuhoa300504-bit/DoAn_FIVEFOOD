@@ -1,71 +1,43 @@
 # TÀI LIỆU THIẾT KẾ CÁC PHÂN HỆ HỆ THỐNG (DESIGN_MODULES)
 ## DỰ ÁN: PHÁT TRIỂN ỨNG DỤNG WEB ĐẶT VÀ GIAO ĐỒ ĂN TRỰC TUYẾN FIVEFOOD
 
-Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **13 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
+Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **13 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD. Hệ thống được tối ưu hóa ở mức dữ liệu vật lý với chuẩn xác **12 Bảng (Tables) + 1 View**, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS).
 
 ---
 
 ## CÔNG NGHỆ SỬ DỤNG (TECH STACK)
 
 ### 1. Giao diện (Frontend)
-*   **Core Framework**: ReactJS (phiên bản 18 trở lên) khởi tạo dự án cực nhanh bằng **Vite**.
-*   **Thiết kế & Giao diện**: TailwindCSS, sử dụng font chữ hiện đại (Google Fonts như Roboto), hiệu ứng Glassmorphism và chuyển động mượt mà (micro-animations).
-*   **Bản đồ số**: **Leaflet** & **React-Leaflet** tích hợp bản đồ mã nguồn mở **OpenStreetMap** để chọn địa chỉ nhận hàng và hiển thị shipper giao đơn.
-*   **Vẽ Đồ thị & Thống kê**: **Recharts** (hoặc Chart.js) phục vụ trực quan hóa dữ liệu trên Admin Dashboard.
-*   **Xử lý Giọng nói**: Tích hợp **Web Speech API** (Native HTML5) hỗ trợ nhận diện giọng nói (Voice-to-Text) cực nhạy cho Chatbot.
-*   **Kết nối Realtime**: **Sử dụng webSocket (Socket.io)** để nhận thông báo và tọa độ shipper thời gian thực.
-*   **Truy xuất API**: Hàm helper `apiFetch` (dựa trên Fetch API hoặc Axios) có cơ chế tự động gửi kèm JWT Token và tự xử lý hướng đăng nhập lại khi token hết hạn.
+*   **Core Framework**: ReactJS khởi tạo dự án bằng **Vite**.
+*   **Thiết kế & Giao diện**: TailwindCSS, hiệu ứng Glassmorphism.
+*   **Bản đồ số**: **Leaflet** & **React-Leaflet**.
+*   **Vẽ Đồ thị & Thống kê**: **Recharts**.
+*   **Xử lý Giọng nói**: Tích hợp **Web Speech API** (Native HTML5).
+*   **Kết nối Realtime**: **WebSocket (Socket.io)**.
 
 ### 2. Dịch vụ API (Backend)
-*   **Core Framework**: **NestJS** (Node.js framework) cấu trúc phân tầng, quản lý module độc lập, hiệu năng cao và dễ mở rộng.
-*   **Xác thực & Bảo mật**: **Passport.js** tích hợp **JWT (JSON Web Token)** để cấp quyền truy cập APIs, băm mã hóa mật khẩu bằng thư viện **bcrypt**.
-*   **Giao tiếp Realtime**: **WebSockets** thông qua gói thư viện `@nestjs/websockets` và `@nestjs/platform-socket.io`.
-*   **Tích hợp AI**: Gọi trực tiếp API (Fetch API) chuẩn OpenAI-compatible để tương tác với mô hình **LLaMA-3.1-8B** siêu tốc trên nền tảng **Groq**.
-*   **Kết nối Database**: Sử dụng thư viện mssql để kết nối và thao tác dữ liệu (Gọi trực tiếp Stored Procedures/Triggers của SQL Server).
-*   **Tài liệu API Tự động**: Tích hợp **Swagger UI** (`@nestjs/swagger`) để tự động sinh trang tài liệu API chuẩn doanh nghiệp (OpenAPI).
+*   **Core Framework**: **NestJS** với Kiến trúc 3 lớp (3-Tier Layered Architecture).
+*   **Xác thực & Bảo mật**: **Passport.js** tích hợp **JWT**, mã hóa mật khẩu bằng **bcrypt**.
+*   **Tích hợp AI**: Gọi trực tiếp API Groq để tương tác với mô hình **LLaMA-3.1-8B**.
+*   **Kết nối Database**: Thư viện mssql (TypeORM).
+*   **Tài liệu API Tự động**: Tích hợp **Swagger UI**.
 
 ### 3. Hệ quản trị Cơ sở dữ liệu (Database)
 *   **Hệ quản trị**: **Microsoft SQL Server 2022**.
 *   **Tính năng đặc thù được áp dụng**:
-    *   **Temporal Tables (System-Versioned)**: Tự động hóa việc theo dõi, truy vết toàn bộ lịch sử biến động giá cả và tồn kho của món ăn trên bảng `Products`.
-    *   **Xử lý JSON nguyên bản (JSON Native Support)**: Sử dụng cột `NVARCHAR(MAX)` kết hợp các hàm `JSON_VALUE`, `JSON_QUERY` để lưu và phân tích sâu các hội thoại tư vấn món ăn của Chatbot.
-    *   **Stored Procedures & Transactions**: Thực thi nghiệp vụ đặt hàng thông qua thủ tục `sp_TaoHoaDon` được bảo vệ bằng cấu trúc `BEGIN TRANSACTION` / `COMMIT` / `ROLLBACK` để tránh lỗi bất đồng bộ.
-    *   **Triggers**: Trigger trừ kho khi đặt hàng và Trigger khôi phục kho/voucher khi hủy đơn hàng.
-
----
-
-## MỤC LỤC
-0. [Công nghệ Sử dụng (Tech Stack)](#cong-nghe-su-dung-tech-stack)
-1. [Phân hệ 1: Xác thực & Phân quyền (Auth & Users)](#1-phan-he-1-xac-thuc--phan-quyen-auth--users)
-2. [Phân hệ 2: Quản lý Thực đơn & Kho hàng (Products & Categories)](#2-phan-he-2-quan-ly-thuc-don--kho-hang-products--categories)
-3. [Phân hệ 3: Giỏ hàng Hỗn hợp (Hybrid Cart)](#3-phan-he-3-gio-hang-hon-hop-hybrid-cart)
-4. [Phân hệ 4: Đặt hàng & Khuyến mãi (Orders & Promotions)](#4-phan-he-4-dat-hang--khuyen-mai-orders--promotions)
-5. [Phân hệ 5: Tích hợp Cổng thanh toán (VNPay / MoMo)](#5-phan-he-5-tich-hop-cong-thanh-toan-vnpay--momo)
-6. [Phân hệ 6: Vận chuyển & Bản đồ số (Delivery & Leaflet Map)](#6-phan-he-6-van-chuyen--ban-do-so-delivery--leaflet-map)
-7. [Phân hệ 7: Trợ lý AI Chatbot & Gợi ý (AI Chatbot & Recommendations)](#7-phan-he-7-tro-ly-ai-chatbot--goi-y-ai-chatbot--recommendations)
-8. [Phân hệ 8: Đánh giá & Yêu thích (Reviews & Favorites)](#8-phan-he-8-danh-gia--yeu-thich-reviews--favorites)
-9. [Phân hệ 9: Thông báo & Chat Realtime (Socket.io Gateway)](#9-phan-he-9-thong-bao--chat-realtime-socketio-gateway)
-10. [Phân hệ 10: Theo dõi Hành vi & Gợi ý Nâng cao (User Action Logging)](#10-phan-he-10-theo-doi-hanh-vi--goi-y-nang-cao-user-action-logging)
-11. [Phân hệ 11: Marketing, Tăng trưởng & Tương tác (Marketing & Engagement)](#11-phan-he-11-marketing-tang-truong--tuong-tac-marketing--engagement)
-12. [Phân hệ 12: Quản lý Chi nhánh Động (Dynamic Branch Management)](#12-phan-he-12-quan-ly-chi-nhanh-dong-dynamic-branch-management)
-13. [Phân hệ 13: Quản trị Trung tâm & Báo cáo Thống kê (Admin Dashboard & Analytics)](#13-phan-he-13-quan-tri-trung-tam--bao-cao-thong-ke-admin-dashboard--analytics)
+    *   **Temporal Tables (System-Versioned)**: Theo dõi lịch sử giá của món ăn.
+    *   **JSON Native Support**: Xử lý dữ liệu hội thoại Chatbot.
+    *   **Stored Procedures & Triggers**: Bảo vệ giao dịch (Transactions) và hoàn trả kho.
 
 ---
 
 ## 1. PHÂN HỆ 1: XÁC THỰC & PHÂN QUYỀN (Auth & Users)
 
 ### Tổng quan (Overview)
-Phân hệ này chịu trách nhiệm quản lý định danh người dùng (Khách hàng, Admin, Shipper). Nó cung cấp các tính năng cốt lõi như Đăng ký, Đăng nhập (sử dụng JSON Web Token - JWT để bảo mật phiên làm việc), Đổi mật khẩu, và Phân quyền (Authorization). Việc phân quyền đảm bảo rằng chỉ có Admin mới có quyền quản lý hệ thống, trong khi Khách hàng chỉ có quyền xem và đặt món.
+Phân hệ quản lý định danh người dùng. Để tối ưu CSDL, vai trò người dùng (Admin, Khách hàng, Shipper) được tích hợp thẳng vào bảng `Users` thay vì tách bảng riêng, giảm thiểu phép JOIN.
 
 ### A. Database Schema
-*   **Bảng `Roles`**: Lưu định nghĩa vai trò người dùng.
-    ```sql
-    CREATE TABLE Roles (
-        RoleID INT IDENTITY(1,1) PRIMARY KEY,
-        RoleName NVARCHAR(50) NOT NULL UNIQUE
-    );
-    ```
-*   **Bảng `Users`**: Lưu trữ thông tin tài khoản người dùng và liên kết vai trò.
+*   **Bảng 1: `Users`**
     ```sql
     CREATE TABLE Users (
         UserID INT IDENTITY(1,1) PRIMARY KEY,
@@ -73,33 +45,24 @@ Phân hệ này chịu trách nhiệm quản lý định danh người dùng (Kh
         Email VARCHAR(100) NOT NULL UNIQUE,
         Phone VARCHAR(15) NULL,
         PasswordHash VARCHAR(255) NOT NULL,
-        RoleID INT NOT NULL,
+        Role NVARCHAR(20) DEFAULT 'Customer' CHECK (Role IN ('Customer', 'Admin', 'Shipper')),
         IsLocked BIT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        CONSTRAINT FK_Users_Roles FOREIGN KEY (RoleID) REFERENCES Roles(RoleID)
+        CreatedAt DATETIME DEFAULT GETDATE()
     );
     ```
 
 ### B. RESTful API Endpoints
 | Method | Endpoint | Quyền truy cập | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Đăng ký tài khoản Khách hàng mới (mã hóa mật khẩu bằng bcrypt) |
-| `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản, trả về JWT Token và thông tin cơ bản |
-| `GET` | `/api/auth/profile` | Đăng nhập | Lấy thông tin cá nhân của tài khoản hiện tại |
-| `PUT` | `/api/auth/profile` | Đăng nhập | Cập nhật thông tin cá nhân (Họ tên, SĐT) |
-| `PUT` | `/api/auth/change-password` | Đăng nhập | Đổi mật khẩu |
-| `GET` | `/api/admin/users` | Admin | Lấy danh sách toàn bộ người dùng kèm phân trang |
-| `PUT` | `/api/admin/users/:id/lock` | Admin | Khóa hoặc mở khóa tài khoản người dùng |
+| `POST` | `/api/auth/register` | Public | Đăng ký tài khoản Khách hàng mới |
+| `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản, trả về JWT Token |
 
 ---
 
 ## 2. PHÂN HỆ 2: QUẢN LÝ THỰC ĐƠN & KHO HÀNG (Products & Categories)
 
-### Tổng quan (Overview)
-Phân hệ này cho phép lưu trữ và hiển thị danh mục các món ăn. Đối với Admin, phân hệ cung cấp tính năng CRUD (Thêm, Đọc, Sửa, Xóa) sản phẩm. Điểm đặc biệt là sử dụng tính năng Temporal Tables của SQL Server để tự động lưu lại lịch sử biến động giá bán và tồn kho theo thời gian, giúp đối soát dữ liệu minh bạch và an toàn.
-
-### A. Database Schema (Tận dụng SQL Server 2022 System-Versioned Temporal Tables)
-*   **Bảng `Categories`**: Danh mục món ăn.
+### A. Database Schema
+*   **Bảng 2: `Categories`**
     ```sql
     CREATE TABLE Categories (
         CategoryID INT IDENTITY(1,1) PRIMARY KEY,
@@ -107,7 +70,7 @@ Phân hệ này cho phép lưu trữ và hiển thị danh mục các món ăn. 
         Description NVARCHAR(255) NULL
     );
     ```
-*   **Bảng `Products` (System-Versioned Temporal Table)**: Tự động ghi lại lịch sử giá và số lượng kho mỗi khi có hành động `UPDATE` hoặc `DELETE`.
+*   **Bảng 3: `Products` (System-Versioned Temporal Table)**
     ```sql
     CREATE TABLE Products (
         ProductID INT IDENTITY(1,1) PRIMARY KEY,
@@ -125,25 +88,14 @@ Phân hệ này cho phép lưu trữ và hiển thị danh mục các món ăn. 
     WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.ProductsHistory));
     ```
 
-### B. RESTful API Endpoints
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/products` | Public | Lấy thực đơn (hỗ trợ phân trang, lọc theo Category, tìm kiếm theo tên) |
-| `GET` | `/api/products/:id` | Public | Xem thông tin chi tiết món ăn |
-| `POST` | `/api/admin/products` | Admin | Thêm mới món ăn |
-| `PUT` | `/api/admin/products/:id` | Admin | Sửa thông tin món ăn (tự động cập nhật lịch sử tại `ProductsHistory`) |
-| `DELETE` | `/api/admin/products/:id` | Admin | Xóa mềm/Khóa món ăn |
-| `GET` | `/api/admin/products/:id/history` | Admin | Truy vấn lịch sử thay đổi giá/kho của sản phẩm bằng lệnh `FOR SYSTEM_TIME ALL` |
-
 ---
 
 ## 3. PHÂN HỆ 3: GIỎ HÀNG HỖN HỢP (Hybrid Cart)
 
-### Tổng quan (Overview)
-Cơ chế "Hỗn hợp" (Hybrid) giúp tối ưu trải nghiệm mua sắm: khi khách chưa đăng nhập, giỏ hàng được lưu tạm trên trình duyệt (LocalStorage). Ngay khi đăng nhập thành công, dữ liệu này lập tức được đồng bộ lên CSDL (Database) để khách hàng có thể tiếp tục thanh toán trên điện thoại hoặc thiết bị khác mà không bị mất các món đã chọn.
-
+### Tổng quan
+Giỏ hàng lưu trữ LocalStorage khi chưa đăng nhập, đồng bộ lên CSDL khi đăng nhập.
 ### A. Database Schema
-*   **Bảng `CartItems`**: Lưu trữ giỏ hàng của người dùng đã đăng nhập.
+*   **Bảng 4: `CartItems`**
     ```sql
     CREATE TABLE CartItems (
         CartItemID INT IDENTITY(1,1) PRIMARY KEY,
@@ -157,63 +109,47 @@ Cơ chế "Hỗn hợp" (Hybrid) giúp tối ưu trải nghiệm mua sắm: khi 
     );
     ```
 
-### B. Luồng Nghiệp vụ & API Endpoints
-1.  **Chưa đăng nhập**: Giỏ hàng lưu trữ hoàn toàn tại `localStorage` dưới dạng chuỗi JSON của mảng đối tượng: `[{ productId: 1, quantity: 2 }]`.
-2.  **Đăng nhập thành công**: Frontend lấy mảng này gửi lên API `/api/cart/sync` để đồng bộ.
-3.  **Backend xử lý**: Duyệt qua danh sách, thực hiện gộp số lượng (`MERGE` hoặc cập nhật cộng dồn số lượng) nếu món ăn đã có trong DB của user, hoặc tạo mới bản ghi nếu chưa có.
-
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/cart` | Đăng nhập | Lấy giỏ hàng hiện tại của khách hàng từ DB |
-| `POST` | `/api/cart/add` | Đăng nhập | Thêm món ăn vào giỏ hàng |
-| `PUT` | `/api/cart/update` | Đăng nhập | Cập nhật số lượng món ăn trong giỏ hàng |
-| `DELETE` | `/api/cart/remove/:productId` | Đăng nhập | Xóa món ăn khỏi giỏ hàng |
-| `POST` | `/api/cart/sync` | Đăng nhập | Đồng bộ giỏ hàng từ LocalStorage lên DB khi đăng nhập thành công |
-
 ---
 
-## 4. PHÂN HỆ 4: ĐẶT HÀNG & KHUYẾN MÃI (Orders & Promotions)
+## 4. PHÂN HỆ 4: ĐẶT HÀNG & KHUYẾN MÃI (Orders & Vouchers)
 
-### Tổng quan (Overview)
-Đây là phân hệ trung tâm xử lý luồng đặt món, từ việc áp dụng mã giảm giá (Vouchers), tính toán tổng tiền, cho đến khởi tạo hóa đơn. Dưới Database, nghiệp vụ đặt hàng được bao bọc trong một Giao dịch (Transaction) nhằm đảm bảo tính toàn vẹn dữ liệu: kho chỉ bị trừ khi đơn hàng tạo thành công, và nếu đơn bị hủy, hệ thống tự động hoàn lại kho và lượt dùng mã giảm giá thông qua các Triggers.
+### Tổng quan
+Nghiệp vụ cốt lõi, xử lý mã giảm giá (Vouchers) và Đơn hàng. Đơn hàng được gán trực tiếp cho `ShipperID` (là người dùng có Role = 'Shipper') để tối ưu số lượng bảng CSDL.
 
 ### A. Database Schema
-*   **Bảng `Promotions`**: Khuyến mãi / Mã giảm giá.
+*   **Bảng 5: `Vouchers`**
     ```sql
-    CREATE TABLE Promotions (
-        PromotionID INT IDENTITY(1,1) PRIMARY KEY,
-        PromoCode VARCHAR(50) NOT NULL UNIQUE,
-        Description NVARCHAR(255) NULL,
+    CREATE TABLE Vouchers (
+        VoucherID INT IDENTITY(1,1) PRIMARY KEY,
+        Code VARCHAR(50) NOT NULL UNIQUE,
         DiscountPercentage INT NOT NULL CHECK (DiscountPercentage BETWEEN 1 AND 100),
         MaxDiscountAmount DECIMAL(18,2) NOT NULL,
         MinOrderValue DECIMAL(18,2) NOT NULL DEFAULT 0,
         UsageLimit INT NOT NULL,
         UsedCount INT DEFAULT 0,
-        StartDate DATETIME NOT NULL,
         EndDate DATETIME NOT NULL
     );
     ```
-*   **Bảng `Orders`**: Hóa đơn / Đơn đặt hàng.
+*   **Bảng 6: `Orders`**
     ```sql
     CREATE TABLE Orders (
         OrderID INT IDENTITY(1,1) PRIMARY KEY,
         UserID INT NOT NULL,
+        ShipperID INT NULL, -- Gán cho Shipper
         OrderDate DATETIME DEFAULT GETDATE(),
-        TotalAmount DECIMAL(18,2) NOT NULL, -- Giá trị đơn hàng trước giảm giá
-        DiscountAmount DECIMAL(18,2) DEFAULT 0, -- Số tiền giảm giá
-        FinalAmount DECIMAL(18,2) NOT NULL, -- Tiền khách thực thanh toán
-        PromotionID INT NULL,
-        Status NVARCHAR(50) DEFAULT N'Chờ xác nhận', -- Chờ xác nhận, Đang giao, Hoàn thành, Đã hủy
+        TotalAmount DECIMAL(18,2) NOT NULL,
+        FinalAmount DECIMAL(18,2) NOT NULL,
+        VoucherID INT NULL,
+        Status NVARCHAR(50) DEFAULT N'Chờ xác nhận',
         ShippingAddress NVARCHAR(255) NOT NULL,
-        Latitude DECIMAL(9,6) NULL, -- Tọa độ khách hàng
+        Latitude DECIMAL(9,6) NULL,
         Longitude DECIMAL(9,6) NULL,
-        PaymentMethod NVARCHAR(50) NOT NULL, -- COD, VNPAY, MOMO
-        PaymentStatus NVARCHAR(50) DEFAULT N'Chưa thanh toán', -- Chưa thanh toán, Đã thanh toán, Thất bại
         CONSTRAINT FK_Orders_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
-        CONSTRAINT FK_Orders_Promotions FOREIGN KEY (PromotionID) REFERENCES Promotions(PromotionID)
+        CONSTRAINT FK_Orders_Shippers FOREIGN KEY (ShipperID) REFERENCES Users(UserID),
+        CONSTRAINT FK_Orders_Vouchers FOREIGN KEY (VoucherID) REFERENCES Vouchers(VoucherID)
     );
     ```
-*   **Bảng `OrderDetails`**: Chi tiết hóa đơn.
+*   **Bảng 7: `OrderDetails` (Thực thể chen)**
     ```sql
     CREATE TABLE OrderDetails (
         OrderDetailID INT IDENTITY(1,1) PRIMARY KEY,
@@ -226,129 +162,37 @@ Cơ chế "Hỗn hợp" (Hybrid) giúp tối ưu trải nghiệm mua sắm: khi 
     );
     ```
 
-### B. Logic Database (Stored Procedure & Triggers)
-1.  **Stored Procedure `sp_TaoHoaDon`**:
-    Tạo hóa đơn, chèn dữ liệu chi tiết hóa đơn từ danh sách giỏ hàng. Đóng gói trong TRANSACTION.
-    ```sql
-    CREATE PROCEDURE sp_TaoHoaDon
-        @UserID INT,
-        @ShippingAddress NVARCHAR(255),
-        @Latitude DECIMAL(9,6),
-        @Longitude DECIMAL(9,6),
-        @PaymentMethod NVARCHAR(50),
-        @PromoCode VARCHAR(50) = NULL
-    AS
-    BEGIN
-        SET NOCOUNT ON;
-        BEGIN TRY
-            BEGIN TRANSACTION;
-            
-            -- Logic kiểm tra tồn kho, kiểm tra voucher còn hạn hay không.
-            -- Tính toán giảm giá, thêm mới vào bảng Orders.
-            -- Lấy dữ liệu từ CartItems để insert vào OrderDetails.
-            -- Xóa dữ liệu trong CartItems của người dùng.
-            -- Tăng UsedCount của Promotion (nếu có).
-            
-            COMMIT TRANSACTION;
-        END TRY
-        BEGIN CATCH
-            ROLLBACK TRANSACTION;
-            THROW;
-        END CATCH
-    END;
-    ```
-2.  **Trigger `trg_ChiTietHoaDon_Insert`**: Tự động trừ kho của `Products` khi thêm chi tiết hóa đơn.
-3.  **Trigger `trg_HoaDon_UpdateStatus`**: Khi đơn hàng bị hủy (`Status` = `Đã hủy`), tự động khôi phục số lượng tồn kho của sản phẩm và hoàn trả 1 lượt sử dụng cho mã khuyến mãi.
-
-### C. RESTful API Endpoints
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/orders` | Đăng nhập | Tạo đơn hàng mới (gọi `sp_TaoHoaDon` thông qua Db transaction) |
-| `GET` | `/api/orders` | Đăng nhập | Xem danh sách đơn hàng đã mua của khách hàng |
-| `GET` | `/api/orders/:id` | Đăng nhập | Xem chi tiết trạng thái đơn hàng |
-| `PUT` | `/api/admin/orders/:id/status` | Admin | Cập nhật trạng thái đơn hàng (kích hoạt trigger hoàn kho nếu status = Đã hủy) |
-
 ---
 
-## 5. PHÂN HỆ 5: TÍCH HỢP CỔNG THANH TOÁN (VNPay / MoMo)
-
-### Tổng quan (Overview)
-Phân hệ này số hóa trải nghiệm thanh toán bằng cách tích hợp cổng thanh toán trực tuyến (VNPay Sandbox). Hệ thống mã hóa thông tin đơn hàng, điều hướng khách tới cổng VNPay. Sau khi khách thanh toán thành công, VNPay sẽ gửi tín hiệu ngầm (IPN - Instant Payment Notification) về server Backend để hệ thống tự động cập nhật trạng thái đơn hàng một cách bảo mật tuyệt đối, chống gian lận.
+## 5. PHÂN HỆ 5: TÍCH HỢP CỔNG THANH TOÁN (VNPay Sandbox)
 
 ### A. Database Schema
-*   **Bảng `Transactions`**: Lưu lịch sử giao dịch thanh toán trực tuyến.
+*   **Bảng 8: `Transactions`**
     ```sql
     CREATE TABLE Transactions (
         TransactionID INT IDENTITY(1,1) PRIMARY KEY,
         OrderID INT NOT NULL,
-        PaymentGateway NVARCHAR(50) NOT NULL, -- VNPAY hoặc MOMO
-        TransactionNo VARCHAR(100) NOT NULL UNIQUE, -- Mã giao dịch bên cổng thanh toán
+        TransactionNo VARCHAR(100) NOT NULL UNIQUE,
         Amount DECIMAL(18,2) NOT NULL,
-        Status NVARCHAR(50) NOT NULL, -- Thanh cong, That bai
-        ResponseCode VARCHAR(10) NULL, -- Mã lỗi phản hồi
+        Status NVARCHAR(50) NOT NULL,
         CreatedAt DATETIME DEFAULT GETDATE(),
         CONSTRAINT FK_Transactions_Orders FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
     );
     ```
 
-### B. Luồng Nghiệp vụ & API Endpoints
-1.  Khách đặt hàng chọn thanh toán qua VNPay/MoMo.
-2.  Backend tạo URL thanh toán dẫn sang cổng thanh toán (Sandbox).
-3.  Khách hàng thực hiện thanh toán trên trang của VNPay/MoMo.
-4.  Cổng thanh toán redirect khách hàng về trang Frontend và đồng thời gọi ngầm API IPN của Backend để đồng bộ trạng thái giao dịch một cách an toàn.
-
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/payment/create-vnpay-url` | Đăng nhập | Tạo URL thanh toán VNPay Sandbox cho đơn hàng |
-| `GET` | `/api/payment/vnpay-return` | Public | Nhận kết quả redirect từ VNPay (Frontend gọi) |
-| `GET` | `/api/payment/vnpay-ipn` | Public | VNPay IPN URL để nhận và cập nhật trạng thái hóa đơn tự động |
-
 ---
 
 ## 6. PHÂN HỆ 6: VẬN CHUYỂN & BẢN ĐỒ SỐ (Delivery & Leaflet Map)
 
-### Tổng quan (Overview)
-Bằng việc tích hợp bản đồ mã nguồn mở OpenStreetMap (qua thư viện Leaflet), khách hàng có thể ghim chính xác địa chỉ nhận hàng. Đặc biệt, khi đơn chuyển sang trạng thái "Đang giao", một tiến trình mô phỏng hành trình giao hàng được kích hoạt, cho phép khách hàng theo dõi tọa độ di chuyển của Shipper theo thời gian thực (Realtime) và nhận cảnh báo khi Shipper gọi điện đến giao món.
-
-### A. Database Schema
-*   **Bảng `Shippers`**: Thông tin người giao hàng.
-    ```sql
-    CREATE TABLE Shippers (
-        ShipperID INT IDENTITY(1,1) PRIMARY KEY,
-        ShipperName NVARCHAR(100) NOT NULL,
-        Phone VARCHAR(15) NOT NULL,
-        VehicleNumber VARCHAR(20) NULL,
-        IsAvailable BIT DEFAULT 1
-    );
-    ```
-*   **Bảng `DeliveryTrips`**: Hành trình vận chuyển đơn hàng.
-    ```sql
-    CREATE TABLE DeliveryTrips (
-        TripID INT IDENTITY(1,1) PRIMARY KEY,
-        OrderID INT NOT NULL,
-        ShipperID INT NOT NULL,
-        StartTime DATETIME DEFAULT GETDATE(),
-        EndTime DATETIME NULL,
-        Status NVARCHAR(50) DEFAULT N'Đang chuẩn bị', -- Dang chuan bi, Dang giao, Hoan thanh
-        CONSTRAINT FK_DeliveryTrips_Orders FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
-        CONSTRAINT FK_DeliveryTrips_Shippers FOREIGN KEY (ShipperID) REFERENCES Shippers(ShipperID)
-    );
-    ```
-
-### B. Mô phỏng Bản đồ số (Frontend + WebSockets)
-*   **Frontend (React + Leaflet)**: Bản đồ OpenStreetMap hiển thị biểu tượng Cửa hàng (Tọa độ cố định), Khách hàng (Lấy từ `Orders.Latitude` và `Longitude`), và Shipper.
-*   **Mô phỏng Giao hàng**: Cập nhật vị trí điểm giao hàng và theo dõi lộ trình thời gian thực.
-*   **Luồng xử lý Gọi điện thoại**: Shipper có thể thực hiện gọi điện cho khách hàng khi đang giao hàng. Nếu shipper gọi quá 3 lần mà khách hàng không bắt máy, hệ thống sẽ tự động cập nhật trạng thái đơn hàng thành "Trả hàng" (trả hàng lại bên shop).
+### Tổng quan
+Để giữ hệ thống gọn gàng ở mức 12 bảng, tiến trình vận chuyển không lưu vào CSDL mà truyền tải tọa độ GPS theo thời gian thực 100% qua luồng **WebSockets** giữa Shipper và Khách hàng trên nền tảng Leaflet Map. Trạng thái giao hàng được cập nhật trực tiếp vào cột `Status` của bảng `Orders`.
 
 ---
 
-## 7. PHÂN HỆ 7: TRỢ LÝ AI CHATBOT & GỢI Ý (AI Chatbot & Recommendations)
-
-### Tổng quan (Overview)
-Ứng dụng công nghệ Trí tuệ Nhân tạo hiện đại (LLaMA-3.1-8B) để tạo ra nhân viên tư vấn ảo trực 24/7. Nổi bật nhất là tính năng "Cá nhân hóa trải nghiệm": Khi Khách hàng đăng nhập, Chatbot sẽ lập tức tự động hiển thị danh sách các món ăn gợi ý dựa trên sở thích, các món khách hàng đã mua trước đó hoặc những món đang bán chạy. Khách hàng cũng có thể nhắn tin trực tiếp với Chatbot để nhờ AI tư vấn thêm về thực đơn (vd: món chay, món cay), giúp tăng khả năng chốt đơn và nâng cao sự hài lòng.
+## 7. PHÂN HỆ 7: TRỢ LÝ AI CHATBOT (AI Chatbot & Groq LLM)
 
 ### A. Database Schema
-*   **Bảng `ChatbotLogs`**: Lưu trữ lịch sử hỏi đáp với AI Chatbot để làm dữ liệu phân tích.
+*   **Bảng 9: `ChatbotLogs`**
     ```sql
     CREATE TABLE ChatbotLogs (
         LogID INT IDENTITY(1,1) PRIMARY KEY,
@@ -360,47 +204,23 @@ Bằng việc tích hợp bản đồ mã nguồn mở OpenStreetMap (qua thư v
     );
     ```
 
-### B. Tích hợp AI Chatbot (Groq API - LLaMA 3) & Voice-to-Text
-*   Backend gọi API của Groq (Mô hình LLaMA-3.1-8B tốc độ cao).
-*   **Công nghệ Voice-to-Text**: Tích hợp Web Speech API ở Frontend, cho phép Khách hàng dùng biểu tượng Micro để đọc lệnh bằng giọng nói, văn bản tự động điền vào khung chat, mang lại trải nghiệm Rảnh tay (Hands-free) hiện đại.
-*   Cung cấp System Prompt chứa danh sách món ăn, giá bán và các chương trình khuyến mãi hiện tại của cửa hàng để AI tư vấn chính xác thực đơn cho khách hàng.
-*   Lưu trữ lịch sử hội thoại (ChatbotLogs) và cung cấp giao diện quản trị (Admin Dashboard) cho phép Admin theo dõi, phân tích nhu cầu và hành vi tìm kiếm món ăn của khách hàng.
-
-### C. Thuật toán Đề xuất Món ăn (Recommender System - Rule-based)
-*   **Khung nhìn `v_RecommendedProducts`**:
-    ```sql
-    CREATE VIEW v_RecommendedProducts AS
-    SELECT UserID, ProductID, SUM(Quantity) AS TotalQty
-    FROM Orders o
-    INNER JOIN OrderDetails od ON o.OrderID = od.OrderID
-    GROUP BY UserID, ProductID;
-    ```
-*   **Nguyên tắc gợi ý ở API `/api/recommendations`**:
-    1.  Nếu có `UserID`: Gợi ý các sản phẩm thuộc danh mục (Category) mà người dùng mua nhiều nhất (lọc qua View `v_RecommendedProducts`) nhưng chưa mua món này gần đây.
-    2.  Gợi ý các món nằm trong danh sách `Favorites` của người dùng.
-    3.  Nếu là người dùng mới hoặc chưa có lịch sử: Gợi ý Top 10 sản phẩm bán chạy nhất hệ thống.
-
 ---
 
 ## 8. PHÂN HỆ 8: ĐÁNH GIÁ & YÊU THÍCH (Reviews & Favorites)
 
-### Tổng quan (Overview)
-Sau khi giao dịch hoàn tất, khách hàng có quyền chấm điểm (1-5 sao) và để lại nhận xét, tạo kênh phản hồi chất lượng thực phẩm cho quán. Bên cạnh đó, tính năng "Yêu thích" cho phép người dùng lưu trữ nhanh các món ăn hợp khẩu vị, tạo sự tiện lợi tối đa khi họ quay lại đặt hàng vào lần sau mà không cần tìm kiếm lại.
-
 ### A. Database Schema
-*   **Bảng `Favorites`**: Danh sách sản phẩm yêu thích.
+*   **Bảng 10: `Favorites`**
     ```sql
     CREATE TABLE Favorites (
         FavoriteID INT IDENTITY(1,1) PRIMARY KEY,
         UserID INT NOT NULL,
         ProductID INT NOT NULL,
-        CreatedAt DATETIME DEFAULT GETDATE(),
         CONSTRAINT FK_Favorites_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
         CONSTRAINT FK_Favorites_Products FOREIGN KEY (ProductID) REFERENCES Products(ProductID),
         CONSTRAINT UQ_User_Product_Fav UNIQUE (UserID, ProductID)
     );
     ```
-*   **Bảng `Reviews`**: Đánh giá và nhận xét món ăn sau khi nhận hàng.
+*   **Bảng 11: `Reviews`**
     ```sql
     CREATE TABLE Reviews (
         ReviewID INT IDENTITY(1,1) PRIMARY KEY,
@@ -416,126 +236,36 @@ Sau khi giao dịch hoàn tất, khách hàng có quyền chấm điểm (1-5 sa
     );
     ```
 
-### B. Ràng buộc Nghiệp vụ (SQL Server Constraints)
-*   Sử dụng Khóa ngoại kết hợp để đảm bảo khách hàng chỉ đánh giá những món ăn họ đã đặt trong đơn hàng và đơn hàng đó có trạng thái `Hoàn thành`.
-*   API `/api/reviews` kiểm tra trước: `SELECT 1 FROM Orders WHERE OrderID = @OrderID AND UserID = @UserID AND Status = N'Hoàn thành'`.
+---
+
+## 9. PHÂN HỆ 9: THÔNG BÁO CHAT REALTIME (Socket.io Gateway)
+### Tổng quan
+Sử dụng In-memory Storage (Lưu trữ trên RAM) của NestJS và Socket.io để đẩy thông báo trạng thái đơn hàng (Push Notifications) và tin nhắn hỗ trợ mà không cần ghi xuống CSDL, đảm bảo tối ưu hiệu năng và không phát sinh bảng rác.
 
 ---
 
-## 9. PHÂN HỆ 9: THÔNG BÁO & CHAT REALTIME (Socket.io Gateway)
+## 10. PHÂN HỆ 10: THEO DÕI HÀNH VI & GỢI Ý NÂNG CAO
+### Tổng quan
+Thay vì tạo thêm bảng log làm phình CSDL, Thuật toán Gợi ý (Recommendations) sẽ tận dụng trực tiếp dữ liệu từ 3 bảng `Orders`, `OrderDetails` và `Favorites` để xây dựng View `vw_DailyRevenue` và truy vấn trực tiếp.
 
-### Tổng quan (Overview)
-Phân hệ thiết lập đường truyền hai chiều liên tục (WebSocket) giữa trình duyệt của khách và Server. Nhờ đó, cửa hàng có thể gửi Thông báo đẩy (Push Notifications) ngay lập tức khi trạng thái đơn hàng thay đổi, đồng thời cung cấp tính năng Live Chat để khách hàng nhắn tin trực tiếp với nhân viên quản trị (Admin) nhằm hỗ trợ giải quyết sự cố đơn hàng ngay tức thì.
+### A. Database View
+*   **View 1: `vw_DailyRevenue` (Tái sử dụng cho thống kê doanh thu)**
+
+---
+
+## 11. PHÂN HỆ 11: MARKETING, TĂNG TRƯỞNG & TƯƠNG TÁC
+### Tổng quan
+Triển khai hoàn toàn ở tầng Frontend ReactJS:
+1. **Hiệu ứng FOMO**: Các Popup thông báo mua hàng ảo tuần hoàn.
+2. **Cross-sell**: Băng chuyền gợi ý đồ uống/ăn vặt tại Giỏ hàng.
+3. **Zalo Widget**: Nút liên kết mở khung chat Zalo.
+
+---
+
+## 12. PHÂN HỆ 12: QUẢN LÝ CHI NHÁNH (Branches)
 
 ### A. Database Schema
-*   **Bảng `Notifications`**: Lưu trữ các thông báo hệ thống gửi cho người dùng.
-    ```sql
-    CREATE TABLE Notifications (
-        NotificationID INT IDENTITY(1,1) PRIMARY KEY,
-        UserID INT NOT NULL,
-        Title NVARCHAR(150) NOT NULL,
-        Message NVARCHAR(MAX) NOT NULL,
-        IsRead BIT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        CONSTRAINT FK_Notifications_Users FOREIGN KEY (UserID) REFERENCES Users(UserID)
-    );
-    ```
-*   **Bảng `ChatMessages`**: Lưu tin nhắn giữa Khách hàng và Admin hỗ trợ.
-    ```sql
-    CREATE TABLE ChatMessages (
-        MessageID INT IDENTITY(1,1) PRIMARY KEY,
-        SenderID INT NOT NULL,
-        ReceiverID INT NOT NULL,
-        MessageText NVARCHAR(MAX) NOT NULL,
-        SentAt DATETIME DEFAULT GETDATE(),
-        IsRead BIT DEFAULT 0,
-        CONSTRAINT FK_ChatMessages_Sender FOREIGN KEY (SenderID) REFERENCES Users(UserID),
-        CONSTRAINT FK_ChatMessages_Receiver FOREIGN KEY (ReceiverID) REFERENCES Users(UserID)
-    );
-    ```
-
-### B. Thiết kế WebSocket Gateway (NestJS Gateway)
-Sử dụng gói `@nestjs/websockets` để điều phối sự kiện thời gian thực.
-
-#### 1. Sự kiện kết nối (Connection Event)
-*   Client gửi kèm JWT token trong phần handshake.
-*   Backend xác thực JWT, lấy `UserID` và đưa socket connection của khách hàng vào một Room riêng tên là `room_user_[UserID]`.
-
-#### 2. Chat sự kiện (Chat Events)
-*   **Client gửi tin nhắn:** Client gửi sự kiện `sendMessage` kèm payload: `{ receiverId: AdminID, messageText: "Hello" }`.
-*   **Backend xử lý:** Lưu vào bảng `ChatMessages` và gửi sự kiện `receiveMessage` tới Room `room_user_[AdminID]`.
-
-#### 3. Cập nhật trạng thái đơn hàng (Order State Events)
-*   Khi Admin thay đổi trạng thái đơn hàng trên Dashboard, API backend sẽ phát sự kiện `orderStatusUpdate` đến Room `room_user_[Khách hàng]` tương ứng để Frontend tự cập nhật trạng thái đơn hàng và kích hoạt hiển thị mô phỏng bản đồ shipper.
-
----
-
-## 10. PHÂN HỆ 10: THEO DÕI HÀNH VI & GỢI Ý NÂNG CAO (User Action Logging)
-
-### Tổng quan (Overview)
-Phân hệ này đóng vai trò thu thập dữ liệu hành vi của người dùng trong suốt quá trình trải nghiệm ứng dụng. Hệ thống không chỉ ghi nhận các tương tác trực tiếp với món ăn (Xem chi tiết, Thêm giỏ hàng, Yêu thích) mà còn thu thập cả "Search Intent" (Từ khóa tìm kiếm). Bằng cách kết hợp thuật toán chấm điểm có trọng số (Weighted Scoring Algorithm) và giới hạn thời gian (Time Decay), hệ thống sẽ cung cấp danh sách món ăn gợi ý cá nhân hóa với độ chính xác cao nhất, bám sát với sự quan tâm hiện tại của khách hàng. Phân hệ này sẽ tích hợp sâu và nâng cấp logic cho hệ thống Gợi ý (Recommendations) hiện có.
-
-### A. Database Schema
-*   **Bảng `UserActionLogs`**: Bảng lưu trữ vết hành động người dùng. Được thiết kế linh hoạt để chứa cả ProductID lẫn SearchQuery.
-    ```sql
-    CREATE TABLE UserActionLogs (
-        LogID INT IDENTITY(1,1) PRIMARY KEY,
-        UserID INT NOT NULL,
-        ActionType NVARCHAR(50) NOT NULL, -- VIEW_PRODUCT, ADD_TO_CART, FAVORITE_PRODUCT, SEARCH
-        ProductID INT NULL, -- NULL nếu hành động là SEARCH
-        SearchQuery NVARCHAR(255) NULL, -- Lưu từ khóa tìm kiếm (nếu có)
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        CONSTRAINT FK_UserActionLogs_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
-        CONSTRAINT FK_UserActionLogs_Products FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
-    );
-    ```
-
-### B. RESTful API Endpoints & Logic Gợi ý
-*   **API Thu thập Logs**:
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/user-actions/log` | Đăng nhập | Frontend gọi API này để gửi thông tin hành vi của Khách hàng. Tích hợp cơ chế Debounce ở Frontend (vd: chỉ log `VIEW_PRODUCT` nếu khách ở lại trang > 3 giây) để chống spam API. |
-
-*   **Thuật toán Gợi ý Đa hành vi (Multi-behavior Recommendation System)**:
-    - **Thời gian bán rã (Time Decay)**: API `/api/recommendations` chỉ truy xuất các log dữ liệu phát sinh trong vòng **7 ngày gần nhất**, đảm bảo gợi ý đúng với khẩu vị hiện tại.
-    - **Chấm điểm có trọng số (Weighted Scoring)**: Mỗi sản phẩm người dùng tương tác sẽ được cộng điểm:
-        + `VIEW_PRODUCT` (Xem món): **+1 điểm**
-        + `ADD_TO_CART` (Thêm giỏ hàng nhưng chưa mua): **+2 điểm**
-        + `FAVORITE_PRODUCT` (Yêu thích): **+3 điểm**
-    - **Tích hợp Search Intent**: Hệ thống sẽ lấy các từ khóa từ hành động `SEARCH` gần đây, dùng lệnh truy vấn (`LIKE '%keyword%'`) để tìm các món ăn phù hợp và cộng thêm điểm ưu tiên.
-    - **Kết quả**: Danh sách sản phẩm được sắp xếp theo tổng điểm (Score) giảm dần, trộn cùng thuật toán lọc từ `v_RecommendedProducts` (lịch sử mua hàng), mang lại danh sách gợi ý hoàn hảo và sát với nhu cầu thực tế.
-
----
-
-## 11. PHÂN HỆ 11: MARKETING, TĂNG TRƯỞNG & TƯƠNG TÁC (Marketing & Engagement)
-
-### Tổng quan (Overview)
-Phân hệ này tập trung vào các chiến lược thúc đẩy doanh thu, tăng tỷ lệ chuyển đổi (Conversion Rate) và nâng cao trải nghiệm chăm sóc khách hàng tại Frontend mà không yêu cầu thay đổi cấu trúc Database phức tạp. Phân hệ bao gồm 3 tính năng cốt lõi: Hiệu ứng mua hàng đám đông (Social Proof/FOMO), Gợi ý mua kèm (Cross-sell/Upsell), và Tiện ích chat Zalo.
-
-### A. Chi tiết Tính năng (Frontend Implementation)
-1. **Hiệu ứng FOMO & Social Proof (`SocialProofNotification.jsx`)**:
-   - Sử dụng kỹ thuật hiển thị thông báo popup (Toast/Notification) tuần hoàn ngẫu nhiên theo thời gian (cứ 35 - 45 giây/lần).
-   - **Mục đích**: Kích thích hiệu ứng tâm lý đám đông (FOMO), cho khách hàng thấy sự nhộn nhịp của hệ thống (ví dụ: "Tuấn Anh vừa đặt 2x Pizza...", "18 Thực khách đang xem..."), tạo sự tin cậy và thúc đẩy họ nhanh chóng chốt đơn.
-
-2. **Gợi ý Mua kèm Cross-sell & Combo (`CrossSellCombo.jsx`)**:
-   - **Vị trí hiển thị**: Tại màn hình Giỏ hàng (Cart) hoặc bước chuẩn bị Thanh toán.
-   - **Thuật toán lọc**: Tự động trích xuất các sản phẩm "phụ" như Đồ uống (Coca, Pepsi, Trà) hoặc Món ăn vặt (Khoai, Quẩy, Viên) có mức giá phải chăng (< 45,000 VNĐ). Hệ thống sẽ loại trừ những món mà khách đã thêm vào giỏ hàng trước đó.
-   - **Mục đích**: Tăng Giá trị Trung bình Đơn hàng (AOV - Average Order Value) một cách tinh tế thông qua nút "Thêm nhanh" vào giỏ hàng với thiết kế lôi cuốn (ví dụ: "Thêm chút sảng khoái cho món chính").
-
-3. **Tiện ích Hỗ trợ Zalo (`ZaloWidget.jsx`)**:
-   - Cung cấp nút nổi (Floating action button) cho phép người dùng mở khung modal hiển thị mã QR Zalo của Cửa hàng (Tạo mã QR tự động qua API `api.qrserver.com` kết hợp với số điện thoại cấu hình cứng ở Frontend).
-   - Tích hợp nút chuyển hướng thẳng vào app Zalo thông qua giao thức `zalo.me/[SĐT]`.
-   - **Mục đích**: Tăng tương tác hỗ trợ đa kênh (Omnichannel), giúp khách hàng liên hệ trực tiếp với nhân viên qua mạng xã hội phổ biến nhất Việt Nam, giảm rào cản giao tiếp.
-
----
-
-## 12. PHÂN HỆ 12: QUẢN LÝ CHI NHÁNH ĐỘNG (Dynamic Branch Management)
-
-### Tổng quan (Overview)
-Phân hệ này cho phép Admin quản lý danh sách các chi nhánh của hệ thống một cách linh hoạt thông qua Database thay vì thiết lập cứng (hardcode) trên Frontend. Tính năng này giúp mở rộng khả năng quản lý chuỗi cung ứng, hiển thị trực quan các chi nhánh (như Phan Thiết, La Gi, Đảo Phú Quý...) trên bản đồ Leaflet, và cung cấp API để sau này phục vụ tính toán định tuyến giao hàng từ chi nhánh gần nhất.
-
-### A. Database Schema
-*   **Bảng `Branches`**: Bảng lưu trữ thông tin mạng lưới chi nhánh.
+*   **Bảng 12: `Branches`**
     ```sql
     CREATE TABLE Branches (
         BranchID INT IDENTITY(1,1) PRIMARY KEY,
@@ -543,41 +273,11 @@ Phân hệ này cho phép Admin quản lý danh sách các chi nhánh của hệ
         Latitude DECIMAL(9,6) NOT NULL,
         Longitude DECIMAL(9,6) NOT NULL,
         Address NVARCHAR(255) NULL,
-        CoverageRadius INT DEFAULT 5, -- Bán kính giao hàng (km)
-        Description NVARCHAR(255) NULL,
-        IsActive BIT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT GETDATE()
+        IsActive BIT DEFAULT 1
     );
     ```
 
-### B. RESTful API Endpoints
-| Method | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/branches` | Public | Lấy danh sách toàn bộ chi nhánh đang hoạt động để render lên bản đồ |
-| `POST` | `/api/admin/branches` | Admin | Thêm mới một chi nhánh (Cung cấp Vĩ độ, Kinh độ, Tên) |
-| `PUT` | `/api/admin/branches/:id` | Admin | Cập nhật thông tin chi nhánh |
-| `DELETE` | `/api/admin/branches/:id` | Admin | Xóa mềm hoặc vô hiệu hóa chi nhánh |
-
-### C. Giao diện \u0026 Bản đồ (Frontend Implementation)
-1. **Admin Dashboard (Quản lý Chi Nhánh)**: 
-   - Thêm tab "Quản lý Chi nhánh" hỗ trợ đầy đủ các thao tác CRUD. Admin có thể nhập toạ độ (Lat, Lng) của chi nhánh mới và lưu vào DB.
-2. **Bản đồ Động (Dynamic Leaflet Map)**:
-   - Các điểm marker trên trang chủ (`App.jsx`) và Admin Dashboard (`AdminDashboard.jsx`) sẽ tự động gọi API `GET /api/branches` để lấy tọa độ và vẽ lên thay vì khai báo mảng tĩnh. Khi có cập nhật từ Admin, bản đồ sẽ ngay lập tức đồng bộ.
-
 ---
 
-## 13. PHÂN HỆ 13: QUẢN TRỊ TRUNG TÂM & BÁO CÁO THỐNG KÊ (Admin Dashboard & Analytics)
-
-### Tổng quan (Overview)
-Phân hệ dành riêng cho Ban quản trị (Admin) nhằm theo dõi bức tranh toàn cảnh về hoạt động kinh doanh của nhà hàng. Cung cấp các biểu đồ trực quan (Data Visualization) để phân tích cơ cấu danh mục, tình trạng đơn hàng và cung cấp tính năng xuất báo cáo ra file Excel/CSV chuẩn chỉnh, kèm theo tài liệu API chuyên nghiệp.
-
-### A. Chi tiết Tính năng
-1. **Biểu đồ Thống kê Trực quan (Sử dụng thư viện Recharts)**:
-   - **Tình trạng Vận đơn**: Biểu đồ hiển thị chi tiết số lượng đơn đang giao, chờ duyệt, hoàn thành hay đã hủy.
-   - **Cơ cấu Danh mục**: Biểu đồ tròn (Pie Chart) biểu diễn tỷ trọng các loại món ăn trong hệ thống.
-2. **Xuất báo cáo Doanh thu (Export to CSV)**:
-   - Tích hợp hàm chuyển đổi tự động toàn bộ dữ liệu Đơn hàng sang định dạng bảng tính `.csv`.
-   - Nút "Xuất Báo Cáo" cung cấp file tương thích hoàn toàn với Microsoft Excel (hỗ trợ mã BOM UTF-8 nên không bị lỗi font Tiếng Việt), giúp chủ cửa hàng dễ dàng đối soát tài chính.
-3. **Hệ thống Tài liệu API Tự Động (Swagger UI)**:
-   - Backend NestJS tích hợp Swagger để sinh tài liệu OpenAPI tại endpoint `/api/docs`.
-   - Minh bạch hóa toàn bộ cấu trúc API, thể hiện tư duy làm việc chuẩn mức doanh nghiệp (Enterprise-level).
+## 13. PHÂN HỆ 13: QUẢN TRỊ TRUNG TÂM (Admin Dashboard)
+Tích hợp Recharts vẽ biểu đồ từ View Doanh thu, xuất dữ liệu ra file Excel (.csv) và cung cấp tài liệu API tự động qua Swagger UI.

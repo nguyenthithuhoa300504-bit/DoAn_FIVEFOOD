@@ -31,7 +31,7 @@ export default function ReviewModal({ product, orderId, onClose, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" style={{ zIndex: 2000 }}>
       <div className="modal-content glass-panel fade-in" style={{ maxWidth: '400px' }}>
         <h2>Đánh giá món ăn</h2>
         <p style={{ marginBottom: '15px', fontWeight: 'bold' }}>{product.ProductName}</p>

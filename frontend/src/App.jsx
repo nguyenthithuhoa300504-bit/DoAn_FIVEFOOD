@@ -962,7 +962,7 @@ function App() {
       setAuthSuccess('Đăng nhập thành công!');
       setEmail('');
       setPassword('');
-      setTimeout(() => setActiveTab('menu'), 1000);
+      setTimeout(() => setActiveTab('home'), 1000);
     } else {
       setAuthError(res.message);
     }
@@ -3583,14 +3583,22 @@ function App() {
               </div>
 
               {/* Footer Actions */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', gap: '15px', width: '100%' }}>
                 <button 
-                  style={{ background: 'var(--input-bg)', border: '2px solid var(--panel-border)', color: 'var(--text-main)', padding: '12px 40px', borderRadius: '30px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(45deg, #00A8FF, #33B8FF)', border: 'none', color: 'white', padding: '14px 0', borderRadius: '30px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0, 168, 255, 0.4)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 168, 255, 0.6)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 168, 255, 0.4)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  onClick={() => window.print()}
+                >
+                  <span style={{ fontSize: '18px' }}>🖨️</span> In Hóa Đơn
+                </button>
+                <button 
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'var(--input-bg)', border: '2px solid var(--panel-border)', color: 'var(--text-main)', padding: '14px 0', borderRadius: '30px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.9)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)' }}
                   onClick={() => setSelectedOrderDetails(null)}
                 >
-                  Đóng Hóa Đơn
+                  <span style={{ fontSize: '18px' }}>❌</span> Đóng Hóa Đơn
                 </button>
               </div>
             </div>

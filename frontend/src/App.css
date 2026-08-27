@@ -5363,7 +5363,9 @@ html, body {
 .admin-theme-wrapper.light-mode .btn-primary span,
 .admin-theme-wrapper.light-mode .btn-checkout,
 .admin-theme-wrapper.light-mode .badge,
-.admin-theme-wrapper.light-mode .badge span {
+.admin-theme-wrapper.light-mode .badge span,
+.admin-theme-wrapper.light-mode .recharts-tooltip-wrapper,
+.admin-theme-wrapper.light-mode .recharts-tooltip-wrapper * {
   color: #ffffff !important;
 }
 
