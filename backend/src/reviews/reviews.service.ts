@@ -5,8 +5,6 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class ReviewsService {
   private readonly logger = new Logger(ReviewsService.name);
@@ -24,19 +22,19 @@ export class ReviewsService {
         ORDER BY r.CreatedAt DESC
       `;
       const reviewsResult = await this.databaseService.query(queryReviews, [
-        { name: 'ProductID', type: sql.Int, value: productId },
+        { name: 'ProductID',  value: productId },
       ]);
 
       // Lấy thống kê số sao trung bình
       const queryStats = `
         SELECT 
-          ISNULL(AVG(CAST(Rating AS FLOAT)), 0) AS AvgRating, 
+          COALESCE(AVG(CAST(Rating AS FLOAT)), 0) AS AvgRating, 
           COUNT(*) AS TotalReviews 
         FROM Reviews 
         WHERE ProductID = @ProductID AND IsHidden = 0
       `;
       const statsResult = await this.databaseService.query(queryStats, [
-        { name: 'ProductID', type: sql.Int, value: productId },
+        { name: 'ProductID',  value: productId },
       ]);
 
       return {
@@ -74,9 +72,9 @@ export class ReviewsService {
       const checkEligibility = await this.databaseService.query(
         checkEligibilityQuery,
         [
-          { name: 'OrderID', type: sql.Int, value: orderId },
-          { name: 'UserID', type: sql.Int, value: userId },
-          { name: 'ProductID', type: sql.Int, value: productId },
+          { name: 'OrderID',  value: orderId },
+          { name: 'UserID',  value: userId },
+          { name: 'ProductID',  value: productId },
         ],
       );
 
@@ -94,8 +92,8 @@ export class ReviewsService {
       const checkDuplicate = await this.databaseService.query(
         checkDuplicateQuery,
         [
-          { name: 'OrderID', type: sql.Int, value: orderId },
-          { name: 'ProductID', type: sql.Int, value: productId },
+          { name: 'OrderID',  value: orderId },
+          { name: 'ProductID',  value: productId },
         ],
       );
 
@@ -111,11 +109,11 @@ export class ReviewsService {
         VALUES (@UserID, @ProductID, @OrderID, @Rating, @Comment)
       `;
       await this.databaseService.query(insertQuery, [
-        { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ProductID', type: sql.Int, value: productId },
-        { name: 'OrderID', type: sql.Int, value: orderId },
-        { name: 'Rating', type: sql.Int, value: rating },
-        { name: 'Comment', type: sql.NVarChar, value: comment || '' },
+        { name: 'UserID',  value: userId },
+        { name: 'ProductID',  value: productId },
+        { name: 'OrderID',  value: orderId },
+        { name: 'Rating',  value: rating },
+        { name: 'Comment',  value: comment || '' },
       ]);
 
       return { success: true, message: 'Cảm ơn bạn đã gửi đánh giá!' };
@@ -147,7 +145,7 @@ export class ReviewsService {
     try {
       const checkQuery = `SELECT IsHidden FROM Reviews WHERE ReviewID = @ReviewID`;
       const checkResult = await this.databaseService.query(checkQuery, [
-        { name: 'ReviewID', type: sql.Int, value: reviewId },
+        { name: 'ReviewID',  value: reviewId },
       ]);
 
       if (checkResult.recordset.length === 0) {
@@ -163,8 +161,8 @@ export class ReviewsService {
         WHERE ReviewID = @ReviewID
       `;
       await this.databaseService.query(updateQuery, [
-        { name: 'NewStatus', type: sql.Bit, value: newStatus },
-        { name: 'ReviewID', type: sql.Int, value: reviewId },
+        { name: 'NewStatus',  value: newStatus },
+        { name: 'ReviewID',  value: reviewId },
       ]);
 
       return {

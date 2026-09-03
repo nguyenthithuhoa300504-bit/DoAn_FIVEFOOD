@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -20,9 +18,9 @@ export class ChatService {
         VALUES (@SenderID, @ReceiverID, @MessageText)
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'SenderID', type: sql.Int, value: senderId },
-        { name: 'ReceiverID', type: sql.Int, value: receiverId },
-        { name: 'MessageText', type: sql.NVarChar, value: text },
+        { name: 'SenderID',  value: senderId },
+        { name: 'ReceiverID',  value: receiverId },
+        { name: 'MessageText',  value: text },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -41,8 +39,8 @@ export class ChatService {
         ORDER BY SentAt ASC
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'U1', type: sql.Int, value: user1Id },
-        { name: 'U2', type: sql.Int, value: user2Id },
+        { name: 'U1',  value: user1Id },
+        { name: 'U2',  value: user2Id },
       ]);
       return result.recordset;
     } catch (error) {
@@ -61,7 +59,7 @@ export class ChatService {
         WHERE u.UserID != @AdminID
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'AdminID', type: sql.Int, value: adminId },
+        { name: 'AdminID',  value: adminId },
       ]);
       return result.recordset;
     } catch (error) {
@@ -74,7 +72,7 @@ export class ChatService {
   async getFirstAdminId() {
     try {
       const query = `
-        SELECT TOP 1 u.UserID 
+        SELECT  u.UserID 
         FROM Users u
         INNER JOIN Roles r ON u.RoleID = r.RoleID
         WHERE r.RoleName = 'Admin'
@@ -101,9 +99,9 @@ export class ChatService {
         VALUES (@UserID, @Title, @Message)
       `;
       await this.databaseService.query(query, [
-        { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'Title', type: sql.NVarChar, value: title },
-        { name: 'Message', type: sql.NVarChar, value: message },
+        { name: 'UserID',  value: userId },
+        { name: 'Title',  value: title },
+        { name: 'Message',  value: message },
       ]);
     } catch (error) {
       this.logger.error('Error adding notification', error);
@@ -119,7 +117,7 @@ export class ChatService {
         ORDER BY CreatedAt DESC
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'UserID', type: sql.Int, value: userId },
+        { name: 'UserID',  value: userId },
       ]);
       return result.recordset;
     } catch (error) {
@@ -136,8 +134,8 @@ export class ChatService {
         WHERE NotificationID = @NotifID AND UserID = @UserID
       `;
       await this.databaseService.query(query, [
-        { name: 'NotifID', type: sql.Int, value: notificationId },
-        { name: 'UserID', type: sql.Int, value: userId },
+        { name: 'NotifID',  value: notificationId },
+        { name: 'UserID',  value: userId },
       ]);
       return { success: true };
     } catch (error) {

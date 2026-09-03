@@ -30,6 +30,9 @@ export const CartProvider = ({ children }) => {
     const handleCartUpdated = () => {
       if (token) {
         fetchCartFromServer();
+      } else {
+        const localCart = JSON.parse(localStorage.getItem('local_cart')) || [];
+        setCart([...localCart]);
       }
     };
     window.addEventListener('cartUpdated', handleCartUpdated);

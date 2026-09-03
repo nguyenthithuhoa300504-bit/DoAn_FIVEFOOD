@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class UsersService {
   constructor(private dbService: DatabaseService) {}
@@ -12,7 +10,7 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.Email = @Email`,
-      [{ name: 'Email', type: sql.VarChar(100), value: email }],
+      [{ name: 'Email',  value: email }],
     );
     return result.recordset[0] || null;
   }
@@ -23,7 +21,7 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.UserID = @UserID`,
-      [{ name: 'UserID', type: sql.Int, value: id }],
+      [{ name: 'UserID',  value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -38,7 +36,7 @@ export class UsersService {
     // 1. Tìm hoặc tự tạo RoleID nếu chưa có sẵn trong DB
     const roleResult = await this.dbService.query(
       `SELECT RoleID FROM Roles WHERE RoleName = @RoleName`,
-      [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }],
+      [{ name: 'RoleName',  value: roleName }],
     );
 
     let roleId = roleResult.recordset[0]?.RoleID;
@@ -46,7 +44,7 @@ export class UsersService {
     if (!roleId) {
       const insertRole = await this.dbService.query(
         `INSERT INTO Roles (RoleName) OUTPUT inserted.RoleID VALUES (@RoleName)`,
-        [{ name: 'RoleName', type: sql.NVarChar(50), value: roleName }],
+        [{ name: 'RoleName',  value: roleName }],
       );
       roleId = insertRole.recordset[0].RoleID;
     }
@@ -57,11 +55,11 @@ export class UsersService {
        OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.Phone
        VALUES (@FullName, @Email, @Phone, @PasswordHash, @RoleID, 0)`,
       [
-        { name: 'FullName', type: sql.NVarChar(100), value: fullName },
-        { name: 'Email', type: sql.VarChar(100), value: email },
-        { name: 'Phone', type: sql.VarChar(15), value: phone },
-        { name: 'PasswordHash', type: sql.VarChar(255), value: passwordHash },
-        { name: 'RoleID', type: sql.Int, value: roleId },
+        { name: 'FullName',  value: fullName },
+        { name: 'Email',  value: email },
+        { name: 'Phone',  value: phone },
+        { name: 'PasswordHash',  value: passwordHash },
+        { name: 'RoleID',  value: roleId },
       ],
     );
 
@@ -78,9 +76,9 @@ export class UsersService {
        OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.Phone
        WHERE UserID = @UserID`,
       [
-        { name: 'UserID', type: sql.Int, value: id },
-        { name: 'FullName', type: sql.NVarChar(100), value: fullName },
-        { name: 'Phone', type: sql.VarChar(15), value: phone },
+        { name: 'UserID',  value: id },
+        { name: 'FullName',  value: fullName },
+        { name: 'Phone',  value: phone },
       ],
     );
     return result.recordset[0] || null;
@@ -95,8 +93,8 @@ export class UsersService {
        SET PasswordHash = @PasswordHash 
        WHERE UserID = @UserID`,
       [
-        { name: 'UserID', type: sql.Int, value: id },
-        { name: 'PasswordHash', type: sql.VarChar(255), value: passwordHash },
+        { name: 'UserID',  value: id },
+        { name: 'PasswordHash',  value: passwordHash },
       ],
     );
     return true;
@@ -112,10 +110,10 @@ export class UsersService {
        FROM Users u
        INNER JOIN Roles r ON u.RoleID = r.RoleID
        ORDER BY u.UserID DESC
-       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY`,
+       LIMIT @ OFFSET @`,
       [
-        { name: 'Offset', type: sql.Int, value: offset },
-        { name: 'Limit', type: sql.Int, value: limit },
+        { name: 'Offset',  value: offset },
+        { name: 'Limit',  value: limit },
       ],
     );
 
@@ -144,8 +142,8 @@ export class UsersService {
        OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.IsLocked
        WHERE UserID = @UserID`,
       [
-        { name: 'UserID', type: sql.Int, value: id },
-        { name: 'IsLocked', type: sql.Bit, value: isLocked },
+        { name: 'UserID',  value: id },
+        { name: 'IsLocked',  value: isLocked },
       ],
     );
     return result.recordset[0] || null;

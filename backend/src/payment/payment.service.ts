@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
 import { VNPay, ProductCode } from 'vnpay';
 
 @Injectable()
@@ -41,7 +40,7 @@ export class PaymentService {
     // 1. Kiểm tra đơn hàng có tồn tại và thuộc về user không
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, FinalAmount, PaymentStatus, Status FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -129,7 +128,7 @@ export class PaymentService {
       // Cập nhật luôn trạng thái đơn hàng tại đây để hiển thị đúng trên Admin
       await this.dbService.query(
         `UPDATE Orders SET PaymentStatus = N'Đã thanh toán' WHERE OrderID = @OrderID`,
-        [{ name: 'OrderID', type: sql.Int, value: orderId }],
+        [{ name: 'OrderID',  value: orderId }],
       );
 
       // Chèn luôn lịch sử giao dịch (nếu chưa có)
@@ -140,14 +139,14 @@ export class PaymentService {
            VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, 'Thanh cong', @ResponseCode, GETDATE())
          END`,
         [
-          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'OrderID',  value: orderId },
           {
             name: 'TransactionNo',
-            type: sql.VarChar(100),
+            
             value: transactionNo || `VNP_${Date.now()}`,
           },
-          { name: 'Amount', type: sql.Decimal(18, 2), value: vnpAmount },
-          { name: 'ResponseCode', type: sql.VarChar(10), value: responseCode },
+          { name: 'Amount',  value: vnpAmount },
+          { name: 'ResponseCode',  value: responseCode },
         ],
       );
 
@@ -191,7 +190,7 @@ export class PaymentService {
       // 2. Kiểm tra đơn hàng có tồn tại không
       const orderResult = await this.dbService.query(
         `SELECT OrderID, FinalAmount, PaymentStatus FROM Orders WHERE OrderID = @OrderID`,
-        [{ name: 'OrderID', type: sql.Int, value: orderId }],
+        [{ name: 'OrderID',  value: orderId }],
       );
 
       if (orderResult.recordset.length === 0) {
@@ -220,10 +219,10 @@ export class PaymentService {
         [
           {
             name: 'PaymentStatus',
-            type: sql.NVarChar(50),
+            
             value: paymentStatus,
           },
-          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'OrderID',  value: orderId },
         ],
       );
 
@@ -231,15 +230,15 @@ export class PaymentService {
         `INSERT INTO Transactions (OrderID, PaymentGateway, TransactionNo, Amount, Status, ResponseCode, CreatedAt)
          VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, @Status, @ResponseCode, GETDATE())`,
         [
-          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'OrderID',  value: orderId },
           {
             name: 'TransactionNo',
-            type: sql.VarChar(100),
+            
             value: transactionNo || `VNP_${Date.now()}`,
           },
-          { name: 'Amount', type: sql.Decimal(18, 2), value: vnpAmount },
-          { name: 'Status', type: sql.NVarChar(50), value: transactionStatus },
-          { name: 'ResponseCode', type: sql.VarChar(10), value: responseCode },
+          { name: 'Amount',  value: vnpAmount },
+          { name: 'Status',  value: transactionStatus },
+          { name: 'ResponseCode',  value: responseCode },
         ],
       );
 

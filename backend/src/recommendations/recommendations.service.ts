@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class RecommendationsService {
   private readonly logger = new Logger(RecommendationsService.name);
@@ -24,7 +22,7 @@ export class RecommendationsService {
         `;
         const searchResult = await this.databaseService.query(
           searchIntentQuery,
-          [{ name: 'UserID', type: sql.Int, value: userId }],
+          [{ name: 'UserID',  value: userId }],
         );
         const searchQueries = searchResult.recordset
           .map((r) => r.SearchQuery)
@@ -72,15 +70,15 @@ export class RecommendationsService {
           )
           SELECT TOP 10 
               p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, 
-              (ISNULL(cs.BaseScore, 0) + ${searchScoreSql}) AS TotalScore
+              (COALESCE(cs.BaseScore, 0) + ${searchScoreSql}) AS TotalScore
           FROM Products p
           LEFT JOIN CombinedScores cs ON p.ProductID = cs.ProductID
           INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-          WHERE p.IsActive = 1 AND (ISNULL(cs.BaseScore, 0) + ${searchScoreSql}) > 0
+          WHERE p.IsActive = 1 AND (COALESCE(cs.BaseScore, 0) + ${searchScoreSql}) > 0
           ORDER BY TotalScore DESC
         `;
         const personalResult = await this.databaseService.query(personalQuery, [
-          { name: 'UserID', type: sql.Int, value: userId },
+          { name: 'UserID',  value: userId },
         ]);
         recommendedProducts = personalResult.recordset;
       }

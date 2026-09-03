@@ -6,8 +6,6 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { EventsGateway } from '../gateway/events.gateway';
-import * as sql from 'mssql';
-
 @Injectable()
 export class OrdersService {
   constructor(
@@ -29,21 +27,21 @@ export class OrdersService {
   ) {
     try {
       const inputs = [
-        { name: 'UserID', type: sql.Int, value: userId },
+        { name: 'UserID',  value: userId },
         {
           name: 'ShippingAddress',
-          type: sql.NVarChar(255),
+          
           value: shippingAddress,
         },
-        { name: 'Latitude', type: sql.Decimal(9, 6), value: latitude || null },
+        { name: 'Latitude',  value: latitude || null },
         {
           name: 'Longitude',
-          type: sql.Decimal(9, 6),
+          
           value: longitude || null,
         },
-        { name: 'PaymentMethod', type: sql.NVarChar(50), value: paymentMethod },
-        { name: 'PromoCode', type: sql.NVarChar(50), value: promoCode || null },
-        { name: 'ShippingFee', type: sql.Decimal(18, 2), value: shippingFee },
+        { name: 'PaymentMethod',  value: paymentMethod },
+        { name: 'PromoCode',  value: promoCode || null },
+        { name: 'ShippingFee',  value: shippingFee },
       ];
 
       const result = await this.dbService.executeProcedure(
@@ -74,7 +72,7 @@ export class OrdersService {
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
        WHERE o.UserID = @UserID
        ORDER BY o.OrderDate DESC`,
-      [{ name: 'UserID', type: sql.Int, value: userId }],
+      [{ name: 'UserID',  value: userId }],
     );
     return result.recordset;
   }
@@ -90,7 +88,7 @@ export class OrdersService {
        INNER JOIN Users u ON o.UserID = u.UserID
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
        WHERE o.OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -112,7 +110,7 @@ export class OrdersService {
        FROM OrderDetails od
        INNER JOIN Products p ON od.ProductID = p.ProductID
        WHERE od.OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     return {
@@ -147,7 +145,7 @@ export class OrdersService {
     // 1. Kiểm tra đơn hàng có tồn tại không
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -157,8 +155,8 @@ export class OrdersService {
     // Tự động chuyển PaymentStatus sang Đã thanh toán nếu hoàn thành đơn COD
     let paymentStatusQuery = '';
     const params = [
-      { name: 'OrderID', type: sql.Int, value: orderId },
-      { name: 'Status', type: sql.NVarChar(50), value: status },
+      { name: 'OrderID',  value: orderId },
+      { name: 'Status',  value: status },
     ];
 
     if (status === 'Hoàn thành') {
@@ -210,7 +208,7 @@ export class OrdersService {
   async simulateShipperCall(orderId: number) {
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, Status, CallCount FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -231,8 +229,8 @@ export class OrdersService {
       await this.dbService.query(
         `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
         [
-          { name: 'CallCount', type: sql.Int, value: newCallCount },
-          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'CallCount',  value: newCallCount },
+          { name: 'OrderID',  value: orderId },
         ],
       );
 
@@ -251,8 +249,8 @@ export class OrdersService {
       await this.dbService.query(
         `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
         [
-          { name: 'CallCount', type: sql.Int, value: newCallCount },
-          { name: 'OrderID', type: sql.Int, value: orderId },
+          { name: 'CallCount',  value: newCallCount },
+          { name: 'OrderID',  value: orderId },
         ],
       );
 
@@ -294,7 +292,7 @@ export class OrdersService {
       `SELECT PromotionID, PromoCode, DiscountPercentage, MaxDiscountAmount, MinOrderValue, UsageLimit, UsedCount, StartDate, EndDate
        FROM Promotions
        WHERE PromoCode = @Code`,
-      [{ name: 'Code', type: sql.NVarChar(50), value: code }],
+      [{ name: 'Code',  value: code }],
     );
 
     if (result.recordset.length === 0) {
@@ -349,7 +347,7 @@ export class OrdersService {
   async cancelOrder(userId: number, orderId: number) {
     const orderResult = await this.dbService.query(
       `SELECT UserID, Status FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -373,7 +371,7 @@ export class OrdersService {
       `UPDATE Orders 
        SET Status = N'Đã hủy'
        WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID', type: sql.Int, value: orderId }],
+      [{ name: 'OrderID',  value: orderId }],
     );
 
     return { success: true, message: 'Hủy đơn hàng thành công.' };

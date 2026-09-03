@@ -12,8 +12,6 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { ChatService } from '../chat/chat.service';
-import * as sql from 'mssql';
-
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -93,7 +91,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.dbService
           .query(
             `UPDATE Orders SET Status = N'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = N'Chưa thanh toán' THEN N'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
-            [{ name: 'OrderID', type: sql.Int, value: orderId }],
+            [{ name: 'OrderID',  value: orderId }],
           )
           .then(() => {
             this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {

@@ -36,11 +36,13 @@ const formatInlineText = (text) => {
     if (match.index > lastIdx) {
       parts.push(text.slice(lastIdx, match.index));
     }
+    
     parts.push(
       <strong key={`bold-${idx}`} className="chat-bold-highlight">
         {match[1]}
       </strong>
     );
+    
     lastIdx = match.index + match[0].length;
   });
 
@@ -59,6 +61,114 @@ const renderFormattedText = (text) => {
       {formatInlineText(line)}
     </div>
   ));
+};
+
+const QuantitySelector = ({ productName, sendPromptToBot }) => {
+  const [qty, setQty] = useState(1);
+  return (
+    <div className="quantity-selector-container">
+      <div className="qty-controls">
+        <button className="qty-btn" onClick={() => setQty(q => Math.max(1, q - 1))}>-</button>
+        <span className="qty-display">{qty}</span>
+        <button className="qty-btn" onClick={() => setQty(q => q + 1)}>+</button>
+      </div>
+      <button className="qty-confirm-btn" onClick={() => sendPromptToBot(`Thêm ${qty} phần ${productName}`.trim())}>
+        Xác nhận
+      </button>
+    </div>
+  );
+};
+
+const renderRichContent = (richContent, sendPromptToBot, setInputMessage) => {
+  if (!richContent) return null;
+
+  switch (richContent.type) {
+    case 'food_recommendation':
+      return (
+        <div className="rich-message food-cards-container">
+          {richContent.data.map((food, idx) => (
+            <div key={idx} className="food-card">
+              {food.ImageURL && (food.ImageURL.startsWith('http') || food.ImageURL.startsWith('/') || food.ImageURL.length > 5) ? (
+                <img src={food.ImageURL} alt={food.ProductName} />
+              ) : (
+                <div style={{ fontSize: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '90px', background: 'rgba(255, 122, 0, 0.1)' }}>
+                  {food.ImageURL || '🍔'}
+                </div>
+              )}
+              <div className="food-card-info">
+                <h4>{food.ProductName}</h4>
+                {food.Ingredients && <div className="food-desc">{food.Ingredients.length > 30 ? food.Ingredients.substring(0, 30) + '...' : food.Ingredients}</div>}
+                <div className="food-meta">
+                  <span className="price">{food.Price.toLocaleString('vi-VN')}đ</span>
+                  <span className={`stock ${food.Inventory > 0 ? 'in-stock' : 'out-stock'}`}>
+                    {food.Inventory > 0 ? `Còn ${food.Inventory}` : 'Hết hàng'}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => sendPromptToBot(food.ProductName)}
+                  disabled={food.Inventory <= 0}
+                  style={food.Inventory <= 0 ? {background: '#ccc', cursor: 'not-allowed', color: '#666'} : {}}
+                >
+                  {food.Inventory > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    case 'quantity_selector':
+      return <QuantitySelector productName={richContent.data?.productName || ''} sendPromptToBot={sendPromptToBot} />;
+    case 'promotions':
+      return (
+        <div className="rich-message promo-cards-container">
+          {richContent.data.map((promo, idx) => (
+            <div key={idx} className="promo-card">
+              <div className="promo-icon">🎁</div>
+              <div className="promo-info">
+                <h4>{promo.PromoCode}</h4>
+                <p>{promo.Description}</p>
+                <button onClick={() => sendPromptToBot(promo.PromoCode)}>Dùng mã này</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    case 'payment_options':
+      return (
+        <div className="rich-message payment-options-container">
+          <button className="payment-btn vnpay" onClick={() => sendPromptToBot('Thanh toán bằng VNPay')}>
+            💳 VNPay / Chuyển khoản
+          </button>
+          <button className="payment-btn cod" onClick={() => sendPromptToBot('Thanh toán Tiền mặt')}>
+            💵 Thanh toán Tiền mặt (COD)
+          </button>
+        </div>
+      );
+    case 'cart_summary':
+      return (
+        <div className="rich-message cart-summary-card">
+          <div className="cart-summary-header">🛒 Hóa Đơn Tạm Tính</div>
+          <div className="cart-summary-items">
+            {richContent.data.items.map((item, idx) => (
+              <div key={idx} className="cart-item-row">
+                <span className="cart-item-name">{item.Quantity}x {item.ProductName}</span>
+                <span className="cart-item-price">{(item.Price * item.Quantity).toLocaleString('vi-VN')}đ</span>
+              </div>
+            ))}
+          </div>
+          <div className="cart-summary-divider"></div>
+          <div className="cart-total-row">
+            <span>Tổng cộng:</span>
+            <span className="cart-total-price">{richContent.data.subtotal.toLocaleString('vi-VN')}đ</span>
+          </div>
+          <button className="cart-promo-btn" onClick={() => sendPromptToBot('Xem danh sách mã giảm giá')}>
+            🎁 Áp dụng mã giảm giá
+          </button>
+        </div>
+      );
+    default:
+      return null;
+  }
 };
 
 const Chatbot = () => {
@@ -238,10 +348,10 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages, isOpen, isLoading]);
 
-  // CHỈ LƯU messages vào localStorage KHI KHÁCH HÀNG ĐÃ ĐĂNG NHẬP VÀ KHÔNG CHỨA LỜI CHÀO VÃNG LAI
+  // CHỈ LƯU messages vào localStorage KHI KHÁCH HÀNG ĐÃ ĐĂNG NHẬP (hoặc nếu là phiên chat guest được merge)
   useEffect(() => {
     const uid = getUserId(user);
-    if (isLoggedIn && uid && messages.length > 0 && !isGuestWelcomeMessage(messages[0]?.text)) {
+    if (isLoggedIn && uid && messages.length > 0 && (messages.length > 1 || !isGuestWelcomeMessage(messages[0]?.text))) {
       try {
         localStorage.setItem(`chatbot_messages_user_${uid}`, JSON.stringify(messages));
       } catch (e) {
@@ -275,13 +385,19 @@ const Chatbot = () => {
               const top3 = res.data.slice(0, 3);
               const itemsList = top3.map(item => `👉 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
               welcomeMsg = `Chào mừng **${userName}** trở lại với FIVEFOOD! 👑\n\nDựa trên sở thích của bạn, mình đề xuất danh sách món ngon cực đỉnh hôm nay:\n${itemsList}\n\n💡 Bạn cần gọi món, mã ưu đãi hay kiểm tra đơn hàng cứ ra lệnh cho mình nhé!`;
+              setMessages([{ sender: 'bot', text: welcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
+              setIsLoading(false);
+              return;
             }
           } else {
             const res = await apiFetch(`${API_BASE_URL}/recommendations`);
             if (res && res.data && res.data.length > 0) {
               const top3 = res.data.slice(0, 3);
               const itemsList = top3.map(item => `🔥 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
-              welcomeMsg = `Chào bạn! Mình là AI Trợ lý ẩm thực của **FIVEFOOD** 🍲\n\nHôm nay quán có các món bán chạy nhất mời bạn thưởng thức:\n${itemsList}\n\n💡 Bạn hãy Đăng nhập để AI có thể hỗ trợ bạn thêm đồ ăn vào giỏ và theo dõi vị trí Shipper trực tiếp nhé!`;
+              welcomeMsg = `Chào bạn! Mình là AI Trợ lý ẩm thực của **FIVEFOOD** 🍲\n\nHôm nay quán có các món bán chạy nhất mời bạn thưởng thức:\n${itemsList}\n\n💡 Bạn có thể hỏi mình về món ăn, hoặc thử yêu cầu đặt món nhé!`;
+              setMessages([{ sender: 'bot', text: welcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
+              setIsLoading(false);
+              return;
             }
           }
         } catch (err) {
@@ -295,6 +411,10 @@ const Chatbot = () => {
     
     initChatbot();
   }, [isOpen, hasInitialized, isLoggedIn, user]);
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Xử lý chuyển đổi khi đăng nhập hoặc đăng xuất
   useEffect(() => {
@@ -304,6 +424,13 @@ const Chatbot = () => {
     if (uid && (!prevUserRef.current || prevUid !== uid)) {
       prevUserRef.current = user;
       
+      // KHI ĐĂNG NHẬP:
+      // Nếu khách vãng lai đã có lịch sử chat (tức là nhắn ít nhất 1 câu ngoài câu chào)
+      // -> Giữ nguyên phiên trò chuyện hiện tại (Merge AI Session)
+      if (messagesRef.current && messagesRef.current.length > 1) {
+        return; // Không load lịch sử cũ đè lên, giữ nguyên session
+      }
+
       const savedMessages = localStorage.getItem(`chatbot_messages_user_${uid}`);
       const savedSession = localStorage.getItem(`chatbot_session_user_${uid}`);
       if (savedMessages) {
@@ -331,6 +458,9 @@ const Chatbot = () => {
             const top3 = res.data.slice(0, 3);
             const itemsList = top3.map(item => `👉 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
             newWelcomeMsg = `Chào mừng **${userName}** trở lại! 👑\n\nDựa trên khẩu vị của bạn, mình gợi ý thực đơn hấp dẫn sau:\n${itemsList}\n\nBạn muốn thưởng thức món nào hôm nay ạ?`;
+            setMessages([{ sender: 'bot', text: newWelcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
+            setHasInitialized(true);
+            return;
           }
         } catch (err) {
           console.error(err);
@@ -356,11 +486,14 @@ const Chatbot = () => {
         const updateWelcomeOnLogout = async () => {
           let defaultWelcome = 'Chào bạn! Mình là trợ lý AI FIVEFOOD. Mình có thể giúp gì cho bạn hôm nay? 🍲';
           try {
-            const res = await apiFetch(`${API_BASE_URL}/recommendations`);
+              const res = await apiFetch(`${API_BASE_URL}/recommendations`);
             if (res && res.data && res.data.length > 0) {
               const top3 = res.data.slice(0, 3);
               const itemsList = top3.map(item => `🔥 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
-              defaultWelcome = `Chào bạn! Mình là AI Trợ lý ẩm thực của **FIVEFOOD** 🍲\n\nHôm nay quán có các món bán chạy nhất:\n${itemsList}\n\n💡 Hãy Đăng nhập để mình hỗ trợ thêm món vào giỏ và kiểm tra tình trạng giao hàng nhé!`;
+              defaultWelcome = `Chào bạn! Mình là AI Trợ lý ẩm thực của **FIVEFOOD** 🍲\n\nHôm nay quán có các món bán chạy nhất:\n${itemsList}\n\n💡 Bạn có thể hỏi mình về món ăn, hoặc thử yêu cầu đặt món nhé!`;
+              setMessages([{ sender: 'bot', text: defaultWelcome, richContent: { type: 'food_recommendation', data: top3 } }]);
+              setHasInitialized(true);
+              return;
             }
           } catch (e) {
             console.error(e);
@@ -385,19 +518,29 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
+      const uid = getUserId(user);
+      const localCart = !uid ? (JSON.parse(localStorage.getItem('local_cart')) || []) : [];
+
       const response = await apiFetch(`${API_BASE_URL}/chatbot`, {
         method: 'POST',
-        body: JSON.stringify({ message: userMessage, sessionId })
+        body: JSON.stringify({ message: userMessage, sessionId, localCart })
       });
 
       const data = response?.data || response;
       if (data && data.reply) {
-        setMessages(prev => [...prev, { sender: 'bot', text: data.reply }]);
+        setMessages(prev => [...prev, { sender: 'bot', text: data.reply, richContent: data.richContent }]);
         if (data.sessionId) {
           setSessionId(data.sessionId);
         }
+        
+        // Cập nhật local_cart nếu có
+        if (data.newLocalCart) {
+          localStorage.setItem('local_cart', JSON.stringify(data.newLocalCart));
+          window.dispatchEvent(new Event('cartUpdated'));
+        }
+
         const isCartAction = data.orderPlaced || (typeof data.reply === 'string' && (data.reply.includes('Đã thêm') || data.reply.includes('Đã dọn sạch') || data.reply.includes('Đã xóa') || data.reply.includes('trống') || data.reply.includes('giảm')));
-        if (isCartAction) {
+        if (isCartAction && !data.newLocalCart) {
           setTimeout(() => {
             window.dispatchEvent(new Event('cartUpdated'));
           }, 200);
@@ -477,6 +620,21 @@ const Chatbot = () => {
                 </div>
                 <div className="message-content">
                   {msg.sender === 'bot' ? renderFormattedText(msg.text) : msg.text}
+                  {msg.sender === 'bot' && msg.richContent && renderRichContent(msg.richContent, sendPromptToBot, setInputMessage)}
+                  {msg.sender === 'bot' && msg.text.includes('Đăng nhập') && msg.text.includes('❌') && (
+                    <div style={{ marginTop: '12px' }}>
+                      <button 
+                        className="chatbot-login-btn"
+                        onClick={() => {
+                          window.dispatchEvent(new Event('openLoginTab'));
+                          setIsOpen(false);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Đăng nhập ngay
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

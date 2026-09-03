@@ -265,6 +265,12 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const handleOpenLogin = () => setActiveTab('login');
+    window.addEventListener('openLoginTab', handleOpenLogin);
+    return () => window.removeEventListener('openLoginTab', handleOpenLogin);
+  }, []);
+
   const [websiteAnnouncement, setWebsiteAnnouncement] = useState({ content: '', productId: null });
 
   // Fetch website announcement

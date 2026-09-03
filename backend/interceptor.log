@@ -1,0 +1,6 @@
+[2026-09-02T18:33:41.362Z] msg: "2", hasQtyWord: true, parsedData: {"items":[{"id":41,"qty":2}]}
+[2026-09-02T18:36:27.978Z] msg: "pizza phô mai", hasQtyWord: false, parsedData: {"items":[{"id":41,"qty":2}]}
+[2026-09-02T18:41:11.510Z] msg: "2", hasQtyWord: true, parsedData: {"items":[{"id":41,"qty":2}]}
+[2026-09-03T10:00:00.480Z] msg: "2", hasQtyWord: true, parsedData: {"items":[{"id":13,"qty":2}]}
+[2026-09-03T10:29:24.903Z] msg: "pizza hải sản viên phô mai", hasQtyWord: false, parsedData: {"items":[{"id":2,"qty":1}]}
+[2026-09-03T10:40:41.586Z] msg: "thêm 3 phần", hasQtyWord: true, parsedData: {"items":[{"id":1,"qty":3}]}

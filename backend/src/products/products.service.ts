@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class ProductsService {
   constructor(private dbService: DatabaseService) {}
@@ -26,7 +24,7 @@ export class ProductsService {
   async getCategoryById(id: number) {
     const result = await this.dbService.query(
       'SELECT * FROM Categories WHERE CategoryID = @CategoryID',
-      [{ name: 'CategoryID', type: sql.Int, value: id }],
+      [{ name: 'CategoryID',  value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -41,12 +39,12 @@ export class ProductsService {
   ) {
     const result = await this.dbService.query(
       `INSERT INTO Categories (CategoryName, Description, ImageURL) 
-       OUTPUT inserted.* 
+       RETURNING * 
        VALUES (@CategoryName, @Description, @ImageURL)`,
       [
-        { name: 'CategoryName', type: sql.NVarChar(100), value: categoryName },
-        { name: 'Description', type: sql.NVarChar(255), value: description },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl || null },
+        { name: 'CategoryName',  value: categoryName },
+        { name: 'Description',  value: description },
+        { name: 'ImageURL',  value: imageUrl || null },
       ],
     );
     return result.recordset[0];
@@ -64,13 +62,13 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Categories 
        SET CategoryName = @CategoryName, Description = @Description, ImageURL = @ImageURL 
-       OUTPUT inserted.* 
+       RETURNING * 
        WHERE CategoryID = @CategoryID`,
       [
-        { name: 'CategoryID', type: sql.Int, value: id },
-        { name: 'CategoryName', type: sql.NVarChar(100), value: categoryName },
-        { name: 'Description', type: sql.NVarChar(255), value: description },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl || null },
+        { name: 'CategoryID',  value: id },
+        { name: 'CategoryName',  value: categoryName },
+        { name: 'Description',  value: description },
+        { name: 'ImageURL',  value: imageUrl || null },
       ],
     );
     return result.recordset[0] || null;
@@ -93,14 +91,14 @@ export class ProductsService {
 
     let queryStr = `
       SELECT p.*, c.CategoryName, COUNT(*) OVER() as TotalCount,
-             ISNULL((
+             COALESCE((
                 SELECT SUM(od.Quantity) 
                 FROM OrderDetails od 
                 INNER JOIN Orders o ON od.OrderID = o.OrderID 
                 WHERE od.ProductID = p.ProductID AND o.Status <> N'Đã hủy'
              ), 0) AS SoldCount,
-             ISNULL((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
-             ISNULL((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
+             COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
+             COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
       FROM Products p
       INNER JOIN Categories c ON p.CategoryID = c.CategoryID
       WHERE p.IsActive = 1
@@ -112,23 +110,23 @@ export class ProductsService {
       queryStr += ` AND p.ProductName LIKE @Search`;
       params.push({
         name: 'Search',
-        type: sql.NVarChar(150),
+        
         value: `%${search}%`,
       });
     }
 
     if (categoryId) {
       queryStr += ` AND p.CategoryID = @CategoryID`;
-      params.push({ name: 'CategoryID', type: sql.Int, value: categoryId });
+      params.push({ name: 'CategoryID',  value: categoryId });
     }
 
     queryStr += `
       ORDER BY p.ProductID DESC
-      OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
+      LIMIT @ OFFSET @
     `;
 
-    params.push({ name: 'Offset', type: sql.Int, value: offset });
-    params.push({ name: 'Limit', type: sql.Int, value: limit });
+    params.push({ name: 'Offset',  value: offset });
+    params.push({ name: 'Limit',  value: limit });
 
     const result = await this.dbService.query(queryStr, params);
 
@@ -153,12 +151,12 @@ export class ProductsService {
   async getProductById(id: number) {
     const result = await this.dbService.query(
       `SELECT p.*, c.CategoryName,
-              ISNULL((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
-              ISNULL((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
+              COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
+              COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
        FROM Products p 
        INNER JOIN Categories c ON p.CategoryID = c.CategoryID 
        WHERE p.ProductID = @ProductID`,
-      [{ name: 'ProductID', type: sql.Int, value: id }],
+      [{ name: 'ProductID',  value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -177,22 +175,22 @@ export class ProductsService {
   ) {
     const result = await this.dbService.query(
       `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, Ingredients, Description, IsActive) 
-       OUTPUT inserted.* 
+       RETURNING * 
        VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, @Description, 1)`,
       [
-        { name: 'ProductName', type: sql.NVarChar(150), value: productName },
-        { name: 'CategoryID', type: sql.Int, value: categoryId },
-        { name: 'Price', type: sql.Decimal(18, 2), value: price },
-        { name: 'Inventory', type: sql.Int, value: inventory },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
+        { name: 'ProductName',  value: productName },
+        { name: 'CategoryID',  value: categoryId },
+        { name: 'Price',  value: price },
+        { name: 'Inventory',  value: inventory },
+        { name: 'ImageURL',  value: imageUrl },
         {
           name: 'Ingredients',
-          type: sql.NVarChar(500),
+          
           value: ingredients || null,
         },
         {
           name: 'Description',
-          type: sql.NVarChar(sql.MAX),
+          
           value: description || null,
         },
       ],
@@ -216,23 +214,23 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Products 
        SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL, Ingredients = @Ingredients, Description = @Description
-       OUTPUT inserted.* 
+       RETURNING * 
        WHERE ProductID = @ProductID`,
       [
-        { name: 'ProductID', type: sql.Int, value: id },
-        { name: 'ProductName', type: sql.NVarChar(150), value: productName },
-        { name: 'CategoryID', type: sql.Int, value: categoryId },
-        { name: 'Price', type: sql.Decimal(18, 2), value: price },
-        { name: 'Inventory', type: sql.Int, value: inventory },
-        { name: 'ImageURL', type: sql.VarChar(255), value: imageUrl },
+        { name: 'ProductID',  value: id },
+        { name: 'ProductName',  value: productName },
+        { name: 'CategoryID',  value: categoryId },
+        { name: 'Price',  value: price },
+        { name: 'Inventory',  value: inventory },
+        { name: 'ImageURL',  value: imageUrl },
         {
           name: 'Ingredients',
-          type: sql.NVarChar(500),
+          
           value: ingredients || null,
         },
         {
           name: 'Description',
-          type: sql.NVarChar(sql.MAX),
+          
           value: description || null,
         },
       ],
@@ -247,11 +245,11 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Products 
        SET IsActive = @IsActive 
-       OUTPUT inserted.* 
+       RETURNING * 
        WHERE ProductID = @ProductID`,
       [
-        { name: 'ProductID', type: sql.Int, value: id },
-        { name: 'IsActive', type: sql.Bit, value: isActive },
+        { name: 'ProductID',  value: id },
+        { name: 'IsActive',  value: isActive },
       ],
     );
     return result.recordset[0] || null;
@@ -263,10 +261,10 @@ export class ProductsService {
   async getProductHistory(id: number) {
     const result = await this.dbService.query(
       `SELECT ProductID, ProductName, Price, Inventory, IsActive, SysStartTime, SysEndTime 
-       FROM Products FOR SYSTEM_TIME ALL 
+       FROM (SELECT * FROM Products UNION ALL SELECT * FROM ProductsHistory) as p_all 
        WHERE ProductID = @ProductID 
        ORDER BY SysStartTime DESC`,
-      [{ name: 'ProductID', type: sql.Int, value: id }],
+      [{ name: 'ProductID',  value: id }],
     );
     return result.recordset;
   }

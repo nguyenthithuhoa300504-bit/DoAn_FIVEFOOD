@@ -11,7 +11,7 @@ export class ChatbotController {
 
   @Post()
   async handleChat(
-    @Body() body: { message: string; sessionId?: string },
+    @Body() body: { message: string; sessionId?: string; localCart?: any[] },
     @Req() req: any,
   ) {
     let userId = null;
@@ -30,6 +30,7 @@ export class ChatbotController {
       userId,
       body.message,
       body.sessionId,
+      body.localCart,
     );
     return {
       success: true,

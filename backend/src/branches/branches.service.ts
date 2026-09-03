@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class BranchesService {
   private readonly logger = new Logger(BranchesService.name);
@@ -28,35 +26,35 @@ export class BranchesService {
     try {
       const query = `
         INSERT INTO Branches (BranchName, Latitude, Longitude, Address, CoverageRadius, Description, IsActive, IsHeadquarters)
-        OUTPUT INSERTED.*
+        RETURNING *
         VALUES (@0, @1, @2, @3, @4, @5, @6, @7)
       `;
       const result = await this.databaseService.query(query, [
-        { name: '0', type: sql.NVarChar, value: createBranchDto.BranchName },
-        { name: '1', type: sql.Decimal(9, 6), value: createBranchDto.Latitude },
+        { name: '0',  value: createBranchDto.BranchName },
+        { name: '1',  value: createBranchDto.Latitude },
         {
           name: '2',
-          type: sql.Decimal(9, 6),
+          
           value: createBranchDto.Longitude,
         },
         {
           name: '3',
-          type: sql.NVarChar,
+          
           value: createBranchDto.Address || null,
         },
         {
           name: '4',
-          type: sql.Int,
+          
           value: createBranchDto.CoverageRadius || 5,
         },
         {
           name: '5',
-          type: sql.NVarChar,
+          
           value: createBranchDto.Description || null,
         },
         {
           name: '6',
-          type: sql.Bit,
+          
           value:
             createBranchDto.IsActive !== undefined
               ? createBranchDto.IsActive
@@ -64,7 +62,7 @@ export class BranchesService {
         },
         {
           name: '7',
-          type: sql.Bit,
+          
           value:
             createBranchDto.IsHeadquarters !== undefined
               ? createBranchDto.IsHeadquarters
@@ -83,35 +81,35 @@ export class BranchesService {
       const query = `
         UPDATE Branches
         SET BranchName = @0, Latitude = @1, Longitude = @2, Address = @3, CoverageRadius = @4, Description = @5, IsActive = @6, IsHeadquarters = @7
-        OUTPUT INSERTED.*
+        RETURNING *
         WHERE BranchID = @8
       `;
       const result = await this.databaseService.query(query, [
-        { name: '0', type: sql.NVarChar, value: updateBranchDto.BranchName },
-        { name: '1', type: sql.Decimal(9, 6), value: updateBranchDto.Latitude },
+        { name: '0',  value: updateBranchDto.BranchName },
+        { name: '1',  value: updateBranchDto.Latitude },
         {
           name: '2',
-          type: sql.Decimal(9, 6),
+          
           value: updateBranchDto.Longitude,
         },
         {
           name: '3',
-          type: sql.NVarChar,
+          
           value: updateBranchDto.Address || null,
         },
         {
           name: '4',
-          type: sql.Int,
+          
           value: updateBranchDto.CoverageRadius || 5,
         },
         {
           name: '5',
-          type: sql.NVarChar,
+          
           value: updateBranchDto.Description || null,
         },
         {
           name: '6',
-          type: sql.Bit,
+          
           value:
             updateBranchDto.IsActive !== undefined
               ? updateBranchDto.IsActive
@@ -119,13 +117,13 @@ export class BranchesService {
         },
         {
           name: '7',
-          type: sql.Bit,
+          
           value:
             updateBranchDto.IsHeadquarters !== undefined
               ? updateBranchDto.IsHeadquarters
               : 0,
         },
-        { name: '8', type: sql.Int, value: id },
+        { name: '8',  value: id },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -143,7 +141,7 @@ export class BranchesService {
         WHERE BranchID = @0
       `;
       await this.databaseService.query(query, [
-        { name: '0', type: sql.Int, value: id },
+        { name: '0',  value: id },
       ]);
       return { success: true, message: 'Branch deactivated' };
     } catch (error) {

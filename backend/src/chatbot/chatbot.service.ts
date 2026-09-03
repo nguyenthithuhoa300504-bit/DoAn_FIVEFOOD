@@ -6,7 +6,6 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../orders/orders.service';
-import * as sql from 'mssql';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,9 +20,9 @@ export class ChatbotService {
     private readonly configService: ConfigService,
     private readonly ordersService: OrdersService,
   ) {
-    this.apiKey = this.configService.get<string>('GROQ_API_KEY');
+    this.apiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
     if (!this.apiKey) {
-      this.logger.warn('GROQ_API_KEY is not configured in .env');
+      this.logger.warn('DEEPSEEK_API_KEY is not configured in .env');
     }
   }
 
@@ -31,6 +30,7 @@ export class ChatbotService {
     userId: number | null,
     message: string,
     sessionId?: string,
+    localCart?: any[],
   ) {
     if (!this.apiKey) {
       throw new InternalServerErrorException(
@@ -39,9 +39,12 @@ export class ChatbotService {
     }
 
     try {
+      let newLocalCartToReturn: any[] | null = null;
+      let richContent: any = null;
+
       // 1. Lấy toàn bộ danh sách sản phẩm kèm thành phần (Ingredients) và tồn kho (Inventory) để AI tư vấn theo giá, vị cay, chay, đồ uống...
       const productsQuery = `
-        SELECT p.ProductID, p.ProductName, p.Price, p.Ingredients, p.Inventory, c.CategoryName
+        SELECT p.ProductID, p.ProductName, p.Price, p.Ingredients, p.Inventory, p.ImageURL, c.CategoryName
         FROM Products p
         INNER JOIN Categories c ON p.CategoryID = c.CategoryID
         WHERE p.IsActive = 1
@@ -68,7 +71,7 @@ export class ChatbotService {
         try {
           const userQuery = `SELECT FullName, Email FROM Users WHERE UserID = @UserID`;
           const userResult = await this.databaseService.query(userQuery, [
-            { name: 'UserID', type: sql.Int, value: userId },
+            { name: 'UserID',  value: userId },
           ]);
           if (userResult.recordset.length > 0) {
             const u = userResult.recordset[0];
@@ -95,7 +98,7 @@ export class ChatbotService {
             ORDER BY o.OrderDate DESC
           `;
           const historyResult = await this.databaseService.query(historyQuery, [
-            { name: 'UserID', type: sql.Int, value: userId },
+            { name: 'UserID',  value: userId },
           ]);
           if (historyResult.recordset.length > 0) {
             const pastItems = historyResult.recordset
@@ -113,6 +116,8 @@ export class ChatbotService {
 
       // 2.5 Lấy thông tin Giỏ hàng hiện tại của User
       let cartContext = '';
+      let cartItemsData: any[] = [];
+      let subtotalData: number = 0;
       if (userId) {
         try {
           const cartQuery = `
@@ -122,7 +127,7 @@ export class ChatbotService {
             WHERE c.UserID = @UserID
           `;
           const cartResult = await this.databaseService.query(cartQuery, [
-            { name: 'UserID', type: sql.Int, value: userId },
+            { name: 'UserID',  value: userId },
           ]);
           if (cartResult.recordset.length > 0) {
             // Liệt kê rõ từng món kèm ID để AI đọc đúng
@@ -132,23 +137,42 @@ export class ChatbotService {
                   `- ${r.Quantity}x ${r.ProductName} (ID sản phẩm=${r.ProductID}, Giá:${r.Price}đ)`,
               )
               .join('\n');
-            const subtotal = cartResult.recordset.reduce(
+            cartItemsData = cartResult.recordset;
+            subtotalData = cartResult.recordset.reduce(
               (sum, r) => sum + r.Price * r.Quantity,
               0,
             );
             const shippingFee = 15000;
-            const totalAmount = subtotal + shippingFee;
-            cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI ĐANG CÓ SẴN (${cartResult.recordset.length} món) ===\n${cartLines}\nTổng: ${subtotal}đ | Ship: ${shippingFee}đ | Tổng TT: ${totalAmount}đ\n⚠️ LƯU Ý TỐI QUAN TRỌNG CHO AI: Đây là danh sách món ĐÃ CÓ SẴN trong giỏ từ trước. Khi khách nhắn xin THÊM MÓN MỚI (ví dụ: "thêm 1 phở bò"), bạn TUYỆT ĐỐI KHÔNG mang các món trong bảng này ra xuất lại vào lệnh [CART_INTENT], mà chỉ xuất DUY NHẤT món mới khách vừa nhắn ở câu hiện tại!\n===================================`;
+            const totalAmount = subtotalData + shippingFee;
+            cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI ĐANG CÓ SẴN (${cartResult.recordset.length} món) ===\n${cartLines}\nTổng: ${subtotalData}đ | Ship: ${shippingFee}đ | Tổng TT: ${totalAmount}đ\n⚠️ LƯU Ý TỐI QUAN TRỌNG CHO AI: Đây là danh sách món ĐÃ CÓ SẴN trong giỏ từ trước. Khi khách nhắn xin THÊM MÓN MỚI (ví dụ: "thêm 1 phở bò"), bạn TUYỆT ĐỐI KHÔNG mang các món trong bảng này ra xuất lại vào lệnh [CART_INTENT], mà chỉ xuất DUY NHẤT món mới khách vừa nhắn ở câu hiện tại!\n===================================`;
           } else {
             cartContext = `\n\n=== GIỎ HÀNG HIỆN TẠI: TRỐNG ===`;
           }
         } catch (e) {
           this.logger.warn('Không thể tải giỏ hàng cho chatbot:', e.message);
         }
+      } else if (localCart && localCart.length > 0) {
+        const cartLines = localCart
+          .map(
+            (r) =>
+              `- ${r.Quantity}x ${r.ProductName} (ID sản phẩm=${r.ProductID}, Giá:${r.Price}đ)`,
+          )
+          .join('\n');
+        cartItemsData = localCart;
+        subtotalData = localCart.reduce(
+          (sum, r) => sum + r.Price * r.Quantity,
+          0,
+        );
+        const shippingFee = 15000;
+        const totalAmount = subtotalData + shippingFee;
+        cartContext = `\n\n=== GIỎ HÀNG TẠM (GUEST) ĐANG CÓ SẴN (${localCart.length} món) ===\n${cartLines}\nTổng: ${subtotalData}đ | Ship: ${shippingFee}đ | Tổng TT: ${totalAmount}đ\n⚠️ LƯU Ý TỐI QUAN TRỌNG CHO AI: Đây là danh sách món ĐÃ CÓ SẴN trong giỏ tạm từ trước. Khi khách nhắn xin THÊM MÓN MỚI, bạn TUYỆT ĐỐI KHÔNG xuất lại món cũ vào lệnh [CART_INTENT]!\n===================================`;
+      } else {
+        cartContext = `\n\n=== GIỎ HÀNG TẠM: TRỐNG ===`;
       }
 
       // 2.6 Lấy danh sách Khuyến mãi (Voucher)
       let promoContext = '';
+      let availablePromos: any[] = [];
       try {
         const promoQuery = `
           SELECT PromoCode, Description, MinOrderValue
@@ -158,13 +182,14 @@ export class ChatbotService {
         `;
         const promoResult = await this.databaseService.query(promoQuery);
         if (promoResult.recordset.length > 0) {
-          const promos = promoResult.recordset
+          availablePromos = promoResult.recordset;
+          const promos = availablePromos
             .map(
               (p) =>
                 `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`,
             )
             .join('\n');
-          promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI: Khi khách bày tỏ ý muốn đặt hàng, thanh toán hoặc hỏi về giỏ hàng (mà chưa đưa địa chỉ), BẮT BUỘC bạn phải dựa vào Tổng tiền giỏ hàng hiện tại để đề xuất ngay cho khách mã giảm giá phù hợp nhất và chủ động hỏi: "Bạn có muốn áp dụng mã giảm giá [Tên mã] này cho đơn hàng không ạ? Nếu có, hãy nhắn cho mình địa chỉ giao hàng kèm tên mã nhé!"`;
+          promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI:\n- Khi khách yêu cầu "Xem danh sách mã giảm giá": BẮT BUỘC liệt kê mã phù hợp nhất và CHẮC CHẮN dùng biểu tượng 🎁. Ví dụ: "🎁 Mình gợi ý cho bạn mã giảm giá..."\n- Khi khách NÓI MỘT MÃ GIẢM GIÁ CỤ THỂ (ví dụ khách chat "GIAMGIA50" hoặc "Dùng mã GIAMGIA50"): Hãy xác nhận đã ghi nhận mã và HỎI XIN ĐỊA CHỈ GIAO HÀNG. TUYỆT ĐỐI KHÔNG dùng biểu tượng 🎁 và KHÔNG dùng từ "mã giảm giá" trong câu trả lời này (ví dụ chỉ nói: "Dạ, mình đã ghi nhận voucher GIAMGIA50. Bạn cho mình xin địa chỉ giao hàng nhé!").`;
         }
       } catch (e) {
         this.logger.warn('Không thể tải khuyến mãi cho chatbot:', e.message);
@@ -183,7 +208,7 @@ export class ChatbotService {
           `;
           const trackingResult = await this.databaseService.query(
             trackingQuery,
-            [{ name: 'UserID', type: sql.Int, value: userId }],
+            [{ name: 'UserID',  value: userId }],
           );
           recentOrders = trackingResult.recordset;
           if (recentOrders.length > 0) {
@@ -242,26 +267,33 @@ QUY TẮC BẮT BUỘC:
 1. CHỈ ĐƯA VÀO [CART_INTENT] ĐÚNG DUY NHẤT MÓN MÀ KHÁCH YÊU CẦU TRONG TIN NHẮN HIỆN TẠI! TUYỆT ĐỐI KHÔNG ĐƯA CÁC MÓN KHÁCH ĐÃ ĐẶT Ở CÁC CÂU CHAT TRƯỚC HẠO MÓN ĐANG CÓ SẴN TRONG GIỎ VÀO LẠI BẢNG LỆNH!
    (Ví dụ: Trong giỏ đang có sẵn Pizza và Phở, khi khách nhắn câu mới "thêm 1 Phở Bò", bạn CHỈ được xuất duy nhất ID Phở Bò với qty = 1. TUYỆT ĐỐI KHÔNG kèm theo Pizza hay sửa qty thành con số khác!).
 2. GIÁ TRỊ "qty" CHÍNH BẰNG ĐÚNG SỐ LƯỢNG KHÁCH NÓI Ở CÂU CHAT HIỆN TẠI (Khách nói "thêm 1" thì qty = 1). TUYỆT ĐỐI KHÔNG TỰ CỘNG DỒN HAY BỊA ĐẶT SỐ LƯỢNG MÓN!
-3. Khi khách muốn mua món nhưng CHƯA nói số lượng: Hỏi ngắn gọn "Bạn muốn đặt bao nhiêu phần [Tên món] ạ?".
-4. NẾU khách yêu cầu tên món chung chung mà thực đơn có NHIỀU phiên bản/loại khác nhau (VD khách nói "pizza" mà menu có Pizza Hải Sản, Pizza Phô Mai), TUYỆT ĐỐI KHÔNG tự ý đoán bừa ID để xuất lệnh. BẮT BUỘC phải hỏi lại khách: "Bạn muốn chọn loại nào ạ?".
+3. KHI KHÁCH YÊU CẦU MỘT MÓN CỤ THỂ NHƯNG CHƯA NÓI RÕ SỐ LƯỢNG (Ví dụ khách chỉ nhắn: "pizza hải sản", "mì quảng"):
+   - Bước 1: KIỂM TRA NGAY trong phần "GIỎ HÀNG HIỆN TẠI" xem tên món khách vừa nhắn đã có trong giỏ chưa.
+   - Bước 2: NẾU ĐÃ CÓ SẴN (Trùng khớp tên món): BẮT BUỘC phải nhắc nhở khách bằng câu sau: "Giỏ hàng của bạn hiện đang có sẵn [X] phần [Tên món]. Bạn có chắc chắn muốn mua thêm không, và thêm bao nhiêu phần ạ?".
+   - Bước 3: NẾU CHƯA CÓ TRONG GIỎ: Hãy hỏi trực tiếp: "Dạ, bạn muốn đặt bao nhiêu phần [Tên món] ạ?".
 5. Khi được hỏi xác nhận món trùng (có/không): Nếu khách trả lời đồng ý/ok -> xuất ngay [CART_INTENT]. Nếu từ chối -> hủy thao tác.
 6. *** KHÔNG nói "đã thêm", "mình thêm xong". Chỉ xuất đúng mã lệnh [CART_INTENT]. ***
 
 🔥 QUY TẮC CHECKOUT / THANH TOÁN / GIẢM & XÓA MÓN:
-- Ngay khi khách cung cấp ĐỊA CHỈ GIAO HÀNG (ví dụ "Giao tới 123 Lê Duẩn"): CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ>", "promoCode": "<mã nếu có, không có để rỗng>"}] và im lặng! TUYỆT ĐỐI KHÔNG giả định hay tự nói xác nhận tạo đơn thành công!
-- Khi muốn giảm số lượng hoặc xóa 1 món cụ thể khỏi giỏ (ví dụ "bớt 1 phần phở", "xóa phở bò", "xóa 1 phần"): [REMOVE_ITEM_INTENT: {"name": "<Tên món hoặc từ khóa>", "qty": 1}]
-- TUYỆT ĐỐI KHÔNG dùng [CLEAR_CART_INTENT] khi khách chỉ muốn bớt hoặc xóa 1 phần / 1 vài món! [CLEAR_CART_INTENT] CHỈ dùng khi khách ra lệnh XÓA HẾT TOÀN BỘ GIỎ HÀNG ("dọn sạch giỏ", "xóa hết giỏ hàng").
+- Khi khách báo "thanh toán", "chốt đơn": NẾU khách chưa cung cấp địa chỉ, BẮT BUỘC phải hỏi: "Bạn kiểm tra lại giỏ hàng xem đã đúng chưa nhé. Nếu OK thì cho mình xin Địa chỉ giao hàng ạ!".
+- Khi khách ĐÃ cung cấp ĐỊA CHỈ nhưng CHƯA chọn phương thức thanh toán: BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?" (Câu này sẽ tự động kích hoạt bảng nút chọn thanh toán).
+- Khi khách đã cung cấp ĐẦY ĐỦ CẢ ĐỊA CHỈ LẪN PHƯƠNG THỨC THANH TOÁN (Tiền mặt hoặc VNPay): CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ từ lịch sử chat>", "paymentMethod": "<Tiền mặt hoặc VNPay>", "promoCode": "<mã nếu có>"}] và im lặng! TUYỆT ĐỐI KHÔNG tự nói xác nhận!
+- Khi muốn giảm số lượng hoặc xóa 1 món cụ thể khỏi giỏ: [REMOVE_ITEM_INTENT: {"name": "<Tên món>", "qty": 1}]
+- TUYỆT ĐỐI KHÔNG dùng [CLEAR_CART_INTENT] khi khách chỉ muốn bớt 1 phần!
 - Khi muốn hủy đơn: [CANCEL_ORDER_INTENT: {"orderId": <ID đơn>}]
 
 VÍ DỤ CÁCH TRẢ LỜI ĐÚNG:
 Khách: "cho 1 Phở Bò Đặc Biệt" (hoặc "đặt 1 phở bò") → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "Cho mình đặt 1 Phở Bò Đặc Biệt và 2 Pizza Margherita" → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}, {"id": <ID pizza>, "qty": 2}]}]"
-Khách: "Thêm phở" (chưa có con số) → Bạn: "Dạ, bạn muốn thêm bao nhiêu phần Phở Bò Đặc Biệt ạ?"
+Khách: "pizza phô mai" (TRONG GIỎ CHƯA CÓ MÓN NÀY) → Bạn: "Dạ, bạn muốn đặt bao nhiêu phần ạ?"
+Khách: "pizza phô mai" (TRONG GIỎ ĐÃ CÓ SẴN 4 PHẦN) → Bạn: "Giỏ hàng hiện tại đang có sẵn 4 phần Pizza Phô Mai. Bạn có muốn đặt thêm không?"
+Khách: "có" (Trả lời sau khi bạn hỏi có muốn đặt thêm không) → Bạn: "Dạ, bạn muốn đặt thêm bao nhiêu phần ạ?"
 Khách: "1 tô" (hoặc "1 phần" sau khi được hỏi) → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "thêm 1 phở nữa" → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "xóa 1 phần khỏi giỏ" (hoặc "bớt 1 phở") → Bạn: "[REMOVE_ITEM_INTENT: {"name": "phở", "qty": 1}]"
 Khách: "xóa giỏ hàng cho mình" (hoặc "xóa giỏ", "dọn sạch giỏ hàng") → Bạn: "[CLEAR_CART_INTENT]"
-Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "promoCode": "GIAM20K"}]"`;
+Khách: "Giao tới 123 Lê Duẩn" → Bạn: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?"
+Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu trước) → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "paymentMethod": "VNPay", "promoCode": "GIAM20K"}]"`;
 
       // 3.5 Lấy lịch sử chat (nếu có sessionId) để AI nhớ ngữ cảnh - giới hạn 3 lượt để tiết kiệm token
       const chatMessages: any[] = [{ role: 'system', content: systemPrompt }];
@@ -275,7 +307,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           ORDER BY CreatedAt DESC
         `;
         const chatLogsResult = await this.databaseService.query(chatLogsQuery, [
-          { name: 'SessionID', type: sql.VarChar(100), value: sessionId },
+          { name: 'SessionID',  value: sessionId },
         ]);
         if (chatLogsResult.recordset.length > 0) {
           try {
@@ -319,6 +351,11 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         lastBotResponse.includes('bạn có chắc muốn thêm') ||
         lastBotResponse.includes('trong giỏ đang có') ||
         lastBotResponse.includes('Món đã có trong giỏ');
+      const wasAskingQuantity =
+        lastBotResponse.includes('bạn muốn đặt bao nhiêu phần') ||
+        lastBotResponse.includes('đặt thêm bao nhiêu phần') ||
+        lastBotResponse.includes('muốn đặt bao nhiêu') ||
+        lastBotResponse.includes('bao nhiêu phần ạ');
       const isUserConfirming = [
         'có',
         'ừ',
@@ -405,7 +442,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           try {
             const currentCart = await this.databaseService.query(
               'SELECT ci.CartItemID, ci.ProductID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }],
+              [{ name: 'UserID',  value: userId }],
             );
 
             if (currentCart.recordset.length === 0) {
@@ -458,7 +495,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                     [
                       {
                         name: 'CartItemID',
-                        type: sql.Int,
+                        
                         value: targetItem.CartItemID,
                       },
                     ],
@@ -469,10 +506,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                   await this.databaseService.query(
                     'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
                     [
-                      { name: 'Quantity', type: sql.Int, value: newQty },
+                      { name: 'Quantity',  value: newQty },
                       {
                         name: 'CartItemID',
-                        type: sql.Int,
+                        
                         value: targetItem.CartItemID,
                       },
                     ],
@@ -517,7 +554,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           try {
             await this.databaseService.query(
               'DELETE FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }],
+              [{ name: 'UserID',  value: userId }],
             );
             isOrderPlaced = true;
             responseText =
@@ -527,8 +564,25 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             responseText = '❌ Lỗi hệ thống khi xóa giỏ hàng.';
           }
         } else {
-          responseText = '❌ Vui lòng **Đăng nhập** để AI thao tác giỏ hàng!';
+          newLocalCartToReturn = [];
+          isOrderPlaced = true;
+          responseText = '✅ **Đã dọn sạch giỏ hàng tạm!** Bạn muốn dùng món gì tiếp theo?';
         }
+      }
+
+      // 1.32 Lệnh Đặt hàng / Thanh toán (Nếu chưa đăng nhập thì bắt đăng nhập ngay lập tức)
+      const isUserAskingCheckout =
+        !isLocalHandled &&
+        [
+          'thanh toán',
+          'đặt hàng',
+          'chốt đơn',
+          'mua hàng',
+          'tính tiền',
+        ].some((kw) => lowerMsg.includes(kw));
+      if (isUserAskingCheckout && !userId) {
+        isLocalHandled = true;
+        responseText = '❌ Vui lòng **Đăng nhập** để AI hỗ trợ bạn thanh toán và theo dõi đơn hàng nhé!';
       }
 
       // 1.35 Lệnh Tra cứu trạng thái đơn hàng & Shipper di chuyển -> Xử lý ngay 0ms!
@@ -725,7 +779,12 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                   qty = parseInt(bMatch[1], 10);
                 } else if (aMatch && !afterStr.match(/^[đd\.,000]/)) {
                   qty = parseInt(aMatch[1], 10);
+                } else {
+                  // KHÔNG TÌM THẤY CON SỐ (Có thể nhập bằng chữ "hai", "ba" hoặc không nhập)
+                  // -> Bỏ qua Fast Handler, để cho AI Deepseek phân tích ngữ nghĩa hoặc chặn hỏi số lượng!
+                  continue;
                 }
+                
                 if (qty <= 0) qty = 1;
 
                 foundTerms.push({ keyword: phrase, qty: qty, idx: matchIdx });
@@ -824,8 +883,8 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                     const checkCart = await this.databaseService.query(
                       'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                       [
-                        { name: 'UserID', type: sql.Int, value: userId },
-                        { name: 'ProductID', type: sql.Int, value: item.id },
+                        { name: 'UserID',  value: userId },
+                        { name: 'ProductID',  value: item.id },
                       ],
                     );
                     const currentQty =
@@ -841,10 +900,10 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                         await this.databaseService.query(
                           'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
                           [
-                            { name: 'Quantity', type: sql.Int, value: newQty },
+                            { name: 'Quantity',  value: newQty },
                             {
                               name: 'CartItemID',
-                              type: sql.Int,
+                              
                               value: checkCart.recordset[0].CartItemID,
                             },
                           ],
@@ -853,15 +912,15 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                         await this.databaseService.query(
                           'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
                           [
-                            { name: 'UserID', type: sql.Int, value: userId },
+                            { name: 'UserID',  value: userId },
                             {
                               name: 'ProductID',
-                              type: sql.Int,
+                              
                               value: item.id,
                             },
                             {
                               name: 'Quantity',
-                              type: sql.Int,
+                              
                               value: item.qty,
                             },
                           ],
@@ -901,7 +960,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       ) {
         const callGroqAPI = async (retryCount = 0): Promise<any> => {
           const res = await fetch(
-            'https://api.groq.com/openai/v1/chat/completions',
+            'https://api.deepseek.com/chat/completions',
             {
               method: 'POST',
               headers: {
@@ -909,7 +968,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 Authorization: `Bearer ${this.apiKey}`,
               },
               body: JSON.stringify({
-                model: 'llama-3.1-8b-instant',
+                model: 'deepseek-chat',
                 messages: chatMessages,
                 temperature: 0.7,
                 max_tokens: 350,
@@ -932,7 +991,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
 
         if (!response.ok) {
           const errorData = await response.text();
-          this.logger.error(`Groq API Error: ${errorData}`);
+          this.logger.error(`Deepseek API Error: ${errorData}`);
           if (response.status === 429) {
             return {
               reply:
@@ -941,7 +1000,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
               orderPlaced: false,
             };
           }
-          throw new Error('Groq API returned an error');
+          throw new Error('Deepseek API returned an error');
         }
 
         const data = await response.json();
@@ -954,8 +1013,26 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         if (cartMatch) {
           try {
             const parsedData = JSON.parse(cartMatch[1]);
-            if (parsedData && Array.isArray(parsedData.items))
-              intentItems = parsedData.items;
+            if (parsedData && Array.isArray(parsedData.items)) {
+              // --- KIỂM TRA ÉP BUỘC SỐ LƯỢNG ---
+              const hasQtyWord = /\d|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|chục|tá|nửa|ly\b|\btô\b|phần|chén|đĩa|dĩa|chiếc|\bcái\b|lon|chai|\bổ\b|cuốn|bát|cốc/i.test(lowerMsg);
+              
+              const fs = require('fs');
+              const logLine = `[${new Date().toISOString()}] msg: "${lowerMsg}", hasQtyWord: ${hasQtyWord}, parsedData: ${JSON.stringify(parsedData)}\n`;
+              fs.appendFileSync('C:\\Users\\Admin\\Desktop\\DoAn\\backend\\interceptor.log', logLine);
+
+              if (!hasQtyWord) {
+                this.logger.log(`DEBUG INTERCEPTOR: Bypassed CART_INTENT because hasQtyWord is FALSE. msg: ${lowerMsg}`);
+                responseText = 'Dạ, bạn muốn đặt bao nhiêu phần ạ?';
+                cartMatch = null;
+                intentItems = [];
+              } else {
+                intentItems = parsedData.items.map((i: any) => ({
+                  id: parseInt(i.id),
+                  qty: parseInt(i.qty) || parseInt(i.quantity) || 1
+                }));
+              }
+            }
           } catch (e) {}
         }
 
@@ -966,7 +1043,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           try {
             await this.databaseService.query(
               'DELETE FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }],
+              [{ name: 'UserID',  value: userId }],
             );
             isOrderPlaced = true;
             responseText =
@@ -976,7 +1053,9 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             responseText = '❌ Quá trình xóa giỏ hàng đã xảy ra lỗi.';
           }
         } else if (clearCartMatch && !userId) {
-          responseText = '❌ Bạn cần **Đăng nhập** để AI thao tác nhé!';
+          newLocalCartToReturn = [];
+          isOrderPlaced = true;
+          responseText = '✅ **Đã dọn sạch giỏ hàng tạm thành công!**\nGiỏ hàng của bạn hiện tại đã hoàn toàn trống trải! Bạn có muốn đặt món gì mới không ạ? 😊';
         }
       }
 
@@ -995,7 +1074,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           for (const item of intentItems) {
             const prodCheck = await this.databaseService.query(
               'SELECT ProductName, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
-              [{ name: 'ProductID', type: sql.Int, value: item.id }],
+              [{ name: 'ProductID',  value: item.id }],
             );
             if (prodCheck.recordset.length === 0) continue;
             const product = prodCheck.recordset[0];
@@ -1003,8 +1082,8 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             const checkCart = await this.databaseService.query(
               'SELECT ci.CartItemID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID AND ci.ProductID = @ProductID',
               [
-                { name: 'UserID', type: sql.Int, value: userId },
-                { name: 'ProductID', type: sql.Int, value: item.id },
+                { name: 'UserID',  value: userId },
+                { name: 'ProductID',  value: item.id },
               ],
             );
 
@@ -1047,7 +1126,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
           ) {
             responseText = `❌ Rất tiếc, các món sau không đủ tồn kho:\n${outOfStockItems.map((m) => `- **${m}**`).join('\n')}\nVui lòng chọn số lượng ít hơn hoặc món khác nhé!`;
             isOrderPlaced = false;
-          } else if (duplicateItems.length > 0 && !wasAskingConfirmation) {
+          } else if (duplicateItems.length > 0 && !wasAskingConfirmation && !wasAskingQuantity) {
             // Lỗi #2: Nếu có món mới (newItems), thực hiện thêm ngay lập tức vào giỏ hàng trước để không bị nuốt mất món khi dừng lại hỏi xác nhận
             let addedNewMsg = '';
             if (newItems.length > 0) {
@@ -1055,9 +1134,9 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 await this.databaseService.query(
                   'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
                   [
-                    { name: 'UserID', type: sql.Int, value: userId },
-                    { name: 'ProductID', type: sql.Int, value: nItem.id },
-                    { name: 'Quantity', type: sql.Int, value: nItem.qty },
+                    { name: 'UserID',  value: userId },
+                    { name: 'ProductID',  value: nItem.id },
+                    { name: 'Quantity',  value: nItem.qty },
                   ],
                 );
               }
@@ -1099,8 +1178,8 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
               const checkCart = await this.databaseService.query(
                 'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                 [
-                  { name: 'UserID', type: sql.Int, value: userId },
-                  { name: 'ProductID', type: sql.Int, value: item.id },
+                  { name: 'UserID',  value: userId },
+                  { name: 'ProductID',  value: item.id },
                 ],
               );
               if (checkCart.recordset.length > 0) {
@@ -1108,18 +1187,18 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 await this.databaseService.query(
                   'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
                   [
-                    { name: 'Quantity', type: sql.Int, value: newQty },
-                    { name: 'UserID', type: sql.Int, value: userId },
-                    { name: 'ProductID', type: sql.Int, value: item.id },
+                    { name: 'Quantity',  value: newQty },
+                    { name: 'UserID',  value: userId },
+                    { name: 'ProductID',  value: item.id },
                   ],
                 );
               } else {
                 await this.databaseService.query(
                   'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
                   [
-                    { name: 'UserID', type: sql.Int, value: userId },
-                    { name: 'ProductID', type: sql.Int, value: item.id },
-                    { name: 'Quantity', type: sql.Int, value: item.qty },
+                    { name: 'UserID',  value: userId },
+                    { name: 'ProductID',  value: item.id },
+                    { name: 'Quantity',  value: item.qty },
                   ],
                 );
               }
@@ -1130,7 +1209,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             // Tự động kiểm tra tổng giỏ hàng và tư vấn mã giảm giá thông minh cho khách
             const updatedCartResult = await this.databaseService.query(
               'SELECT SUM(c.Quantity * p.Price) as Subtotal FROM CartItems c INNER JOIN Products p ON c.ProductID = p.ProductID WHERE c.UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }],
+              [{ name: 'UserID',  value: userId }],
             );
             const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
 
@@ -1142,18 +1221,18 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue <= @Subtotal
                  ORDER BY MinOrderValue DESC`,
-              [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }],
+              [{ name: 'Subtotal',  value: subtotal }],
             );
 
             // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
             const nextPromos = await this.databaseService.query(
-              `SELECT TOP 1 PromoCode, Description, MinOrderValue 
+              `SELECT  PromoCode, Description, MinOrderValue 
                  FROM Promotions 
                  WHERE GETDATE() BETWEEN StartDate AND EndDate 
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue > @Subtotal
                  ORDER BY MinOrderValue ASC`,
-              [{ name: 'Subtotal', type: sql.Decimal(18, 2), value: subtotal }],
+              [{ name: 'Subtotal',  value: subtotal }],
             );
 
             let promoMsg = '';
@@ -1187,9 +1266,55 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         !userId &&
         !responseText.startsWith('❌ Rất tiếc')
       ) {
-        // Có ý định đặt hàng nhưng khách chưa đăng nhập
-        responseText =
-          '❌ Vui lòng **Đăng nhập** để AI tự động thêm món vào giỏ!';
+        // AI thêm món vào giỏ hàng vãng lai (Local Cart)
+        try {
+          let tempLocalCart = localCart ? [...localCart] : [];
+          let addedNames: string[] = [];
+          
+          for (const item of intentItems) {
+            const prodCheck = await this.databaseService.query(
+              'SELECT ProductName, Price, ImageURL, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
+              [{ name: 'ProductID',  value: item.id }]
+            );
+            if (prodCheck.recordset.length === 0) continue;
+            
+            const product = prodCheck.recordset[0];
+            
+            // Xử lý tồn kho cơ bản
+            const existingIndex = tempLocalCart.findIndex((i: any) => parseInt(i.ProductID) === item.id);
+            const currentQty = existingIndex > -1 ? tempLocalCart[existingIndex].Quantity : 0;
+            
+            if (product.Inventory <= 0 || currentQty + item.qty > product.Inventory) {
+              continue; // Bỏ qua nếu hết tồn kho
+            }
+
+            if (existingIndex > -1) {
+              tempLocalCart[existingIndex].Quantity += item.qty;
+            } else {
+              tempLocalCart.push({
+                ProductID: item.id,
+                ProductName: product.ProductName,
+                Price: product.Price,
+                ImageURL: product.ImageURL,
+                Inventory: product.Inventory,
+                Quantity: item.qty
+              });
+            }
+            addedNames.push(`**${item.qty}x ${product.ProductName}**`);
+          }
+          
+          if (addedNames.length > 0) {
+            isOrderPlaced = true;
+            const subtotal = tempLocalCart.reduce((sum, r) => sum + r.Price * r.Quantity, 0);
+            responseText = `✅ **Đã thêm vào giỏ hàng tạm!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)\nĐã thêm: ${addedNames.join(', ')}\n\n💡 Bạn có thể tiếp tục hỏi thêm món, hoặc báo "Thanh toán" để chốt đơn nhé!`;
+            newLocalCartToReturn = tempLocalCart;
+          } else if (intentItems.length > 0) {
+            responseText = `❌ Không thể thêm món (Có thể do món đã hết hàng). Bạn chọn món khác nhé!`;
+          }
+        } catch (e) {
+          this.logger.error('Lỗi khi tự động thêm giỏ hàng vãng lai từ Chatbot', e);
+          responseText = '❌ Vui lòng **Đăng nhập** để AI thao tác nhé!';
+        }
       }
 
       // 5.3 Xử lý Thanh toán (Checkout) tự động
@@ -1203,7 +1328,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
             // Check nếu giỏ hàng rỗng
             const cartCheck = await this.databaseService.query(
               'SELECT COUNT(*) as count FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID', type: sql.Int, value: userId }],
+              [{ name: 'UserID',  value: userId }],
             );
             if (cartCheck.recordset[0].count === 0) {
               responseText =
@@ -1217,7 +1342,7 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
                 intentData.address,
                 null,
                 null,
-                'Tiền mặt',
+                intentData.paymentMethod || 'Tiền mặt',
                 appliedPromo,
                 15000,
               );
@@ -1259,11 +1384,105 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       }
 
       // Làm sạch văn bản AI: Không để lộ nhãn ID kỹ thuật ra ngoài cho khách thấy
+      let hasCheckoutIntent = false;
       if (typeof responseText === 'string') {
+        if (responseText.includes('[CHECKOUT_INTENT')) hasCheckoutIntent = true;
         responseText = responseText
           .replace(/\s*\(\s*ID=\d+\s*\)/gi, '')
           .replace(/\s*ID=\d+\s*\|/gi, '')
+          .replace(/\[[A-Z_]+_INTENT:?.*?\]/gs, '') // Remove all [INTENT_NAME: ...] tags
           .trim();
+      }
+
+      // Tự động nhận diện Món ăn (Food Cards)
+      if (typeof responseText === 'string') {
+        const recommendedFoods: any[] = [];
+        // Extract product IDs by matching names in the text
+        // Only trigger if we are not summarizing cart
+        if (!responseText.includes('Giỏ hàng hiện tại đang có') && !responseText.includes('Món đã có trong giỏ')) {
+          for (const prod of productsResult.recordset) {
+            // Regex to check if ProductName is mentioned (surrounded by word boundaries or formatting)
+            if (responseText.includes(prod.ProductName)) {
+                recommendedFoods.push({
+                  ProductID: prod.ProductID,
+                  ProductName: prod.ProductName,
+                  Price: prod.Price,
+                  ImageURL: prod.ImageURL,
+                  Ingredients: prod.Ingredients,
+                  Inventory: prod.Inventory
+                });
+            }
+          }
+        }
+        
+        const uniqueFoods = Array.from(new Set(recommendedFoods.map(f => f.ProductID)))
+          .map(id => recommendedFoods.find(f => f.ProductID === id))
+          .slice(0, 4); // Show max 4 cards
+          
+        if (uniqueFoods.length > 0) {
+          richContent = { type: 'food_recommendation', data: uniqueFoods };
+        }
+      }
+
+      // Tự động nhận diện Yêu cầu nhập số lượng (Quantity Selector)
+      if (typeof responseText === 'string' && responseText.includes('bao nhiêu phần')) {
+        // Không ghi đè nếu đã có Food Cards chứa nhiều hơn 1 món (vì khách cần phải chọn món trước)
+        const hasMultipleFoods = richContent && richContent.type === 'food_recommendation' && richContent.data.length > 1;
+        
+        if (!hasMultipleFoods) {
+          const qtyMatch = responseText.match(/bao nhiêu phần (.*?)(?:\?|ạ|$)/i);
+          let pName = '';
+          if (qtyMatch && qtyMatch[1] && qtyMatch[1].trim().length > 0 && !qtyMatch[1].includes('ạ')) {
+             pName = qtyMatch[1].trim();
+          } else {
+             // Nếu không match được tên món, lấy tên món cuối cùng được nhắc đến trong text
+             for (const prod of productsResult.recordset) {
+               if (responseText.includes(prod.ProductName)) {
+                 pName = prod.ProductName;
+                 break;
+               }
+             }
+          }
+          richContent = { type: 'quantity_selector', data: { productName: pName } };
+        }
+      }
+
+      // Tự động nhận diện Mã giảm giá (Promo Codes)
+      if (!hasCheckoutIntent && typeof responseText === 'string' && (responseText.includes('🎁') || responseText.toLowerCase().includes('mã giảm giá') || message.toLowerCase().includes('mã giảm giá'))) {
+         if (availablePromos && availablePromos.length > 0) {
+           // Lấy tất cả mã khuyến mãi nếu khách yêu cầu xem danh sách, ngược lại lấy mã được nhắc đến
+           let mentionedPromos = availablePromos;
+           if (!message.toLowerCase().includes('xem danh sách')) {
+               mentionedPromos = availablePromos.filter(p => responseText.includes(p.PromoCode));
+               if (mentionedPromos.length === 0) mentionedPromos = availablePromos; // Fallback to all if none explicitly matched but keyword was triggered
+           }
+           if (mentionedPromos.length > 0) {
+              richContent = { type: 'promotions', data: mentionedPromos };
+           }
+         }
+      }
+
+      // Tự động nhận diện Tóm tắt giỏ hàng (Cart Summary)
+      // CHỈ hiển thị thẻ Giỏ hàng nếu không bị đè bởi Mã Giảm Giá
+      if (!richContent || richContent.type !== 'promotions') {
+        const lowerRes = typeof responseText === 'string' ? responseText.toLowerCase() : '';
+        if (
+          lowerRes.includes('kiểm tra lại') || 
+          lowerRes.includes('giỏ hàng hiện tại') || 
+          lowerRes.includes('tóm tắt lại') || 
+          lowerRes.includes('tổng cộng') ||
+          lowerRes.includes('danh sách món') ||
+          (lowerRes.includes('giỏ hàng') && lowerRes.includes('có'))
+        ) {
+           if (cartItemsData && cartItemsData.length > 0) {
+               richContent = { type: 'cart_summary', data: { items: cartItemsData, subtotal: subtotalData } };
+           }
+        }
+      }
+
+      // Tự động nhận diện Phương thức thanh toán
+      if (typeof responseText === 'string' && responseText.includes('phương thức thanh toán')) {
+         richContent = { type: 'payment_options' };
       }
 
       // 6. Lưu vào Log
@@ -1281,11 +1500,11 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
       `;
 
       await this.databaseService.query(insertQuery, [
-        { name: 'UserID', type: sql.Int, value: userId || null },
-        { name: 'SessionID', type: sql.VarChar(100), value: currentSessionId },
+        { name: 'UserID',  value: userId || null },
+        { name: 'SessionID',  value: currentSessionId },
         {
           name: 'ConversationData',
-          type: sql.NVarChar(sql.MAX),
+          
           value: conversationData,
         },
       ]);
@@ -1294,6 +1513,8 @@ Khách: "Giao tới 123 Lê Duẩn, áp dụng mã GIAM20K" → Bạn: "[CHECKOU
         reply: responseText,
         sessionId: currentSessionId,
         orderPlaced: isOrderPlaced,
+        newLocalCart: newLocalCartToReturn,
+        richContent: richContent
       };
     } catch (error) {
       this.logger.error('Error in processMessage', error);
@@ -1392,14 +1613,14 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
   }
 
   private async callGroq(prompt: string, expectJson: boolean = false) {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'deepseek-chat',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: expectJson ? 1500 : 500,
         temperature: 0.7,
@@ -1408,8 +1629,8 @@ Yêu cầu: Viết thành 1 đoạn văn ngắn (dưới 50 chữ), sử dụng 
     });
     if (!res.ok) {
       const errorText = await res.text();
-      this.logger.error(`Groq API Error: ${errorText}`);
-      throw new Error('Failed to call Groq API');
+      this.logger.error(`Deepseek API Error: ${errorText}`);
+      throw new Error('Failed to call Deepseek API');
     }
     const data = await res.json();
     return data.choices[0].message.content.trim();

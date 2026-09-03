@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import * as sql from 'mssql';
-
 @Injectable()
 export class UserActionsService {
   private readonly logger = new Logger(UserActionsService.name);
@@ -20,12 +18,12 @@ export class UserActionsService {
         VALUES (@UserID, @ActionType, @ProductID, @SearchQuery)
       `;
       await this.databaseService.query(query, [
-        { name: 'UserID', type: sql.Int, value: userId },
-        { name: 'ActionType', type: sql.NVarChar(50), value: actionType },
-        { name: 'ProductID', type: sql.Int, value: productId || null },
+        { name: 'UserID',  value: userId },
+        { name: 'ActionType',  value: actionType },
+        { name: 'ProductID',  value: productId || null },
         {
           name: 'SearchQuery',
-          type: sql.NVarChar(255),
+          
           value: searchQuery || null,
         },
       ]);
