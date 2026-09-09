@@ -90,8 +90,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // Tự động cập nhật DB sang Hoàn thành (và Đã thanh toán) khi đến nơi
         this.dbService
           .query(
-            `UPDATE Orders SET Status = N'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = N'Chưa thanh toán' THEN N'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
-            [{ name: 'OrderID',  value: orderId }],
+            `UPDATE Orders SET Status = 'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = 'Chưa thanh toán' THEN 'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
+            [{ name: 'OrderID', value: orderId }],
           )
           .then(() => {
             this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {

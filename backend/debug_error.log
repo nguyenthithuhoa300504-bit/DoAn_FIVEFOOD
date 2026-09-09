@@ -1,0 +1,8 @@
+error: operator does not exist: boolean = integer
+    at C:\Users\Admin\Desktop\DoAn\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseService.query (C:\Users\Admin\Desktop\DoAn\backend\src\database\database.service.ts:170:22)
+    at async ChatbotService.processMessage (C:\Users\Admin\Desktop\DoAn\backend\src\chatbot\chatbot.service.ts:53:30)
+    at async ChatbotController.handleChat (C:\Users\Admin\Desktop\DoAn\backend\src\chatbot\chatbot.controller.ts:29:20)
+    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-execution-context.js:47:62
+    at async C:\Users\Admin\Desktop\DoAn\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17

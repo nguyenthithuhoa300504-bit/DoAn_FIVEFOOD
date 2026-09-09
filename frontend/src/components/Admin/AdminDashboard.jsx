@@ -28,7 +28,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
     gridLine: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
     tooltipBg: isDark ? 'rgba(15, 20, 32, 0.95)' : 'rgba(255, 255, 255, 0.95)',
     tooltipColor: isDark ? '#fff' : '#0f172a',
-    mapTiles: isDark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    mapTiles: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
   };
 
 
@@ -159,22 +159,23 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
   // Khởi tạo Bản đồ Leaflet với ranh giới mở rộng để nhìn rõ Đảo Phú Quý
   useEffect(() => {
     if (!mapInstance.current && mapRef.current) {
-      // Khách hàng feedback: khung ranh giới cũ bị hẹp làm mất Đảo Phú Quý
-      // -> Mở rộng maxBounds thoải mái bao quát toàn bộ vùng biển & quần đảo Bình Thuận
-      const BinhThuanWideBounds = [
-        [9.2, 106.0],  // Mở rộng phía Nam và Tây
-        [12.8, 110.8]  // Mở rộng Đông Bắc xa ra Biển Đông để chứa trọn vẹn ĐẢO PHÚ QUÝ (108.95 E, 10.52 N)
+      // Giới hạn maxBounds chỉ trong khu vực Bình Thuận và Đảo Phú Quý
+      // Không cho phép rê chuột ra ngoài vùng này để tránh vấn đề bản quyền bản đồ
+      const BinhThuanStrictBounds = [
+        [10.4, 107.4], // Góc Tây Nam (Dưới La Gi)
+        [11.5, 109.2]  // Góc Đông Bắc (Qua khỏi Đảo Phú Quý và Tuy Phong)
       ];
 
       mapInstance.current = L.map(mapRef.current, {
-        maxBounds: BinhThuanWideBounds,
-        maxBoundsViscosity: 0.8,
-        minZoom: 7
-      }).setView([10.8, 108.4], 8); // Zoom 8 giúp ôm trọn vẹn cả đất liền và Đảo Phú Quý ngay lập tức
+        maxBounds: BinhThuanStrictBounds,
+        maxBoundsViscosity: 1.0, // Chặn cứng hoàn toàn, không cho kéo lố ra ngoài
+        minZoom: 8,
+        maxZoom: 18
+      }).setView([10.9, 108.3], 8); // Căn chỉnh giữa đất liền và đảo
 
       mapInstance.current.tileLayer = L.tileLayer(themeColors.mapTiles, {
         attribution: '&copy; OpenStreetMap &copy; CARTO (FIVEFOOD Radar)',
-        subdomains: 'abcd',
+        subdomains: 'abc',
         maxZoom: 20
       }).addTo(mapInstance.current);
 
@@ -200,11 +201,8 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
       // Mạng Lưới Chuỗi Chi Nhánh / Bếp Trung Tâm (Cloud Kitchen Network) toàn tỉnh Bình Thuận
       // Giới hạn bán kính giao 3km - 5km tại mỗi địa phương để đảm bảo độ nóng hổi thực tế 100%
       const hubs = [
-        { name: "🏢 Chi Nhánh Trung Tâm TP. Phan Thiết", lat: 10.9320, lng: 108.1015, color: "#10B981", desc: "Bếp trung tâm số 1 • Phục vụ nội thành Phan Thiết (Bán kính giao 4km) • 24 shipper trực tuyến" },
-        { name: "🏝️ Chi Nhánh Đặc Biệt Hải Đảo Phú Quý", lat: 10.5220, lng: 108.9410, color: "#00F2FE", desc: "Bếp chi nhánh Đảo Phú Quý • Phục vụ du khách & dân đảo (Bán kính 3km) • Đảm bảo giao nóng 15 phút" },
-        { name: "🏢 Chi Nhánh Nam Bình Thuận (La Gi)", lat: 10.7250, lng: 107.7650, color: "#FFB300", desc: "Bếp trung tâm thị xã La Gi • Phục vụ nội thị & dải ven biển (Bán kính 4.5km)" },
-        { name: "🏢 Chi Nhánh Bắc Bình Thuận (Tuy Phong)", lat: 11.2380, lng: 108.7200, color: "#EC4899", desc: "Bếp liên khu vực Vĩnh Hảo - Liên Hương • Đội xe dịch vụ địa phương (Bán kính 4km)" },
-        { name: "🏢 Chi Nhánh Du Lịch Mũi Né", lat: 10.9480, lng: 108.2930, color: "#8B5CF6", desc: "Chi nhánh KDL Mũi Né • Chuyên giao đồ ăn tươi nóng cho Resort & Khách sạn 24/7" }
+        { name: "🏢 Chi Nhánh Trung Tâm TP. Phan Thiết", lat: 10.9320, lng: 108.1015, color: "#10B981", desc: "Bếp trung tâm số 1 • Phục vụ trung tâm thành phố (Bán kính giao 4km) • Đội xe 24/7" },
+        { name: "🏢 Chi Nhánh Du Lịch Mũi Né", lat: 10.9480, lng: 108.2930, color: "#8B5CF6", desc: "Chi nhánh KDL Mũi Né • Phục vụ du khách khu vực Hàm Tiến - Mũi Né (Bán kính giao 5km)" }
       ];
 
       hubs.forEach(hub => {
@@ -225,22 +223,22 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         
         // Custom Popup sang trọng
         marker.bindPopup(`
-          <div style="padding: 6px; color: #fff; font-family: sans-serif; min-width: 210px;">
-            <div style="font-size: 15px; font-weight: bold; color: ${hub.color}; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;">
+          <div style="padding: 6px; color: #ffffff !important; font-family: sans-serif; min-width: 210px;">
+            <div style="font-size: 15px; font-weight: bold; color: ${hub.color} !important; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;">
               ⚡ ${hub.name}
             </div>
-            <div style="font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+            <div style="font-size: 13px; color: #cbd5e1 !important; line-height: 1.5;">
               ${hub.desc}
             </div>
             <div style="margin-top: 8px; font-size: 11px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: flex; justify-content: space-between;">
-              <span>Trạng thái: <b>Online</b></span>
-              <span>GPS: ${hub.lat.toFixed(2)}, ${hub.lng.toFixed(2)}</span>
+              <span style="color: #ffffff !important;">Trạng thái: <b style="color: #10B981 !important;">Online</b></span>
+              <span style="color: #ffffff !important;">GPS: ${hub.lat.toFixed(2)}, ${hub.lng.toFixed(2)}</span>
             </div>
           </div>
         `, { className: 'executive-dark-popup' });
 
-        if (hub.name.includes("Phú Quý")) {
-          setTimeout(() => marker.openPopup(), 1000); // Tự động hiển thị popup Đảo Phú Quý để gây ấn tượng
+        if (hub.name.includes("Phan Thiết")) {
+          setTimeout(() => marker.openPopup(), 1000); // Tự động hiển thị popup Chi Nhánh Chính
         }
       });
     }
@@ -603,7 +601,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
               <BarChart layout="vertical" data={stats.orderStatusData} margin={{ top: 10, right: 30, bottom: 10, left: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
                 <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" stroke="#64748b" tick={{ fill: '#e2e8f0', fontSize: 14, fontWeight: '700' }} axisLine={false} tickLine={false} dx={-10} />
+                <YAxis type="category" dataKey="name" stroke="#64748b" tick={{ fill: themeColors.textPrimary, fontSize: 14, fontWeight: '700' }} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
                   cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
                   contentStyle={{ backgroundColor: 'rgba(15, 20, 32, 0.95)', borderColor: 'rgba(236,72,153,0.4)', color: '#fff', borderRadius: '12px', boxShadow: '0 8px 25px rgba(0,0,0,0.6)', padding: '12px 16px' }}
@@ -638,18 +636,18 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
               <Globe size={26} color="#00F2FE" /> BẢN ĐỒ MẠNG LƯỚI CHI NHÁNH & BẾP TRUNG TÂM (CLOUD KITCHENS)
             </h3>
             <p style={{ color: themeColors.textSecondary, fontSize: '14px', margin: '6px 0 0 0', fontWeight: '500' }}>
-              Phủ sóng 5 Chi nhánh tại Bình Thuận và <b>Đảo Phú Quý</b> • Đơn hàng tự động điều phối tại bếp địa phương (Bán kính 3-5km) nhằm đảm bảo món ăn 100% tươi nóng.
+              Mạng lưới Cloud Kitchen vận hành 2 chi nhánh chính • Tự động điều phối đơn hàng đến bếp gần nhất (Bán kính 3-5km) để đảm bảo món ăn tươi nóng 100%.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#cbd5e1', fontWeight: '700', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0, 242, 254, 0.12)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.35)', boxShadow: '0 0 15px rgba(0, 242, 254, 0.15)' }}>
-              <span style={{ width: '10px', height: '10px', background: '#00F2FE', borderRadius: '50%', boxShadow: '0 0 8px #00F2FE', display: 'inline-block' }}></span>
-              🏝️ Chi Nhánh Đảo Phú Quý (Active)
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.12)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.35)', boxShadow: '0 0 15px rgba(16, 185, 129, 0.15)' }}>
+              <span style={{ width: '10px', height: '10px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981', display: 'inline-block' }}></span>
+              🏢 Chi Nhánh Trung Tâm (Active)
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 179, 0, 0.12)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 179, 0.35)' }}>
-              <span style={{ width: '10px', height: '10px', background: '#FFB300', borderRadius: '2px', display: 'inline-block' }}></span>
-              🏢 Chuỗi Chi Nhánh Đất Liền (4 Bếp)
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(139, 92, 246, 0.12)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.35)', boxShadow: '0 0 15px rgba(139, 92, 246, 0.15)' }}>
+              <span style={{ width: '10px', height: '10px', background: '#8B5CF6', borderRadius: '50%', boxShadow: '0 0 8px #8B5CF6', display: 'inline-block' }}></span>
+              🏢 Chi Nhánh Vệ Tinh
             </span>
           </div>
         </div>
@@ -661,7 +659,7 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
         ></div>
 
         <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '13px', fontStyle: 'italic', padding: '0 8px' }}>
-          <span>* Di chuột hoặc click vào chi nhánh (Đảo Phú Quý, Phan Thiết, La Gi...) để kiểm tra bán kính giao nhận thực tế tại khu vực đó.</span>
+          <span>* Click vào chi nhánh (Phan Thiết, Mũi Né...) để kiểm tra trạng thái và bán kính giao nhận thực tế.</span>
           <span>Hệ thống mạng lưới Bếp Khu Vực • FIVEFOOD Cloud Kitchens Network</span>
         </div>
       </div>
@@ -681,6 +679,10 @@ const AdminDashboard = ({ orders = [], products = [], categories = [], usersCoun
           border-radius: 14px !important;
           box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
           backdrop-filter: blur(12px);
+          color: #ffffff !important;
+        }
+        .executive-dark-popup .leaflet-popup-content {
+          color: #ffffff !important;
         }
         .executive-dark-popup .leaflet-popup-tip {
           background: rgba(15, 22, 36, 0.95) !important;

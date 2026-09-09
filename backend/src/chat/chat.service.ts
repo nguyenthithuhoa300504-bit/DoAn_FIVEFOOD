@@ -14,13 +14,13 @@ export class ChatService {
     try {
       const query = `
         INSERT INTO ChatMessages (SenderID, ReceiverID, MessageText)
-        OUTPUT INSERTED.MessageID, INSERTED.SentAt
         VALUES (@SenderID, @ReceiverID, @MessageText)
+        RETURNING MessageID, SentAt
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'SenderID',  value: senderId },
-        { name: 'ReceiverID',  value: receiverId },
-        { name: 'MessageText',  value: text },
+        { name: 'SenderID', value: senderId },
+        { name: 'ReceiverID', value: receiverId },
+        { name: 'MessageText', value: text },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -39,8 +39,8 @@ export class ChatService {
         ORDER BY SentAt ASC
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'U1',  value: user1Id },
-        { name: 'U2',  value: user2Id },
+        { name: 'U1', value: user1Id },
+        { name: 'U2', value: user2Id },
       ]);
       return result.recordset;
     } catch (error) {
@@ -59,7 +59,7 @@ export class ChatService {
         WHERE u.UserID != @AdminID
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'AdminID',  value: adminId },
+        { name: 'AdminID', value: adminId },
       ]);
       return result.recordset;
     } catch (error) {
@@ -99,9 +99,9 @@ export class ChatService {
         VALUES (@UserID, @Title, @Message)
       `;
       await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
-        { name: 'Title',  value: title },
-        { name: 'Message',  value: message },
+        { name: 'UserID', value: userId },
+        { name: 'Title', value: title },
+        { name: 'Message', value: message },
       ]);
     } catch (error) {
       this.logger.error('Error adding notification', error);
@@ -117,7 +117,7 @@ export class ChatService {
         ORDER BY CreatedAt DESC
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
+        { name: 'UserID', value: userId },
       ]);
       return result.recordset;
     } catch (error) {
@@ -130,12 +130,12 @@ export class ChatService {
     try {
       const query = `
         UPDATE Notifications 
-        SET IsRead = 1 
+        SET IsRead = true 
         WHERE NotificationID = @NotifID AND UserID = @UserID
       `;
       await this.databaseService.query(query, [
-        { name: 'NotifID',  value: notificationId },
-        { name: 'UserID',  value: userId },
+        { name: 'NotifID', value: notificationId },
+        { name: 'UserID', value: userId },
       ]);
       return { success: true };
     } catch (error) {

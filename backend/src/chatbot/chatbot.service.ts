@@ -47,7 +47,7 @@ export class ChatbotService {
         SELECT p.ProductID, p.ProductName, p.Price, p.Ingredients, p.Inventory, p.ImageURL, c.CategoryName
         FROM Products p
         INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-        WHERE p.IsActive = 1
+        WHERE p.IsActive = true
         ORDER BY p.ProductID ASC
       `;
       const productsResult = await this.databaseService.query(productsQuery);
@@ -71,7 +71,7 @@ export class ChatbotService {
         try {
           const userQuery = `SELECT FullName, Email FROM Users WHERE UserID = @UserID`;
           const userResult = await this.databaseService.query(userQuery, [
-            { name: 'UserID',  value: userId },
+            { name: 'UserID', value: userId },
           ]);
           if (userResult.recordset.length > 0) {
             const u = userResult.recordset[0];
@@ -90,15 +90,16 @@ export class ChatbotService {
       if (userId) {
         try {
           const historyQuery = `
-            SELECT TOP 5 p.ProductName 
+            SELECT p.ProductName 
             FROM OrderDetails od
             INNER JOIN Orders o ON od.OrderID = o.OrderID
             INNER JOIN Products p ON od.ProductID = p.ProductID
             WHERE o.UserID = @UserID
             ORDER BY o.OrderDate DESC
+            LIMIT 5
           `;
           const historyResult = await this.databaseService.query(historyQuery, [
-            { name: 'UserID',  value: userId },
+            { name: 'UserID', value: userId },
           ]);
           if (historyResult.recordset.length > 0) {
             const pastItems = historyResult.recordset
@@ -127,7 +128,7 @@ export class ChatbotService {
             WHERE c.UserID = @UserID
           `;
           const cartResult = await this.databaseService.query(cartQuery, [
-            { name: 'UserID',  value: userId },
+            { name: 'UserID', value: userId },
           ]);
           if (cartResult.recordset.length > 0) {
             // Liệt kê rõ từng món kèm ID để AI đọc đúng
@@ -177,7 +178,7 @@ export class ChatbotService {
         const promoQuery = `
           SELECT PromoCode, Description, MinOrderValue
           FROM Promotions
-          WHERE GETDATE() BETWEEN StartDate AND EndDate
+          WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate
             AND UsedCount < UsageLimit
         `;
         const promoResult = await this.databaseService.query(promoQuery);
@@ -201,14 +202,15 @@ export class ChatbotService {
       if (userId) {
         try {
           const trackingQuery = `
-            SELECT TOP 2 OrderID, OrderDate, FinalAmount, Status
+            SELECT OrderID, OrderDate, FinalAmount, Status
             FROM Orders
             WHERE UserID = @UserID
             ORDER BY OrderDate DESC
+            LIMIT 2
           `;
           const trackingResult = await this.databaseService.query(
             trackingQuery,
-            [{ name: 'UserID',  value: userId }],
+            [{ name: 'UserID', value: userId }],
           );
           recentOrders = trackingResult.recordset;
           if (recentOrders.length > 0) {
@@ -301,13 +303,14 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
       let lastBotResponse = '';
       if (sessionId) {
         const chatLogsQuery = `
-          SELECT TOP 2 ConversationData
+          SELECT ConversationData
           FROM ChatbotLogs
           WHERE SessionID = @SessionID
           ORDER BY CreatedAt DESC
+          LIMIT 2
         `;
         const chatLogsResult = await this.databaseService.query(chatLogsQuery, [
-          { name: 'SessionID',  value: sessionId },
+          { name: 'SessionID', value: sessionId },
         ]);
         if (chatLogsResult.recordset.length > 0) {
           try {
@@ -389,21 +392,31 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         userId &&
         productsResult.recordset.length > 0
       ) {
-        for (const prod of productsResult.recordset) {
-          const escapedName = prod.ProductName.replace(
-            /[-/\\^$*+?.()|[\]{}]/g,
-            '\\$&',
-          );
-          const regex = new RegExp(
-            `${escapedName}[\\s\\S]*?muốn thêm\\s*\\**(\\d+)\\**`,
-            'i',
-          );
-          const match = regex.exec(lastBotResponse);
-          if (match) {
-            intentItems.push({
-              id: prod.ProductID,
-              qty: parseInt(match[1], 10) || 1,
+        const lines = lastBotResponse.split('\n');
+        for (const line of lines) {
+          if (line.includes('muốn thêm') && line.includes('trong giỏ')) {
+            const nameMatch = line.match(
+              /•\s*(?:\*\*)?([^*()]+?)(?:\*\*)?\s*\(/,
+            );
+            const qtyMatch = line.match(/muốn thêm\s*\**(\d+)\**/i);
+            console.log('REGEX TEST', {
+              line,
+              nameMatch: nameMatch ? nameMatch[1] : null,
+              qtyMatch: qtyMatch ? qtyMatch[1] : null,
             });
+            if (nameMatch && qtyMatch) {
+              const pName = nameMatch[1].trim();
+              const pQty = parseInt(qtyMatch[1], 10);
+              const matchedProd = productsResult.recordset.find(
+                (p) => p.ProductName.toLowerCase() === pName.toLowerCase(),
+              );
+              if (matchedProd) {
+                intentItems.push({
+                  id: matchedProd.ProductID,
+                  qty: pQty || 1,
+                });
+              }
+            }
           }
         }
         if (intentItems.length > 0) {
@@ -442,7 +455,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           try {
             const currentCart = await this.databaseService.query(
               'SELECT ci.CartItemID, ci.ProductID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID',
-              [{ name: 'UserID',  value: userId }],
+              [{ name: 'UserID', value: userId }],
             );
 
             if (currentCart.recordset.length === 0) {
@@ -495,7 +508,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                     [
                       {
                         name: 'CartItemID',
-                        
+
                         value: targetItem.CartItemID,
                       },
                     ],
@@ -504,12 +517,12 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                 } else {
                   const newQty = targetItem.Quantity - removeQty;
                   await this.databaseService.query(
-                    'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
+                    'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP WHERE CartItemID = @CartItemID',
                     [
-                      { name: 'Quantity',  value: newQty },
+                      { name: 'Quantity', value: newQty },
                       {
                         name: 'CartItemID',
-                        
+
                         value: targetItem.CartItemID,
                       },
                     ],
@@ -554,7 +567,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           try {
             await this.databaseService.query(
               'DELETE FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID',  value: userId }],
+              [{ name: 'UserID', value: userId }],
             );
             isOrderPlaced = true;
             responseText =
@@ -566,23 +579,21 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         } else {
           newLocalCartToReturn = [];
           isOrderPlaced = true;
-          responseText = '✅ **Đã dọn sạch giỏ hàng tạm!** Bạn muốn dùng món gì tiếp theo?';
+          responseText =
+            '✅ **Đã dọn sạch giỏ hàng tạm!** Bạn muốn dùng món gì tiếp theo?';
         }
       }
 
       // 1.32 Lệnh Đặt hàng / Thanh toán (Nếu chưa đăng nhập thì bắt đăng nhập ngay lập tức)
       const isUserAskingCheckout =
         !isLocalHandled &&
-        [
-          'thanh toán',
-          'đặt hàng',
-          'chốt đơn',
-          'mua hàng',
-          'tính tiền',
-        ].some((kw) => lowerMsg.includes(kw));
+        ['thanh toán', 'đặt hàng', 'chốt đơn', 'mua hàng', 'tính tiền'].some(
+          (kw) => lowerMsg.includes(kw),
+        );
       if (isUserAskingCheckout && !userId) {
         isLocalHandled = true;
-        responseText = '❌ Vui lòng **Đăng nhập** để AI hỗ trợ bạn thanh toán và theo dõi đơn hàng nhé!';
+        responseText =
+          '❌ Vui lòng **Đăng nhập** để AI hỗ trợ bạn thanh toán và theo dõi đơn hàng nhé!';
       }
 
       // 1.35 Lệnh Tra cứu trạng thái đơn hàng & Shipper di chuyển -> Xử lý ngay 0ms!
@@ -784,7 +795,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                   // -> Bỏ qua Fast Handler, để cho AI Deepseek phân tích ngữ nghĩa hoặc chặn hỏi số lượng!
                   continue;
                 }
-                
+
                 if (qty <= 0) qty = 1;
 
                 foundTerms.push({ keyword: phrase, qty: qty, idx: matchIdx });
@@ -883,8 +894,8 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                     const checkCart = await this.databaseService.query(
                       'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                       [
-                        { name: 'UserID',  value: userId },
-                        { name: 'ProductID',  value: item.id },
+                        { name: 'UserID', value: userId },
+                        { name: 'ProductID', value: item.id },
                       ],
                     );
                     const currentQty =
@@ -898,29 +909,29 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                       if (checkCart.recordset.length > 0) {
                         const newQty = currentQty + item.qty;
                         await this.databaseService.query(
-                          'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE CartItemID = @CartItemID',
+                          'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP WHERE CartItemID = @CartItemID',
                           [
-                            { name: 'Quantity',  value: newQty },
+                            { name: 'Quantity', value: newQty },
                             {
                               name: 'CartItemID',
-                              
+
                               value: checkCart.recordset[0].CartItemID,
                             },
                           ],
                         );
                       } else {
                         await this.databaseService.query(
-                          'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                          'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)',
                           [
-                            { name: 'UserID',  value: userId },
+                            { name: 'UserID', value: userId },
                             {
                               name: 'ProductID',
-                              
+
                               value: item.id,
                             },
                             {
                               name: 'Quantity',
-                              
+
                               value: item.qty,
                             },
                           ],
@@ -959,22 +970,19 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         !responseText.startsWith('❌ Rất tiếc')
       ) {
         const callGroqAPI = async (retryCount = 0): Promise<any> => {
-          const res = await fetch(
-            'https://api.deepseek.com/chat/completions',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${this.apiKey}`,
-              },
-              body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: chatMessages,
-                temperature: 0.7,
-                max_tokens: 350,
-              }),
+          const res = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.apiKey}`,
             },
-          );
+            body: JSON.stringify({
+              model: 'deepseek-chat',
+              messages: chatMessages,
+              temperature: 0.7,
+              max_tokens: 350,
+            }),
+          });
 
           if (res.status === 429 && retryCount < 3) {
             const delay = 3000 * (retryCount + 1);
@@ -1015,21 +1023,29 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             const parsedData = JSON.parse(cartMatch[1]);
             if (parsedData && Array.isArray(parsedData.items)) {
               // --- KIỂM TRA ÉP BUỘC SỐ LƯỢNG ---
-              const hasQtyWord = /\d|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|chục|tá|nửa|ly\b|\btô\b|phần|chén|đĩa|dĩa|chiếc|\bcái\b|lon|chai|\bổ\b|cuốn|bát|cốc/i.test(lowerMsg);
-              
+              const hasQtyWord =
+                /\d|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|chục|tá|nửa|ly\b|\btô\b|phần|chén|đĩa|dĩa|chiếc|\bcái\b|lon|chai|\bổ\b|cuốn|bát|cốc/i.test(
+                  lowerMsg,
+                );
+
               const fs = require('fs');
               const logLine = `[${new Date().toISOString()}] msg: "${lowerMsg}", hasQtyWord: ${hasQtyWord}, parsedData: ${JSON.stringify(parsedData)}\n`;
-              fs.appendFileSync('C:\\Users\\Admin\\Desktop\\DoAn\\backend\\interceptor.log', logLine);
+              fs.appendFileSync(
+                'C:\\Users\\Admin\\Desktop\\DoAn\\backend\\interceptor.log',
+                logLine,
+              );
 
               if (!hasQtyWord) {
-                this.logger.log(`DEBUG INTERCEPTOR: Bypassed CART_INTENT because hasQtyWord is FALSE. msg: ${lowerMsg}`);
+                this.logger.log(
+                  `DEBUG INTERCEPTOR: Bypassed CART_INTENT because hasQtyWord is FALSE. msg: ${lowerMsg}`,
+                );
                 responseText = 'Dạ, bạn muốn đặt bao nhiêu phần ạ?';
                 cartMatch = null;
                 intentItems = [];
               } else {
                 intentItems = parsedData.items.map((i: any) => ({
                   id: parseInt(i.id),
-                  qty: parseInt(i.qty) || parseInt(i.quantity) || 1
+                  qty: parseInt(i.qty) || parseInt(i.quantity) || 1,
                 }));
               }
             }
@@ -1043,7 +1059,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           try {
             await this.databaseService.query(
               'DELETE FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID',  value: userId }],
+              [{ name: 'UserID', value: userId }],
             );
             isOrderPlaced = true;
             responseText =
@@ -1055,7 +1071,8 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         } else if (clearCartMatch && !userId) {
           newLocalCartToReturn = [];
           isOrderPlaced = true;
-          responseText = '✅ **Đã dọn sạch giỏ hàng tạm thành công!**\nGiỏ hàng của bạn hiện tại đã hoàn toàn trống trải! Bạn có muốn đặt món gì mới không ạ? 😊';
+          responseText =
+            '✅ **Đã dọn sạch giỏ hàng tạm thành công!**\nGiỏ hàng của bạn hiện tại đã hoàn toàn trống trải! Bạn có muốn đặt món gì mới không ạ? 😊';
         }
       }
 
@@ -1073,8 +1090,8 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
 
           for (const item of intentItems) {
             const prodCheck = await this.databaseService.query(
-              'SELECT ProductName, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
-              [{ name: 'ProductID',  value: item.id }],
+              'SELECT ProductName, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = true',
+              [{ name: 'ProductID', value: item.id }],
             );
             if (prodCheck.recordset.length === 0) continue;
             const product = prodCheck.recordset[0];
@@ -1082,8 +1099,8 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             const checkCart = await this.databaseService.query(
               'SELECT ci.CartItemID, ci.Quantity, p.ProductName FROM CartItems ci INNER JOIN Products p ON ci.ProductID = p.ProductID WHERE ci.UserID = @UserID AND ci.ProductID = @ProductID',
               [
-                { name: 'UserID',  value: userId },
-                { name: 'ProductID',  value: item.id },
+                { name: 'UserID', value: userId },
+                { name: 'ProductID', value: item.id },
               ],
             );
 
@@ -1126,17 +1143,21 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           ) {
             responseText = `❌ Rất tiếc, các món sau không đủ tồn kho:\n${outOfStockItems.map((m) => `- **${m}**`).join('\n')}\nVui lòng chọn số lượng ít hơn hoặc món khác nhé!`;
             isOrderPlaced = false;
-          } else if (duplicateItems.length > 0 && !wasAskingConfirmation && !wasAskingQuantity) {
+          } else if (
+            duplicateItems.length > 0 &&
+            !wasAskingConfirmation &&
+            !wasAskingQuantity
+          ) {
             // Lỗi #2: Nếu có món mới (newItems), thực hiện thêm ngay lập tức vào giỏ hàng trước để không bị nuốt mất món khi dừng lại hỏi xác nhận
             let addedNewMsg = '';
             if (newItems.length > 0) {
               for (const nItem of newItems) {
                 await this.databaseService.query(
-                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)',
                   [
-                    { name: 'UserID',  value: userId },
-                    { name: 'ProductID',  value: nItem.id },
-                    { name: 'Quantity',  value: nItem.qty },
+                    { name: 'UserID', value: userId },
+                    { name: 'ProductID', value: nItem.id },
+                    { name: 'Quantity', value: nItem.qty },
                   ],
                 );
               }
@@ -1178,27 +1199,27 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               const checkCart = await this.databaseService.query(
                 'SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID',
                 [
-                  { name: 'UserID',  value: userId },
-                  { name: 'ProductID',  value: item.id },
+                  { name: 'UserID', value: userId },
+                  { name: 'ProductID', value: item.id },
                 ],
               );
               if (checkCart.recordset.length > 0) {
                 const newQty = checkCart.recordset[0].Quantity + item.qty;
                 await this.databaseService.query(
-                  'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = GETDATE() WHERE UserID = @UserID AND ProductID = @ProductID',
+                  'UPDATE CartItems SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP WHERE UserID = @UserID AND ProductID = @ProductID',
                   [
-                    { name: 'Quantity',  value: newQty },
-                    { name: 'UserID',  value: userId },
-                    { name: 'ProductID',  value: item.id },
+                    { name: 'Quantity', value: newQty },
+                    { name: 'UserID', value: userId },
+                    { name: 'ProductID', value: item.id },
                   ],
                 );
               } else {
                 await this.databaseService.query(
-                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, GETDATE())',
+                  'INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)',
                   [
-                    { name: 'UserID',  value: userId },
-                    { name: 'ProductID',  value: item.id },
-                    { name: 'Quantity',  value: item.qty },
+                    { name: 'UserID', value: userId },
+                    { name: 'ProductID', value: item.id },
+                    { name: 'Quantity', value: item.qty },
                   ],
                 );
               }
@@ -1209,30 +1230,31 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             // Tự động kiểm tra tổng giỏ hàng và tư vấn mã giảm giá thông minh cho khách
             const updatedCartResult = await this.databaseService.query(
               'SELECT SUM(c.Quantity * p.Price) as Subtotal FROM CartItems c INNER JOIN Products p ON c.ProductID = p.ProductID WHERE c.UserID = @UserID',
-              [{ name: 'UserID',  value: userId }],
+              [{ name: 'UserID', value: userId }],
             );
             const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
 
             // Lấy danh sách voucher đủ điều kiện áp dụng
             const validPromos = await this.databaseService.query(
-              `SELECT TOP 2 PromoCode, Description, MinOrderValue 
+              `SELECT PromoCode, Description, MinOrderValue 
                  FROM Promotions 
-                 WHERE GETDATE() BETWEEN StartDate AND EndDate 
+                 WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate 
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue <= @Subtotal
-                 ORDER BY MinOrderValue DESC`,
-              [{ name: 'Subtotal',  value: subtotal }],
+                 ORDER BY MinOrderValue DESC
+                 LIMIT 2`,
+              [{ name: 'Subtotal', value: subtotal }],
             );
 
             // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
             const nextPromos = await this.databaseService.query(
               `SELECT  PromoCode, Description, MinOrderValue 
                  FROM Promotions 
-                 WHERE GETDATE() BETWEEN StartDate AND EndDate 
+                 WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate 
                    AND UsedCount < UsageLimit 
                    AND MinOrderValue > @Subtotal
                  ORDER BY MinOrderValue ASC`,
-              [{ name: 'Subtotal',  value: subtotal }],
+              [{ name: 'Subtotal', value: subtotal }],
             );
 
             let promoMsg = '';
@@ -1258,8 +1280,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           }
         } catch (err) {
           this.logger.error('Lỗi khi tự động thêm giỏ hàng từ Chatbot', err);
-          responseText =
-            '❌ Lỗi tự động thêm giỏ hàng. Vui lòng thao tác trực tiếp trên giao diện!';
+          responseText = '❌ Lỗi tự động thêm giỏ hàng: ' + err.message;
         }
       } else if (
         (intentItems.length > 0 || cartMatch) &&
@@ -1268,23 +1289,29 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
       ) {
         // AI thêm món vào giỏ hàng vãng lai (Local Cart)
         try {
-          let tempLocalCart = localCart ? [...localCart] : [];
-          let addedNames: string[] = [];
-          
+          const tempLocalCart = localCart ? [...localCart] : [];
+          const addedNames: string[] = [];
+
           for (const item of intentItems) {
             const prodCheck = await this.databaseService.query(
-              'SELECT ProductName, Price, ImageURL, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = 1',
-              [{ name: 'ProductID',  value: item.id }]
+              'SELECT ProductName, Price, ImageURL, Inventory FROM Products WHERE ProductID = @ProductID AND IsActive = true',
+              [{ name: 'ProductID', value: item.id }],
             );
             if (prodCheck.recordset.length === 0) continue;
-            
+
             const product = prodCheck.recordset[0];
-            
+
             // Xử lý tồn kho cơ bản
-            const existingIndex = tempLocalCart.findIndex((i: any) => parseInt(i.ProductID) === item.id);
-            const currentQty = existingIndex > -1 ? tempLocalCart[existingIndex].Quantity : 0;
-            
-            if (product.Inventory <= 0 || currentQty + item.qty > product.Inventory) {
+            const existingIndex = tempLocalCart.findIndex(
+              (i: any) => parseInt(i.ProductID) === item.id,
+            );
+            const currentQty =
+              existingIndex > -1 ? tempLocalCart[existingIndex].Quantity : 0;
+
+            if (
+              product.Inventory <= 0 ||
+              currentQty + item.qty > product.Inventory
+            ) {
               continue; // Bỏ qua nếu hết tồn kho
             }
 
@@ -1297,22 +1324,28 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                 Price: product.Price,
                 ImageURL: product.ImageURL,
                 Inventory: product.Inventory,
-                Quantity: item.qty
+                Quantity: item.qty,
               });
             }
             addedNames.push(`**${item.qty}x ${product.ProductName}**`);
           }
-          
+
           if (addedNames.length > 0) {
             isOrderPlaced = true;
-            const subtotal = tempLocalCart.reduce((sum, r) => sum + r.Price * r.Quantity, 0);
+            const subtotal = tempLocalCart.reduce(
+              (sum, r) => sum + r.Price * r.Quantity,
+              0,
+            );
             responseText = `✅ **Đã thêm vào giỏ hàng tạm!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)\nĐã thêm: ${addedNames.join(', ')}\n\n💡 Bạn có thể tiếp tục hỏi thêm món, hoặc báo "Thanh toán" để chốt đơn nhé!`;
             newLocalCartToReturn = tempLocalCart;
           } else if (intentItems.length > 0) {
             responseText = `❌ Không thể thêm món (Có thể do món đã hết hàng). Bạn chọn món khác nhé!`;
           }
         } catch (e) {
-          this.logger.error('Lỗi khi tự động thêm giỏ hàng vãng lai từ Chatbot', e);
+          this.logger.error(
+            'Lỗi khi tự động thêm giỏ hàng vãng lai từ Chatbot',
+            e,
+          );
           responseText = '❌ Vui lòng **Đăng nhập** để AI thao tác nhé!';
         }
       }
@@ -1328,7 +1361,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             // Check nếu giỏ hàng rỗng
             const cartCheck = await this.databaseService.query(
               'SELECT COUNT(*) as count FROM CartItems WHERE UserID = @UserID',
-              [{ name: 'UserID',  value: userId }],
+              [{ name: 'UserID', value: userId }],
             );
             if (cartCheck.recordset[0].count === 0) {
               responseText =
@@ -1399,90 +1432,126 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         const recommendedFoods: any[] = [];
         // Extract product IDs by matching names in the text
         // Only trigger if we are not summarizing cart
-        if (!responseText.includes('Giỏ hàng hiện tại đang có') && !responseText.includes('Món đã có trong giỏ')) {
+        if (
+          !responseText.includes('Giỏ hàng hiện tại đang có') &&
+          !responseText.includes('Món đã có trong giỏ')
+        ) {
           for (const prod of productsResult.recordset) {
             // Regex to check if ProductName is mentioned (surrounded by word boundaries or formatting)
             if (responseText.includes(prod.ProductName)) {
-                recommendedFoods.push({
-                  ProductID: prod.ProductID,
-                  ProductName: prod.ProductName,
-                  Price: prod.Price,
-                  ImageURL: prod.ImageURL,
-                  Ingredients: prod.Ingredients,
-                  Inventory: prod.Inventory
-                });
+              recommendedFoods.push({
+                ProductID: prod.ProductID,
+                ProductName: prod.ProductName,
+                Price: prod.Price,
+                ImageURL: prod.ImageURL,
+                Ingredients: prod.Ingredients,
+                Inventory: prod.Inventory,
+              });
             }
           }
         }
-        
-        const uniqueFoods = Array.from(new Set(recommendedFoods.map(f => f.ProductID)))
-          .map(id => recommendedFoods.find(f => f.ProductID === id))
+
+        const uniqueFoods = Array.from(
+          new Set(recommendedFoods.map((f) => f.ProductID)),
+        )
+          .map((id) => recommendedFoods.find((f) => f.ProductID === id))
           .slice(0, 4); // Show max 4 cards
-          
+
         if (uniqueFoods.length > 0) {
           richContent = { type: 'food_recommendation', data: uniqueFoods };
         }
       }
 
       // Tự động nhận diện Yêu cầu nhập số lượng (Quantity Selector)
-      if (typeof responseText === 'string' && responseText.includes('bao nhiêu phần')) {
+      if (
+        typeof responseText === 'string' &&
+        responseText.includes('bao nhiêu phần')
+      ) {
         // Không ghi đè nếu đã có Food Cards chứa nhiều hơn 1 món (vì khách cần phải chọn món trước)
-        const hasMultipleFoods = richContent && richContent.type === 'food_recommendation' && richContent.data.length > 1;
-        
+        const hasMultipleFoods =
+          richContent &&
+          richContent.type === 'food_recommendation' &&
+          richContent.data.length > 1;
+
         if (!hasMultipleFoods) {
-          const qtyMatch = responseText.match(/bao nhiêu phần (.*?)(?:\?|ạ|$)/i);
+          const qtyMatch = responseText.match(
+            /bao nhiêu phần (.*?)(?:\?|ạ|$)/i,
+          );
           let pName = '';
-          if (qtyMatch && qtyMatch[1] && qtyMatch[1].trim().length > 0 && !qtyMatch[1].includes('ạ')) {
-             pName = qtyMatch[1].trim();
+          if (
+            qtyMatch &&
+            qtyMatch[1] &&
+            qtyMatch[1].trim().length > 0 &&
+            !qtyMatch[1].includes('ạ')
+          ) {
+            pName = qtyMatch[1].trim();
           } else {
-             // Nếu không match được tên món, lấy tên món cuối cùng được nhắc đến trong text
-             for (const prod of productsResult.recordset) {
-               if (responseText.includes(prod.ProductName)) {
-                 pName = prod.ProductName;
-                 break;
-               }
-             }
+            // Nếu không match được tên món, lấy tên món cuối cùng được nhắc đến trong text
+            for (const prod of productsResult.recordset) {
+              if (responseText.includes(prod.ProductName)) {
+                pName = prod.ProductName;
+                break;
+              }
+            }
           }
-          richContent = { type: 'quantity_selector', data: { productName: pName } };
+          richContent = {
+            type: 'quantity_selector',
+            data: { productName: pName },
+          };
         }
       }
 
       // Tự động nhận diện Mã giảm giá (Promo Codes)
-      if (!hasCheckoutIntent && typeof responseText === 'string' && (responseText.includes('🎁') || responseText.toLowerCase().includes('mã giảm giá') || message.toLowerCase().includes('mã giảm giá'))) {
-         if (availablePromos && availablePromos.length > 0) {
-           // Lấy tất cả mã khuyến mãi nếu khách yêu cầu xem danh sách, ngược lại lấy mã được nhắc đến
-           let mentionedPromos = availablePromos;
-           if (!message.toLowerCase().includes('xem danh sách')) {
-               mentionedPromos = availablePromos.filter(p => responseText.includes(p.PromoCode));
-               if (mentionedPromos.length === 0) mentionedPromos = availablePromos; // Fallback to all if none explicitly matched but keyword was triggered
-           }
-           if (mentionedPromos.length > 0) {
-              richContent = { type: 'promotions', data: mentionedPromos };
-           }
-         }
+      if (
+        !hasCheckoutIntent &&
+        typeof responseText === 'string' &&
+        (responseText.includes('🎁') ||
+          responseText.toLowerCase().includes('mã giảm giá') ||
+          message.toLowerCase().includes('mã giảm giá'))
+      ) {
+        if (availablePromos && availablePromos.length > 0) {
+          // Lấy tất cả mã khuyến mãi nếu khách yêu cầu xem danh sách, ngược lại lấy mã được nhắc đến
+          let mentionedPromos = availablePromos;
+          if (!message.toLowerCase().includes('xem danh sách')) {
+            mentionedPromos = availablePromos.filter((p) =>
+              responseText.includes(p.PromoCode),
+            );
+            if (mentionedPromos.length === 0) mentionedPromos = availablePromos; // Fallback to all if none explicitly matched but keyword was triggered
+          }
+          if (mentionedPromos.length > 0) {
+            richContent = { type: 'promotions', data: mentionedPromos };
+          }
+        }
       }
 
       // Tự động nhận diện Tóm tắt giỏ hàng (Cart Summary)
       // CHỈ hiển thị thẻ Giỏ hàng nếu không bị đè bởi Mã Giảm Giá
       if (!richContent || richContent.type !== 'promotions') {
-        const lowerRes = typeof responseText === 'string' ? responseText.toLowerCase() : '';
+        const lowerRes =
+          typeof responseText === 'string' ? responseText.toLowerCase() : '';
         if (
-          lowerRes.includes('kiểm tra lại') || 
-          lowerRes.includes('giỏ hàng hiện tại') || 
-          lowerRes.includes('tóm tắt lại') || 
+          lowerRes.includes('kiểm tra lại') ||
+          lowerRes.includes('giỏ hàng hiện tại') ||
+          lowerRes.includes('tóm tắt lại') ||
           lowerRes.includes('tổng cộng') ||
           lowerRes.includes('danh sách món') ||
-          (lowerRes.includes('giỏ hàng') && lowerRes.includes('có'))
+          lowerRes.includes('đây là giỏ hàng')
         ) {
-           if (cartItemsData && cartItemsData.length > 0) {
-               richContent = { type: 'cart_summary', data: { items: cartItemsData, subtotal: subtotalData } };
-           }
+          if (cartItemsData && cartItemsData.length > 0) {
+            richContent = {
+              type: 'cart_summary',
+              data: { items: cartItemsData, subtotal: subtotalData },
+            };
+          }
         }
       }
 
       // Tự động nhận diện Phương thức thanh toán
-      if (typeof responseText === 'string' && responseText.includes('phương thức thanh toán')) {
-         richContent = { type: 'payment_options' };
+      if (
+        typeof responseText === 'string' &&
+        responseText.includes('phương thức thanh toán')
+      ) {
+        richContent = { type: 'payment_options' };
       }
 
       // 6. Lưu vào Log
@@ -1500,11 +1569,11 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
       `;
 
       await this.databaseService.query(insertQuery, [
-        { name: 'UserID',  value: userId || null },
-        { name: 'SessionID',  value: currentSessionId },
+        { name: 'UserID', value: userId || null },
+        { name: 'SessionID', value: currentSessionId },
         {
           name: 'ConversationData',
-          
+
           value: conversationData,
         },
       ]);
@@ -1514,13 +1583,14 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
         sessionId: currentSessionId,
         orderPlaced: isOrderPlaced,
         newLocalCart: newLocalCartToReturn,
-        richContent: richContent
+        richContent: richContent,
       };
     } catch (error) {
       this.logger.error('Error in processMessage', error);
-      throw new InternalServerErrorException(
-        'Failed to process message with AI',
-      );
+      throw new InternalServerErrorException({
+        message: 'Failed to process message with AI',
+        stack: error.stack,
+      });
     }
   }
 

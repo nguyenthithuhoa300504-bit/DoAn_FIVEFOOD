@@ -10,7 +10,7 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.Email = @Email`,
-      [{ name: 'Email',  value: email }],
+      [{ name: 'Email', value: email }],
     );
     return result.recordset[0] || null;
   }
@@ -21,7 +21,7 @@ export class UsersService {
        FROM Users u 
        INNER JOIN Roles r ON u.RoleID = r.RoleID 
        WHERE u.UserID = @UserID`,
-      [{ name: 'UserID',  value: id }],
+      [{ name: 'UserID', value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -36,15 +36,15 @@ export class UsersService {
     // 1. Tìm hoặc tự tạo RoleID nếu chưa có sẵn trong DB
     const roleResult = await this.dbService.query(
       `SELECT RoleID FROM Roles WHERE RoleName = @RoleName`,
-      [{ name: 'RoleName',  value: roleName }],
+      [{ name: 'RoleName', value: roleName }],
     );
 
     let roleId = roleResult.recordset[0]?.RoleID;
 
     if (!roleId) {
       const insertRole = await this.dbService.query(
-        `INSERT INTO Roles (RoleName) OUTPUT inserted.RoleID VALUES (@RoleName)`,
-        [{ name: 'RoleName',  value: roleName }],
+        `INSERT INTO Roles (RoleName) VALUES (@RoleName) RETURNING RoleID`,
+        [{ name: 'RoleName', value: roleName }],
       );
       roleId = insertRole.recordset[0].RoleID;
     }
@@ -52,14 +52,14 @@ export class UsersService {
     // 2. Tạo tài khoản người dùng mới
     const result = await this.dbService.query(
       `INSERT INTO Users (FullName, Email, Phone, PasswordHash, RoleID, IsLocked) 
-       OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.Phone
-       VALUES (@FullName, @Email, @Phone, @PasswordHash, @RoleID, 0)`,
+       VALUES (@FullName, @Email, @Phone, @PasswordHash, @RoleID, false)
+       RETURNING UserID, FullName, Email, Phone`,
       [
-        { name: 'FullName',  value: fullName },
-        { name: 'Email',  value: email },
-        { name: 'Phone',  value: phone },
-        { name: 'PasswordHash',  value: passwordHash },
-        { name: 'RoleID',  value: roleId },
+        { name: 'FullName', value: fullName },
+        { name: 'Email', value: email },
+        { name: 'Phone', value: phone },
+        { name: 'PasswordHash', value: passwordHash },
+        { name: 'RoleID', value: roleId },
       ],
     );
 
@@ -73,12 +73,12 @@ export class UsersService {
     const result = await this.dbService.query(
       `UPDATE Users 
        SET FullName = @FullName, Phone = @Phone 
-       OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.Phone
-       WHERE UserID = @UserID`,
+       WHERE UserID = @UserID
+       RETURNING UserID, FullName, Email, Phone`,
       [
-        { name: 'UserID',  value: id },
-        { name: 'FullName',  value: fullName },
-        { name: 'Phone',  value: phone },
+        { name: 'UserID', value: id },
+        { name: 'FullName', value: fullName },
+        { name: 'Phone', value: phone },
       ],
     );
     return result.recordset[0] || null;
@@ -93,8 +93,8 @@ export class UsersService {
        SET PasswordHash = @PasswordHash 
        WHERE UserID = @UserID`,
       [
-        { name: 'UserID',  value: id },
-        { name: 'PasswordHash',  value: passwordHash },
+        { name: 'UserID', value: id },
+        { name: 'PasswordHash', value: passwordHash },
       ],
     );
     return true;
@@ -110,10 +110,10 @@ export class UsersService {
        FROM Users u
        INNER JOIN Roles r ON u.RoleID = r.RoleID
        ORDER BY u.UserID DESC
-       LIMIT @ OFFSET @`,
+       LIMIT @Limit OFFSET @Offset`,
       [
-        { name: 'Offset',  value: offset },
-        { name: 'Limit',  value: limit },
+        { name: 'Offset', value: offset },
+        { name: 'Limit', value: limit },
       ],
     );
 
@@ -139,11 +139,11 @@ export class UsersService {
     const result = await this.dbService.query(
       `UPDATE Users 
        SET IsLocked = @IsLocked 
-       OUTPUT inserted.UserID, inserted.FullName, inserted.Email, inserted.IsLocked
-       WHERE UserID = @UserID`,
+       WHERE UserID = @UserID
+       RETURNING UserID, FullName, Email, IsLocked`,
       [
-        { name: 'UserID',  value: id },
-        { name: 'IsLocked',  value: isLocked },
+        { name: 'UserID', value: id },
+        { name: 'IsLocked', value: isLocked },
       ],
     );
     return result.recordset[0] || null;

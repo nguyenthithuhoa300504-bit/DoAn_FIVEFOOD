@@ -11,7 +11,7 @@ export class BranchesService {
       const query = `
         SELECT BranchID, BranchName, Latitude, Longitude, Address, CoverageRadius, Description, IsActive, IsHeadquarters
         FROM Branches
-        WHERE IsActive = 1
+        WHERE IsActive = true
         ORDER BY IsHeadquarters DESC, BranchID ASC
       `;
       const result = await this.databaseService.query(query);
@@ -26,47 +26,47 @@ export class BranchesService {
     try {
       const query = `
         INSERT INTO Branches (BranchName, Latitude, Longitude, Address, CoverageRadius, Description, IsActive, IsHeadquarters)
-        RETURNING *
         VALUES (@0, @1, @2, @3, @4, @5, @6, @7)
+        RETURNING *
       `;
       const result = await this.databaseService.query(query, [
-        { name: '0',  value: createBranchDto.BranchName },
-        { name: '1',  value: createBranchDto.Latitude },
+        { name: '0', value: createBranchDto.BranchName },
+        { name: '1', value: createBranchDto.Latitude },
         {
           name: '2',
-          
+
           value: createBranchDto.Longitude,
         },
         {
           name: '3',
-          
+
           value: createBranchDto.Address || null,
         },
         {
           name: '4',
-          
+
           value: createBranchDto.CoverageRadius || 5,
         },
         {
           name: '5',
-          
+
           value: createBranchDto.Description || null,
         },
         {
           name: '6',
-          
+
           value:
             createBranchDto.IsActive !== undefined
               ? createBranchDto.IsActive
-              : 1,
+              : true,
         },
         {
           name: '7',
-          
+
           value:
             createBranchDto.IsHeadquarters !== undefined
               ? createBranchDto.IsHeadquarters
-              : 0,
+              : false,
         },
       ]);
       return result.recordset[0];
@@ -81,49 +81,49 @@ export class BranchesService {
       const query = `
         UPDATE Branches
         SET BranchName = @0, Latitude = @1, Longitude = @2, Address = @3, CoverageRadius = @4, Description = @5, IsActive = @6, IsHeadquarters = @7
-        RETURNING *
         WHERE BranchID = @8
+        RETURNING *
       `;
       const result = await this.databaseService.query(query, [
-        { name: '0',  value: updateBranchDto.BranchName },
-        { name: '1',  value: updateBranchDto.Latitude },
+        { name: '0', value: updateBranchDto.BranchName },
+        { name: '1', value: updateBranchDto.Latitude },
         {
           name: '2',
-          
+
           value: updateBranchDto.Longitude,
         },
         {
           name: '3',
-          
+
           value: updateBranchDto.Address || null,
         },
         {
           name: '4',
-          
+
           value: updateBranchDto.CoverageRadius || 5,
         },
         {
           name: '5',
-          
+
           value: updateBranchDto.Description || null,
         },
         {
           name: '6',
-          
+
           value:
             updateBranchDto.IsActive !== undefined
               ? updateBranchDto.IsActive
-              : 1,
+              : true,
         },
         {
           name: '7',
-          
+
           value:
             updateBranchDto.IsHeadquarters !== undefined
               ? updateBranchDto.IsHeadquarters
-              : 0,
+              : false,
         },
-        { name: '8',  value: id },
+        { name: '8', value: id },
       ]);
       return result.recordset[0];
     } catch (error) {
@@ -137,12 +137,10 @@ export class BranchesService {
       // Soft delete
       const query = `
         UPDATE Branches
-        SET IsActive = 0
+        SET IsActive = false
         WHERE BranchID = @0
       `;
-      await this.databaseService.query(query, [
-        { name: '0',  value: id },
-      ]);
+      await this.databaseService.query(query, [{ name: '0', value: id }]);
       return { success: true, message: 'Branch deactivated' };
     } catch (error) {
       this.logger.error(`Error deleting branch ${id}:`, error);

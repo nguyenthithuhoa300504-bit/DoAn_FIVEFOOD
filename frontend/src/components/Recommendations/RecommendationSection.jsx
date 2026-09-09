@@ -7,6 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const RecommendationSection = ({ isLoggedIn }) => {
   const [recommendations, setRecommendations] = useState([]);
+  const [recType, setRecType] = useState('random');
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
@@ -17,6 +18,7 @@ const RecommendationSection = ({ isLoggedIn }) => {
         const data = await apiFetch(`${API_BASE_URL}/recommendations`);
         if (data && data.data) {
           setRecommendations(data.data);
+          setRecType(data.type || 'random');
         }
       } catch (err) {
         console.error('Không thể tải gợi ý món ăn', err);
@@ -60,9 +62,11 @@ const RecommendationSection = ({ isLoggedIn }) => {
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 24px)', fontWeight: '900', background: 'linear-gradient(90deg, #e65100, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 2px 4px rgba(255,87,34,0.1)' }}>
-              Món Ngon Dành Riêng Cho Bạn
+              {recType === 'personalized' ? 'Món Ngon Dành Riêng Cho Bạn' : 'Top Các Món Bán Chạy Nhất'}
             </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#d84315', fontWeight: '600' }}>Tuyển chọn từ khẩu vị & lịch sử của bạn</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#d84315', fontWeight: '600' }}>
+              {recType === 'personalized' ? 'Tuyển chọn từ khẩu vị & lịch sử của bạn' : 'Những món được khách hàng yêu thích nhất'}
+            </p>
           </div>
         </div>
         <span style={{ padding: '8px 20px', background: 'linear-gradient(90deg, #ff9800, #ff5722)', borderRadius: '30px', fontSize: '13px', color: '#fff', fontWeight: '800', boxShadow: '0 4px 15px rgba(255, 87, 34, 0.4)', animation: 'pulse 2s infinite', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0 }}>

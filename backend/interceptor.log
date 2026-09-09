@@ -4,3 +4,11 @@
 [2026-09-03T10:00:00.480Z] msg: "2", hasQtyWord: true, parsedData: {"items":[{"id":13,"qty":2}]}
 [2026-09-03T10:29:24.903Z] msg: "pizza hải sản viên phô mai", hasQtyWord: false, parsedData: {"items":[{"id":2,"qty":1}]}
 [2026-09-03T10:40:41.586Z] msg: "thêm 3 phần", hasQtyWord: true, parsedData: {"items":[{"id":1,"qty":3}]}
+[2026-09-03T14:59:21.873Z] msg: "cho 1 phcho 1 pho bo", hasQtyWord: true, parsedData: {"items":[{"id":1,"qty":1}]}
+[2026-09-04T09:44:09.282Z] msg: "thêm 1 phần bún bò (59.000đ)", hasQtyWord: true, parsedData: {"items":[{"id":12,"qty":1}]}
+[2026-09-04T15:20:48.335Z] msg: "thêm 1 phần", hasQtyWord: true, parsedData: {"items":[{"id":12,"qty":1}]}
+[2026-09-04T16:56:29.307Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
+[2026-09-04T16:56:30.752Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
+[2026-09-04T16:57:03.721Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
+[2026-09-04T16:57:04.733Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
+[2026-09-05T05:47:46.920Z] msg: "thêm 2 phần **mì quảng**", hasQtyWord: true, parsedData: {"items":[{"id":13,"qty":2}]}

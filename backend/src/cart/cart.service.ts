@@ -14,7 +14,7 @@ export class CartService {
        INNER JOIN Products p ON c.ProductID = p.ProductID
        WHERE c.UserID = @UserID
        ORDER BY c.UpdatedAt DESC`,
-      [{ name: 'UserID',  value: userId }],
+      [{ name: 'UserID', value: userId }],
     );
     return result.recordset;
   }
@@ -27,8 +27,8 @@ export class CartService {
     const existing = await this.dbService.query(
       `SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ],
     );
 
@@ -43,12 +43,12 @@ export class CartService {
 
       await this.dbService.query(
         `UPDATE CartItems 
-         SET Quantity = @Quantity, UpdatedAt = GETDATE() 
+         SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP 
          WHERE UserID = @UserID AND ProductID = @ProductID`,
         [
-          { name: 'UserID',  value: userId },
-          { name: 'ProductID',  value: productId },
-          { name: 'Quantity',  value: newQuantity },
+          { name: 'UserID', value: userId },
+          { name: 'ProductID', value: productId },
+          { name: 'Quantity', value: newQuantity },
         ],
       );
     } else {
@@ -60,11 +60,11 @@ export class CartService {
       // Thêm mới vào giỏ hàng
       await this.dbService.query(
         `INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) 
-         VALUES (@UserID, @ProductID, @Quantity, GETDATE())`,
+         VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)`,
         [
-          { name: 'UserID',  value: userId },
-          { name: 'ProductID',  value: productId },
-          { name: 'Quantity',  value: quantity },
+          { name: 'UserID', value: userId },
+          { name: 'ProductID', value: productId },
+          { name: 'Quantity', value: quantity },
         ],
       );
     }
@@ -88,31 +88,31 @@ export class CartService {
     const existing = await this.dbService.query(
       `SELECT CartItemID FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ],
     );
 
     if (existing.recordset.length > 0) {
       await this.dbService.query(
         `UPDATE CartItems 
-         SET Quantity = @Quantity, UpdatedAt = GETDATE() 
+         SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP 
          WHERE UserID = @UserID AND ProductID = @ProductID`,
         [
-          { name: 'UserID',  value: userId },
-          { name: 'ProductID',  value: productId },
-          { name: 'Quantity',  value: quantity },
+          { name: 'UserID', value: userId },
+          { name: 'ProductID', value: productId },
+          { name: 'Quantity', value: quantity },
         ],
       );
     } else {
       // Nếu chưa có, thêm mới
       await this.dbService.query(
         `INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) 
-         VALUES (@UserID, @ProductID, @Quantity, GETDATE())`,
+         VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)`,
         [
-          { name: 'UserID',  value: userId },
-          { name: 'ProductID',  value: productId },
-          { name: 'Quantity',  value: quantity },
+          { name: 'UserID', value: userId },
+          { name: 'ProductID', value: productId },
+          { name: 'Quantity', value: quantity },
         ],
       );
     }
@@ -127,8 +127,8 @@ export class CartService {
     await this.dbService.query(
       `DELETE FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
       [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ],
     );
     return await this.getCart(userId);
@@ -147,8 +147,8 @@ export class CartService {
         const existing = await this.dbService.query(
           `SELECT CartItemID, Quantity FROM CartItems WHERE UserID = @UserID AND ProductID = @ProductID`,
           [
-            { name: 'UserID',  value: userId },
-            { name: 'ProductID',  value: item.productId },
+            { name: 'UserID', value: userId },
+            { name: 'ProductID', value: item.productId },
           ],
         );
 
@@ -157,23 +157,23 @@ export class CartService {
           const newQuantity = existing.recordset[0].Quantity + item.quantity;
           await this.dbService.query(
             `UPDATE CartItems 
-             SET Quantity = @Quantity, UpdatedAt = GETDATE() 
+             SET Quantity = @Quantity, UpdatedAt = CURRENT_TIMESTAMP 
              WHERE UserID = @UserID AND ProductID = @ProductID`,
             [
-              { name: 'UserID',  value: userId },
-              { name: 'ProductID',  value: item.productId },
-              { name: 'Quantity',  value: newQuantity },
+              { name: 'UserID', value: userId },
+              { name: 'ProductID', value: item.productId },
+              { name: 'Quantity', value: newQuantity },
             ],
           );
         } else {
           // Thêm mới
           await this.dbService.query(
             `INSERT INTO CartItems (UserID, ProductID, Quantity, UpdatedAt) 
-             VALUES (@UserID, @ProductID, @Quantity, GETDATE())`,
+             VALUES (@UserID, @ProductID, @Quantity, CURRENT_TIMESTAMP)`,
             [
-              { name: 'UserID',  value: userId },
-              { name: 'ProductID',  value: item.productId },
-              { name: 'Quantity',  value: item.quantity },
+              { name: 'UserID', value: userId },
+              { name: 'ProductID', value: item.productId },
+              { name: 'Quantity', value: item.quantity },
             ],
           );
         }

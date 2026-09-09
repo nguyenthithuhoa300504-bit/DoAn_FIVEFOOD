@@ -1,0 +1,21 @@
+{
+  "OrderID": 9,
+  "UserID": 2,
+  "OrderDate": "2026-09-05T08:58:17.884Z",
+  "TotalAmount": 49000,
+  "DiscountAmount": 0,
+  "ShippingFee": 16028,
+  "FinalAmount": 65028,
+  "PromotionID": null,
+  "Status": "Hoàn thành",
+  "ShippingAddress": "1 đào tấn",
+  "Latitude": 10.942203,
+  "Longitude": 108.077902,
+  "PaymentMethod": "COD",
+  "PaymentStatus": "Đã thanh toán",
+  "CallCount": 0,
+  "FullName": "Khách hàng",
+  "Email": "client@fivefood.com",
+  "Phone": "0987654321",
+  "PromoCode": null
+}

@@ -18,11 +18,11 @@ export class ReviewsService {
         SELECT r.ReviewID, r.Rating, r.Comment, r.CreatedAt, u.FullName 
         FROM Reviews r
         INNER JOIN Users u ON r.UserID = u.UserID
-        WHERE r.ProductID = @ProductID AND r.IsHidden = 0
+        WHERE r.ProductID = @ProductID AND r.IsHidden = false
         ORDER BY r.CreatedAt DESC
       `;
       const reviewsResult = await this.databaseService.query(queryReviews, [
-        { name: 'ProductID',  value: productId },
+        { name: 'ProductID', value: productId },
       ]);
 
       // Lấy thống kê số sao trung bình
@@ -31,10 +31,10 @@ export class ReviewsService {
           COALESCE(AVG(CAST(Rating AS FLOAT)), 0) AS AvgRating, 
           COUNT(*) AS TotalReviews 
         FROM Reviews 
-        WHERE ProductID = @ProductID AND IsHidden = 0
+        WHERE ProductID = @ProductID AND IsHidden = false
       `;
       const statsResult = await this.databaseService.query(queryStats, [
-        { name: 'ProductID',  value: productId },
+        { name: 'ProductID', value: productId },
       ]);
 
       return {
@@ -67,14 +67,14 @@ export class ReviewsService {
         WHERE o.OrderID = @OrderID 
           AND o.UserID = @UserID 
           AND od.ProductID = @ProductID 
-          AND o.Status = N'Hoàn thành'
+          AND o.Status = 'Hoàn thành'
       `;
       const checkEligibility = await this.databaseService.query(
         checkEligibilityQuery,
         [
-          { name: 'OrderID',  value: orderId },
-          { name: 'UserID',  value: userId },
-          { name: 'ProductID',  value: productId },
+          { name: 'OrderID', value: orderId },
+          { name: 'UserID', value: userId },
+          { name: 'ProductID', value: productId },
         ],
       );
 
@@ -92,8 +92,8 @@ export class ReviewsService {
       const checkDuplicate = await this.databaseService.query(
         checkDuplicateQuery,
         [
-          { name: 'OrderID',  value: orderId },
-          { name: 'ProductID',  value: productId },
+          { name: 'OrderID', value: orderId },
+          { name: 'ProductID', value: productId },
         ],
       );
 
@@ -109,11 +109,11 @@ export class ReviewsService {
         VALUES (@UserID, @ProductID, @OrderID, @Rating, @Comment)
       `;
       await this.databaseService.query(insertQuery, [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
-        { name: 'OrderID',  value: orderId },
-        { name: 'Rating',  value: rating },
-        { name: 'Comment',  value: comment || '' },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
+        { name: 'OrderID', value: orderId },
+        { name: 'Rating', value: rating },
+        { name: 'Comment', value: comment || '' },
       ]);
 
       return { success: true, message: 'Cảm ơn bạn đã gửi đánh giá!' };
@@ -145,7 +145,7 @@ export class ReviewsService {
     try {
       const checkQuery = `SELECT IsHidden FROM Reviews WHERE ReviewID = @ReviewID`;
       const checkResult = await this.databaseService.query(checkQuery, [
-        { name: 'ReviewID',  value: reviewId },
+        { name: 'ReviewID', value: reviewId },
       ]);
 
       if (checkResult.recordset.length === 0) {
@@ -161,8 +161,8 @@ export class ReviewsService {
         WHERE ReviewID = @ReviewID
       `;
       await this.databaseService.query(updateQuery, [
-        { name: 'NewStatus',  value: newStatus },
-        { name: 'ReviewID',  value: reviewId },
+        { name: 'NewStatus', value: newStatus },
+        { name: 'ReviewID', value: reviewId },
       ]);
 
       return {

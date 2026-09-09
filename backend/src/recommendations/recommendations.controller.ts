@@ -24,10 +24,11 @@ export class RecommendationsController {
       // Ignored: Treat as guest if token is invalid or missing
     }
 
-    const data = await this.recommendationsService.getRecommendations(userId);
+    const result = await this.recommendationsService.getRecommendations(userId);
     return {
       success: true,
-      data: data,
+      data: result.items,
+      type: result.type,
     };
   }
 }

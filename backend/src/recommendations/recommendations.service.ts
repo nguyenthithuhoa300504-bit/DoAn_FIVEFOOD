@@ -15,14 +15,14 @@ export class RecommendationsService {
         // 1. Lấy các từ khóa tìm kiếm gần đây (trong 7 ngày)
         const searchIntentQuery = `
           SELECT DISTINCT SearchQuery 
-          FROM UserActionLogs 
+          FROM useractionlogs 
           WHERE UserID = @UserID AND ActionType = 'SEARCH' 
-            AND CreatedAt >= DATEADD(DAY, -7, GETDATE()) 
+            AND CreatedAt >= CURRENT_TIMESTAMP - INTERVAL '7 days'
             AND SearchQuery IS NOT NULL
         `;
         const searchResult = await this.databaseService.query(
           searchIntentQuery,
-          [{ name: 'UserID',  value: userId }],
+          [{ name: 'UserID', value: userId }],
         );
         const searchQueries = searchResult.recordset
           .map((r) => r.SearchQuery)
@@ -32,7 +32,7 @@ export class RecommendationsService {
         let searchScoreSql = '0';
         if (searchQueries.length > 0) {
           const likeConditions = searchQueries
-            .map((q) => `p.ProductName LIKE N'%${q.replace(/'/g, "''")}%'`)
+            .map((q) => `p.ProductName LIKE '%${q.replace(/'/g, "''")}%'`)
             .join(' OR ');
           searchScoreSql = `CASE WHEN (${likeConditions}) THEN 5 ELSE 0 END`;
         }
@@ -41,8 +41,8 @@ export class RecommendationsService {
         const personalQuery = `
           WITH RecentLogs AS (
               SELECT ProductID, ActionType
-              FROM UserActionLogs
-              WHERE UserID = @UserID AND CreatedAt >= DATEADD(DAY, -7, GETDATE()) AND ProductID IS NOT NULL
+              FROM useractionlogs
+              WHERE UserID = @UserID AND CreatedAt >= CURRENT_TIMESTAMP - INTERVAL '7 days' AND ProductID IS NOT NULL
           ),
           ActionScores AS (
               SELECT ProductID,
@@ -68,50 +68,57 @@ export class RecommendationsService {
               ) t
               GROUP BY ProductID
           )
-          SELECT TOP 10 
-              p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, 
+          SELECT 
+              p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, p.Inventory, 
               (COALESCE(cs.BaseScore, 0) + ${searchScoreSql}) AS TotalScore
-          FROM Products p
+          FROM products p
           LEFT JOIN CombinedScores cs ON p.ProductID = cs.ProductID
-          INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-          WHERE p.IsActive = 1 AND (COALESCE(cs.BaseScore, 0) + ${searchScoreSql}) > 0
+          INNER JOIN categories c ON p.CategoryID = c.CategoryID
+          WHERE p.IsActive = true AND p.Inventory > 0 AND (COALESCE(cs.BaseScore, 0) + ${searchScoreSql}) > 0
           ORDER BY TotalScore DESC
+          LIMIT 10
         `;
         const personalResult = await this.databaseService.query(personalQuery, [
-          { name: 'UserID',  value: userId },
+          { name: 'UserID', value: userId },
         ]);
         recommendedProducts = personalResult.recordset;
       }
 
+      let recommendationType = 'personalized';
+
       // 2. Nếu chưa có gợi ý nào (người dùng mới hoặc chưa đăng nhập), lấy Top 10 bán chạy
       if (recommendedProducts.length === 0) {
         const topSellingQuery = `
-          SELECT TOP 10 p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, v.TotalSold
+          SELECT p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, p.Inventory, v.TotalSold
           FROM v_SanPhamBanChay v
-          INNER JOIN Products p ON v.ProductID = p.ProductID
-          INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-          WHERE p.IsActive = 1
+          INNER JOIN products p ON v.ProductID = p.ProductID
+          INNER JOIN categories c ON p.CategoryID = c.CategoryID
+          WHERE p.IsActive = true AND p.Inventory > 0
           ORDER BY v.TotalSold DESC
+          LIMIT 10
         `;
         const topSellingResult =
           await this.databaseService.query(topSellingQuery);
         recommendedProducts = topSellingResult.recordset;
+        recommendationType = 'top_selling';
       }
 
       // 3. Fallback: Nếu hệ thống chưa có đủ dữ liệu đơn hàng, lấy ngẫu nhiên 10 món
       if (recommendedProducts.length === 0) {
         const randomQuery = `
-          SELECT TOP 10 p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName
-          FROM Products p
-          INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-          WHERE p.IsActive = 1
-          ORDER BY NEWID()
+          SELECT p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName, p.Inventory
+          FROM products p
+          INNER JOIN categories c ON p.CategoryID = c.CategoryID
+          WHERE p.IsActive = true AND p.Inventory > 0
+          ORDER BY RANDOM()
+          LIMIT 10
         `;
         const randomResult = await this.databaseService.query(randomQuery);
         recommendedProducts = randomResult.recordset;
+        recommendationType = 'random';
       }
 
-      return recommendedProducts;
+      return { items: recommendedProducts, type: recommendationType };
     } catch (error) {
       this.logger.error('Error fetching recommendations', error);
       require('fs').writeFileSync(

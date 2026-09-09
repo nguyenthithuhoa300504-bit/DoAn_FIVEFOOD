@@ -27,21 +27,21 @@ export class OrdersService {
   ) {
     try {
       const inputs = [
-        { name: 'UserID',  value: userId },
+        { name: 'UserID', value: userId },
         {
           name: 'ShippingAddress',
-          
+
           value: shippingAddress,
         },
-        { name: 'Latitude',  value: latitude || null },
+        { name: 'Latitude', value: latitude || null },
         {
           name: 'Longitude',
-          
+
           value: longitude || null,
         },
-        { name: 'PaymentMethod',  value: paymentMethod },
-        { name: 'PromoCode',  value: promoCode || null },
-        { name: 'ShippingFee',  value: shippingFee },
+        { name: 'PaymentMethod', value: paymentMethod },
+        { name: 'PromoCode', value: promoCode || null },
+        { name: 'ShippingFee', value: shippingFee },
       ];
 
       const result = await this.dbService.executeProcedure(
@@ -72,7 +72,7 @@ export class OrdersService {
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
        WHERE o.UserID = @UserID
        ORDER BY o.OrderDate DESC`,
-      [{ name: 'UserID',  value: userId }],
+      [{ name: 'UserID', value: userId }],
     );
     return result.recordset;
   }
@@ -88,7 +88,7 @@ export class OrdersService {
        INNER JOIN Users u ON o.UserID = u.UserID
        LEFT JOIN Promotions p ON o.PromotionID = p.PromotionID
        WHERE o.OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -96,6 +96,12 @@ export class OrdersService {
     }
 
     const order = orderResult.recordset[0];
+    require('fs').writeFileSync(
+      'debug_order.json',
+      JSON.stringify(order, null, 2),
+    );
+    console.log('DEBUG_ORDER:', order);
+    console.log('DEBUG_ORDER:', order);
 
     // Kiểm tra quyền: Chỉ cho phép chính chủ xem đơn hàng (Client) hoặc Admin xem
     if (!isAdmin && order.UserID !== userId) {
@@ -110,7 +116,7 @@ export class OrdersService {
        FROM OrderDetails od
        INNER JOIN Products p ON od.ProductID = p.ProductID
        WHERE od.OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     return {
@@ -145,7 +151,7 @@ export class OrdersService {
     // 1. Kiểm tra đơn hàng có tồn tại không
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -155,12 +161,12 @@ export class OrdersService {
     // Tự động chuyển PaymentStatus sang Đã thanh toán nếu hoàn thành đơn COD
     let paymentStatusQuery = '';
     const params = [
-      { name: 'OrderID',  value: orderId },
-      { name: 'Status',  value: status },
+      { name: 'OrderID', value: orderId },
+      { name: 'Status', value: status },
     ];
 
     if (status === 'Hoàn thành') {
-      paymentStatusQuery = `, PaymentStatus = N'Đã thanh toán'`;
+      paymentStatusQuery = `, PaymentStatus = 'Đã thanh toán'`;
     }
 
     // Cập nhật trạng thái đơn hàng (Nếu status = 'Đã hủy', DB Trigger sẽ tự hoàn kho)
@@ -208,7 +214,7 @@ export class OrdersService {
   async simulateShipperCall(orderId: number) {
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, Status, CallCount FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -229,8 +235,8 @@ export class OrdersService {
       await this.dbService.query(
         `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
         [
-          { name: 'CallCount',  value: newCallCount },
-          { name: 'OrderID',  value: orderId },
+          { name: 'CallCount', value: newCallCount },
+          { name: 'OrderID', value: orderId },
         ],
       );
 
@@ -249,8 +255,8 @@ export class OrdersService {
       await this.dbService.query(
         `UPDATE Orders SET CallCount = @CallCount WHERE OrderID = @OrderID`,
         [
-          { name: 'CallCount',  value: newCallCount },
-          { name: 'OrderID',  value: orderId },
+          { name: 'CallCount', value: newCallCount },
+          { name: 'OrderID', value: orderId },
         ],
       );
 
@@ -274,7 +280,7 @@ export class OrdersService {
     const result = await this.dbService.query(
       `SELECT PromotionID, PromoCode, Description, DiscountPercentage, MaxDiscountAmount, MinOrderValue, UsageLimit, UsedCount, StartDate, EndDate
        FROM Promotions
-       WHERE GETDATE() BETWEEN StartDate AND EndDate
+       WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate
          AND UsedCount < UsageLimit`,
     );
     return result.recordset;
@@ -292,7 +298,7 @@ export class OrdersService {
       `SELECT PromotionID, PromoCode, DiscountPercentage, MaxDiscountAmount, MinOrderValue, UsageLimit, UsedCount, StartDate, EndDate
        FROM Promotions
        WHERE PromoCode = @Code`,
-      [{ name: 'Code',  value: code }],
+      [{ name: 'Code', value: code }],
     );
 
     if (result.recordset.length === 0) {
@@ -347,7 +353,7 @@ export class OrdersService {
   async cancelOrder(userId: number, orderId: number) {
     const orderResult = await this.dbService.query(
       `SELECT UserID, Status FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -369,9 +375,9 @@ export class OrdersService {
     // Cập nhật trạng thái thành Đã hủy (Trigger DB sẽ tự hoàn kho)
     await this.dbService.query(
       `UPDATE Orders 
-       SET Status = N'Đã hủy'
+       SET Status = 'Đã hủy'
        WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     return { success: true, message: 'Hủy đơn hàng thành công.' };

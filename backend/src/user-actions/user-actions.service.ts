@@ -18,12 +18,12 @@ export class UserActionsService {
         VALUES (@UserID, @ActionType, @ProductID, @SearchQuery)
       `;
       await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
-        { name: 'ActionType',  value: actionType },
-        { name: 'ProductID',  value: productId || null },
+        { name: 'UserID', value: userId },
+        { name: 'ActionType', value: actionType },
+        { name: 'ProductID', value: productId || null },
         {
           name: 'SearchQuery',
-          
+
           value: searchQuery || null,
         },
       ]);

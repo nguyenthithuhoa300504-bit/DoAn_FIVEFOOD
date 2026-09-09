@@ -40,7 +40,7 @@ export class PaymentService {
     // 1. Kiểm tra đơn hàng có tồn tại và thuộc về user không
     const orderResult = await this.dbService.query(
       `SELECT OrderID, UserID, FinalAmount, PaymentStatus, Status FROM Orders WHERE OrderID = @OrderID`,
-      [{ name: 'OrderID',  value: orderId }],
+      [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
@@ -127,8 +127,8 @@ export class PaymentService {
       // Dành riêng cho môi trường Localhost (vì VNPay không thể gọi IPN ngầm vào localhost)
       // Cập nhật luôn trạng thái đơn hàng tại đây để hiển thị đúng trên Admin
       await this.dbService.query(
-        `UPDATE Orders SET PaymentStatus = N'Đã thanh toán' WHERE OrderID = @OrderID`,
-        [{ name: 'OrderID',  value: orderId }],
+        `UPDATE Orders SET PaymentStatus = 'Đã thanh toán' WHERE OrderID = @OrderID`,
+        [{ name: 'OrderID', value: orderId }],
       );
 
       // Chèn luôn lịch sử giao dịch (nếu chưa có)
@@ -136,17 +136,17 @@ export class PaymentService {
         `IF NOT EXISTS (SELECT 1 FROM Transactions WHERE OrderID = @OrderID)
          BEGIN
            INSERT INTO Transactions (OrderID, PaymentGateway, TransactionNo, Amount, Status, ResponseCode, CreatedAt)
-           VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, 'Thanh cong', @ResponseCode, GETDATE())
+           VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, 'Thanh cong', @ResponseCode, CURRENT_TIMESTAMP)
          END`,
         [
-          { name: 'OrderID',  value: orderId },
+          { name: 'OrderID', value: orderId },
           {
             name: 'TransactionNo',
-            
+
             value: transactionNo || `VNP_${Date.now()}`,
           },
-          { name: 'Amount',  value: vnpAmount },
-          { name: 'ResponseCode',  value: responseCode },
+          { name: 'Amount', value: vnpAmount },
+          { name: 'ResponseCode', value: responseCode },
         ],
       );
 
@@ -190,7 +190,7 @@ export class PaymentService {
       // 2. Kiểm tra đơn hàng có tồn tại không
       const orderResult = await this.dbService.query(
         `SELECT OrderID, FinalAmount, PaymentStatus FROM Orders WHERE OrderID = @OrderID`,
-        [{ name: 'OrderID',  value: orderId }],
+        [{ name: 'OrderID', value: orderId }],
       );
 
       if (orderResult.recordset.length === 0) {
@@ -219,26 +219,26 @@ export class PaymentService {
         [
           {
             name: 'PaymentStatus',
-            
+
             value: paymentStatus,
           },
-          { name: 'OrderID',  value: orderId },
+          { name: 'OrderID', value: orderId },
         ],
       );
 
       await this.dbService.query(
         `INSERT INTO Transactions (OrderID, PaymentGateway, TransactionNo, Amount, Status, ResponseCode, CreatedAt)
-         VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, @Status, @ResponseCode, GETDATE())`,
+         VALUES (@OrderID, 'VNPAY', @TransactionNo, @Amount, @Status, @ResponseCode, CURRENT_TIMESTAMP)`,
         [
-          { name: 'OrderID',  value: orderId },
+          { name: 'OrderID', value: orderId },
           {
             name: 'TransactionNo',
-            
+
             value: transactionNo || `VNP_${Date.now()}`,
           },
-          { name: 'Amount',  value: vnpAmount },
-          { name: 'Status',  value: transactionStatus },
-          { name: 'ResponseCode',  value: responseCode },
+          { name: 'Amount', value: vnpAmount },
+          { name: 'Status', value: transactionStatus },
+          { name: 'ResponseCode', value: responseCode },
         ],
       );
 

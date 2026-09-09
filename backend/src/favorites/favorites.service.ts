@@ -22,7 +22,7 @@ export class FavoritesService {
         ORDER BY f.CreatedAt DESC
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
+        { name: 'UserID', value: userId },
       ]);
       return result.recordset;
     } catch (error) {
@@ -36,8 +36,8 @@ export class FavoritesService {
       // Kiem tra xem san pham da co trong danh sach yeu thich chua
       const checkQuery = `SELECT 1 FROM Favorites WHERE UserID = @UserID AND ProductID = @ProductID`;
       const checkResult = await this.databaseService.query(checkQuery, [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ]);
 
       if (checkResult.recordset.length > 0) {
@@ -49,8 +49,8 @@ export class FavoritesService {
         VALUES (@UserID, @ProductID)
       `;
       await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ]);
 
       return { success: true, message: 'Đã thêm vào danh sách yêu thích' };
@@ -67,8 +67,8 @@ export class FavoritesService {
         WHERE UserID = @UserID AND ProductID = @ProductID
       `;
       const result = await this.databaseService.query(query, [
-        { name: 'UserID',  value: userId },
-        { name: 'ProductID',  value: productId },
+        { name: 'UserID', value: userId },
+        { name: 'ProductID', value: productId },
       ]);
 
       if (result.rowsAffected[0] === 0) {

@@ -1657,7 +1657,7 @@ function App() {
                               container.hasMoved = false;
                               return;
                             }
-                            setSelectedProduct(p); 
+                            setSelectedProductDetails(p); 
                             setIsDetailModalOpen(true); 
                           }}>
                           <div className="dbs-discount-tag" style={{ background: '#ff3d00', color: '#fff', fontWeight: 'bold' }}>-{discountPercent}%</div>
@@ -3024,7 +3024,7 @@ function App() {
                             <td>
                               <strong>{log.FullName}</strong>
                               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{log.Email}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Session: {log.SessionID.substring(0, 8)}...</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Session: {log.SessionID ? log.SessionID.substring(0, 8) : 'N/A'}...</div>
                             </td>
                             <td><div style={{ whiteSpace: 'pre-wrap', color: 'var(--primary-color)', fontWeight: '500' }}>{log.userMessage}</div></td>
                             <td><div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: '1.5' }}>{log.botResponse}</div></td>
@@ -3521,7 +3521,7 @@ function App() {
                 </div>
               </div>
 
-              {selectedOrderDetails.Status === 'Đang giao' && selectedOrderDetails.Latitude && selectedOrderDetails.Longitude && (
+              {selectedOrderDetails.Latitude && selectedOrderDetails.Longitude && !['Đã hủy', 'Canceled', 'Hủy'].includes(selectedOrderDetails.Status) && (
                 <div style={{ borderRadius: '16px', overflow: 'hidden', border: '2px solid var(--panel-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
                   <DeliveryTrackingMap 
                     customerLat={selectedOrderDetails.Latitude} 
@@ -3557,7 +3557,7 @@ function App() {
                           </button>
                         )}
                       </div>
-                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-main)' }}>{(detail.UnitPrice * detail.Quantity).toLocaleString('vi-VN')} đ</span>
+                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-main)' }}>{((detail.UnitPrice || detail.Price) * detail.Quantity).toLocaleString('vi-VN')} đ</span>
                     </div>
                   ))}
                 </div>

@@ -279,30 +279,26 @@ const Chatbot = () => {
   // Khôi phục lịch sử chat TỪNG TÀI KHOẢN (Chỉ khôi phục cho thành viên nếu tin nhắn KHÔNG BỊ LẪN lời chào vãng lai cũ)
   const [messages, setMessages] = useState(() => {
     try {
-      const uid = getUserId(user);
-      if (uid) {
-        const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
+      const uid = getUserId(user) || 'guest';
+      const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0 && !isGuestWelcomeMessage(parsed[0]?.text)) {
             return parsed;
           }
         }
-      }
       return [];
     } catch { return []; }
   });
   
   const [hasInitialized, setHasInitialized] = useState(() => {
     try {
-      const uid = getUserId(user);
-      if (uid) {
-        const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
+      const uid = getUserId(user) || 'guest';
+      const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
         if (saved) {
           const parsed = JSON.parse(saved);
           return Array.isArray(parsed) && parsed.length > 0 && !isGuestWelcomeMessage(parsed[0]?.text);
         }
-      }
       return false;
     } catch { return false; }
   });
@@ -313,11 +309,8 @@ const Chatbot = () => {
   
   // Khôi phục sessionId từ localStorage nếu đã đăng nhập
   const [sessionId, setSessionId] = useState(() => {
-    const uid = getUserId(user);
-    if (uid) {
-      return localStorage.getItem(`chatbot_session_user_${uid}`) || '';
-    }
-    return '';
+    const uid = getUserId(user) || 'guest';
+    return localStorage.getItem(`chatbot_session_user_${uid}`) || '';
   });
 
   const toggleChatbot = (e) => {
@@ -350,8 +343,8 @@ const Chatbot = () => {
 
   // CHỈ LƯU messages vào localStorage KHI KHÁCH HÀNG ĐÃ ĐĂNG NHẬP (hoặc nếu là phiên chat guest được merge)
   useEffect(() => {
-    const uid = getUserId(user);
-    if (isLoggedIn && uid && messages.length > 0 && (messages.length > 1 || !isGuestWelcomeMessage(messages[0]?.text))) {
+    const uid = getUserId(user) || 'guest';
+    if (messages.length > 0 && (messages.length > 1 || !isGuestWelcomeMessage(messages[0]?.text))) {
       try {
         localStorage.setItem(`chatbot_messages_user_${uid}`, JSON.stringify(messages));
       } catch (e) {
@@ -362,8 +355,8 @@ const Chatbot = () => {
 
   // CHỈ LƯU sessionId vào localStorage KHI KHÁCH HÀNG ĐÃ ĐĂNG NHẬP
   useEffect(() => {
-    const uid = getUserId(user);
-    if (isLoggedIn && uid && sessionId) {
+    const uid = getUserId(user) || 'guest';
+    if (sessionId) {
       localStorage.setItem(`chatbot_session_user_${uid}`, sessionId);
     }
   }, [sessionId, isLoggedIn, user]);
@@ -384,7 +377,13 @@ const Chatbot = () => {
             if (res && res.data && res.data.length > 0) {
               const top3 = res.data.slice(0, 3);
               const itemsList = top3.map(item => `👉 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
-              welcomeMsg = `Chào mừng **${userName}** trở lại với FIVEFOOD! 👑\n\nDựa trên sở thích của bạn, mình đề xuất danh sách món ngon cực đỉnh hôm nay:\n${itemsList}\n\n💡 Bạn cần gọi món, mã ưu đãi hay kiểm tra đơn hàng cứ ra lệnh cho mình nhé!`;
+              
+              if (res.type === 'personalized') {
+                welcomeMsg = `Chào mừng **${userName}** trở lại với FIVEFOOD! 👑\n\nDựa trên sở thích của bạn, mình đề xuất danh sách món ngon cực đỉnh hôm nay:\n${itemsList}\n\n💡 Bạn cần gọi món, mã ưu đãi hay kiểm tra đơn hàng cứ ra lệnh cho mình nhé!`;
+              } else {
+                welcomeMsg = `Chào mừng **${userName}** đến với FIVEFOOD! 👑\n\nHôm nay quán có các món bán chạy nhất mời bạn thưởng thức:\n${itemsList}\n\n💡 Bạn cần gọi món, mã ưu đãi hay kiểm tra đơn hàng cứ ra lệnh cho mình nhé!`;
+              }
+              
               setMessages([{ sender: 'bot', text: welcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
               setIsLoading(false);
               return;
@@ -454,14 +453,20 @@ const Chatbot = () => {
         let newWelcomeMsg = `Chào mừng **${userName}**! Trợ lý AI FIVEFOOD rất hân hạnh được phục vụ bạn hôm nay! 🌟`;
         try {
           const res = await apiFetch(`${API_BASE_URL}/recommendations`);
-          if (res && res.data && res.data.length > 0) {
-            const top3 = res.data.slice(0, 3);
-            const itemsList = top3.map(item => `👉 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
-            newWelcomeMsg = `Chào mừng **${userName}** trở lại! 👑\n\nDựa trên khẩu vị của bạn, mình gợi ý thực đơn hấp dẫn sau:\n${itemsList}\n\nBạn muốn thưởng thức món nào hôm nay ạ?`;
-            setMessages([{ sender: 'bot', text: newWelcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
-            setHasInitialized(true);
-            return;
-          }
+            if (res && res.data && res.data.length > 0) {
+              const top3 = res.data.slice(0, 3);
+              const itemsList = top3.map(item => `👉 **${item.ProductName}** — ${item.Price.toLocaleString('vi-VN')}đ`).join('\n');
+              
+              if (res.type === 'personalized') {
+                newWelcomeMsg = `Chào mừng **${userName}** trở lại! 👑\n\nDựa trên khẩu vị của bạn, mình gợi ý thực đơn hấp dẫn sau:\n${itemsList}\n\nBạn muốn thưởng thức món nào hôm nay ạ?`;
+              } else {
+                newWelcomeMsg = `Chào mừng **${userName}**! 👑\n\nHôm nay quán có các món bán chạy nhất mời bạn thưởng thức:\n${itemsList}\n\nBạn muốn thưởng thức món nào hôm nay ạ?`;
+              }
+              
+              setMessages([{ sender: 'bot', text: newWelcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
+              setHasInitialized(true);
+              return;
+            }
         } catch (err) {
           console.error(err);
         }

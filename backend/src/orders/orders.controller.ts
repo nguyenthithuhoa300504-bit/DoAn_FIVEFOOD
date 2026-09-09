@@ -130,6 +130,11 @@ export class AdminOrdersController {
     return await this.ordersService.getOrderDetails(userId, id, true);
   }
 
+  @Get('test/:id')
+  async testOrderDetails(@Param('id', ParseIntPipe) id: number) {
+    return await this.ordersService.getOrderDetails(1, id, true); // Assuming admin user id is 1
+  }
+
   /**
    * Admin cập nhật trạng thái đơn hàng (duyệt, giao hàng, hoàn thành, hủy đơn)
    * PUT /api/admin/orders/:id/status

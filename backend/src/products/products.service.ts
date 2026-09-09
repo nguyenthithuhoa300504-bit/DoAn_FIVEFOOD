@@ -24,7 +24,7 @@ export class ProductsService {
   async getCategoryById(id: number) {
     const result = await this.dbService.query(
       'SELECT * FROM Categories WHERE CategoryID = @CategoryID',
-      [{ name: 'CategoryID',  value: id }],
+      [{ name: 'CategoryID', value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -39,12 +39,12 @@ export class ProductsService {
   ) {
     const result = await this.dbService.query(
       `INSERT INTO Categories (CategoryName, Description, ImageURL) 
-       RETURNING * 
-       VALUES (@CategoryName, @Description, @ImageURL)`,
+       VALUES (@CategoryName, @Description, @ImageURL)
+       RETURNING *`,
       [
-        { name: 'CategoryName',  value: categoryName },
-        { name: 'Description',  value: description },
-        { name: 'ImageURL',  value: imageUrl || null },
+        { name: 'CategoryName', value: categoryName },
+        { name: 'Description', value: description },
+        { name: 'ImageURL', value: imageUrl || null },
       ],
     );
     return result.recordset[0];
@@ -62,13 +62,13 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Categories 
        SET CategoryName = @CategoryName, Description = @Description, ImageURL = @ImageURL 
-       RETURNING * 
-       WHERE CategoryID = @CategoryID`,
+       WHERE CategoryID = @CategoryID
+       RETURNING *`,
       [
-        { name: 'CategoryID',  value: id },
-        { name: 'CategoryName',  value: categoryName },
-        { name: 'Description',  value: description },
-        { name: 'ImageURL',  value: imageUrl || null },
+        { name: 'CategoryID', value: id },
+        { name: 'CategoryName', value: categoryName },
+        { name: 'Description', value: description },
+        { name: 'ImageURL', value: imageUrl || null },
       ],
     );
     return result.recordset[0] || null;
@@ -95,38 +95,38 @@ export class ProductsService {
                 SELECT SUM(od.Quantity) 
                 FROM OrderDetails od 
                 INNER JOIN Orders o ON od.OrderID = o.OrderID 
-                WHERE od.ProductID = p.ProductID AND o.Status <> N'Đã hủy'
+                WHERE od.ProductID = p.ProductID AND o.Status <> 'Đã hủy'
              ), 0) AS SoldCount,
-             COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
-             COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
+             COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = false), 0) AS AverageRating,
+             COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = false), 0) AS ReviewCount
       FROM Products p
       INNER JOIN Categories c ON p.CategoryID = c.CategoryID
-      WHERE p.IsActive = 1
+      WHERE p.IsActive = true
     `;
 
-    const params: { name: string; type: any; value: any }[] = [];
+    const params: { name: string; type?: any; value: any }[] = [];
 
     if (search) {
       queryStr += ` AND p.ProductName LIKE @Search`;
       params.push({
         name: 'Search',
-        
+
         value: `%${search}%`,
       });
     }
 
     if (categoryId) {
       queryStr += ` AND p.CategoryID = @CategoryID`;
-      params.push({ name: 'CategoryID',  value: categoryId });
+      params.push({ name: 'CategoryID', value: categoryId });
     }
 
     queryStr += `
       ORDER BY p.ProductID DESC
-      LIMIT @ OFFSET @
+      LIMIT @Limit OFFSET @Offset
     `;
 
-    params.push({ name: 'Offset',  value: offset });
-    params.push({ name: 'Limit',  value: limit });
+    params.push({ name: 'Offset', value: offset });
+    params.push({ name: 'Limit', value: limit });
 
     const result = await this.dbService.query(queryStr, params);
 
@@ -151,12 +151,12 @@ export class ProductsService {
   async getProductById(id: number) {
     const result = await this.dbService.query(
       `SELECT p.*, c.CategoryName,
-              COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS AverageRating,
-              COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = 0), 0) AS ReviewCount
+              COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = false), 0) AS AverageRating,
+              COALESCE((SELECT COUNT(ReviewID) FROM Reviews WHERE ProductID = p.ProductID AND IsHidden = false), 0) AS ReviewCount
        FROM Products p 
        INNER JOIN Categories c ON p.CategoryID = c.CategoryID 
        WHERE p.ProductID = @ProductID`,
-      [{ name: 'ProductID',  value: id }],
+      [{ name: 'ProductID', value: id }],
     );
     return result.recordset[0] || null;
   }
@@ -175,22 +175,20 @@ export class ProductsService {
   ) {
     const result = await this.dbService.query(
       `INSERT INTO Products (ProductName, CategoryID, Price, Inventory, ImageURL, Ingredients, Description, IsActive) 
-       RETURNING * 
-       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, @Description, 1)`,
+       VALUES (@ProductName, @CategoryID, @Price, @Inventory, @ImageURL, @Ingredients, @Description, true)
+       RETURNING *`,
       [
-        { name: 'ProductName',  value: productName },
-        { name: 'CategoryID',  value: categoryId },
-        { name: 'Price',  value: price },
-        { name: 'Inventory',  value: inventory },
-        { name: 'ImageURL',  value: imageUrl },
+        { name: 'ProductName', value: productName },
+        { name: 'CategoryID', value: categoryId },
+        { name: 'Price', value: price },
+        { name: 'Inventory', value: inventory },
+        { name: 'ImageURL', value: imageUrl },
         {
           name: 'Ingredients',
-          
           value: ingredients || null,
         },
         {
           name: 'Description',
-          
           value: description || null,
         },
       ],
@@ -214,23 +212,21 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Products 
        SET ProductName = @ProductName, CategoryID = @CategoryID, Price = @Price, Inventory = @Inventory, ImageURL = @ImageURL, Ingredients = @Ingredients, Description = @Description
-       RETURNING * 
-       WHERE ProductID = @ProductID`,
+       WHERE ProductID = @ProductID
+       RETURNING *`,
       [
-        { name: 'ProductID',  value: id },
-        { name: 'ProductName',  value: productName },
-        { name: 'CategoryID',  value: categoryId },
-        { name: 'Price',  value: price },
-        { name: 'Inventory',  value: inventory },
-        { name: 'ImageURL',  value: imageUrl },
+        { name: 'ProductID', value: id },
+        { name: 'ProductName', value: productName },
+        { name: 'CategoryID', value: categoryId },
+        { name: 'Price', value: price },
+        { name: 'Inventory', value: inventory },
+        { name: 'ImageURL', value: imageUrl },
         {
           name: 'Ingredients',
-          
           value: ingredients || null,
         },
         {
           name: 'Description',
-          
           value: description || null,
         },
       ],
@@ -245,11 +241,11 @@ export class ProductsService {
     const result = await this.dbService.query(
       `UPDATE Products 
        SET IsActive = @IsActive 
-       RETURNING * 
-       WHERE ProductID = @ProductID`,
+       WHERE ProductID = @ProductID
+       RETURNING *`,
       [
-        { name: 'ProductID',  value: id },
-        { name: 'IsActive',  value: isActive },
+        { name: 'ProductID', value: id },
+        { name: 'IsActive', value: isActive },
       ],
     );
     return result.recordset[0] || null;
@@ -264,7 +260,7 @@ export class ProductsService {
        FROM (SELECT * FROM Products UNION ALL SELECT * FROM ProductsHistory) as p_all 
        WHERE ProductID = @ProductID 
        ORDER BY SysStartTime DESC`,
-      [{ name: 'ProductID',  value: id }],
+      [{ name: 'ProductID', value: id }],
     );
     return result.recordset;
   }

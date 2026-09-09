@@ -676,10 +676,17 @@ body.dark-theme .food-desc { color: #AAA; }
   font-size: 11px;
   font-weight: bold;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-.food-card-info button:hover {
+.food-card-info button:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.food-card-info button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(255, 94, 0, 0.3);
 }

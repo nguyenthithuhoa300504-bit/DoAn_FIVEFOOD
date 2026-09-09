@@ -7,6 +7,79 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Pool, PoolConfig } from 'pg';
 
+const keyMapping: { [key: string]: string } = {
+  productid: 'ProductID',
+  productname: 'ProductName',
+  categoryid: 'CategoryID',
+  categoryname: 'CategoryName',
+  price: 'Price',
+  unitprice: 'UnitPrice',
+  inventory: 'Inventory',
+  imageurl: 'ImageURL',
+  ingredients: 'Ingredients',
+  isactive: 'IsActive',
+  description: 'Description',
+  roleid: 'RoleID',
+  rolename: 'RoleName',
+  userid: 'UserID',
+  fullname: 'FullName',
+  email: 'Email',
+  passwordhash: 'PasswordHash',
+  phone: 'Phone',
+  islocked: 'IsLocked',
+  createdat: 'CreatedAt',
+  orderid: 'OrderID',
+  orderdate: 'OrderDate',
+  shippingaddress: 'ShippingAddress',
+  status: 'Status',
+  latitude: 'Latitude',
+  longitude: 'Longitude',
+  totalamount: 'TotalAmount',
+  cartid: 'CartID',
+  cartitemid: 'CartItemID',
+  quantity: 'Quantity',
+  subtotal: 'Subtotal',
+  conversationdata: 'ConversationData',
+  reviewid: 'ReviewID',
+  rating: 'Rating',
+  comment: 'Comment',
+  ishidden: 'IsHidden',
+  promocode: 'PromoCode',
+  discountpercentage: 'DiscountPercentage',
+  maxdiscountamount: 'MaxDiscountAmount',
+  minordervalue: 'MinOrderValue',
+  usagelimit: 'UsageLimit',
+  usedcount: 'UsedCount',
+  startdate: 'StartDate',
+  enddate: 'EndDate',
+  totalcount: 'TotalCount',
+  soldcount: 'SoldCount',
+  averagerating: 'AverageRating',
+  reviewcount: 'ReviewCount',
+  messageid: 'MessageID',
+  senderid: 'SenderID',
+  receiverid: 'ReceiverID',
+  messagetext: 'MessageText',
+  sentat: 'SentAt',
+  isread: 'IsRead',
+  actionid: 'ActionID',
+  actiontype: 'ActionType',
+  searchquery: 'SearchQuery',
+  promotionid: 'PromotionID',
+  branchid: 'BranchID',
+  branchname: 'BranchName',
+  sysstarttime: 'SysStartTime',
+  sysendtime: 'SysEndTime',
+  count: 'count',
+  valid: 'valid',
+  discountamount: 'DiscountAmount',
+  shippingfee: 'ShippingFee',
+  finalamount: 'FinalAmount',
+  paymentmethod: 'PaymentMethod',
+  paymentstatus: 'PaymentStatus',
+  callcount: 'CallCount',
+};
+
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
@@ -103,7 +176,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
 
       const result = await this.pool.query(pgQueryText, pgParams);
-      return { recordset: result.rows, rowsAffected: [result.rowCount] };
+      const mappedRows = result.rows.map((row: any) => {
+        const newRow: any = {};
+        for (const key in row) {
+          const pascalKey = keyMapping[key] || key;
+          let val = row[key];
+          if (
+            (pascalKey === 'Price' ||
+              pascalKey === 'TotalAmount' ||
+              pascalKey === 'FinalAmount' ||
+              pascalKey === 'DiscountAmount' ||
+              pascalKey === 'ShippingFee' ||
+              pascalKey === 'Subtotal' ||
+              pascalKey === 'MaxDiscountAmount' ||
+              pascalKey === 'MinOrderValue' ||
+              pascalKey === 'Latitude' ||
+              pascalKey === 'Longitude' ||
+              pascalKey === 'UnitPrice') &&
+            typeof val === 'string'
+          ) {
+            val = Number(val);
+          }
+          newRow[pascalKey] = val;
+        }
+        return newRow;
+      });
+      return { recordset: mappedRows, rowsAffected: [result.rowCount] };
     } catch (err) {
       this.logger.error(`Query execution failed: ${queryText}`, err);
       throw err;
@@ -131,12 +229,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
 
       const result = await this.pool.query(queryText, pgParams);
-      return { recordset: result.rows, rowsAffected: [result.rowCount] };
+      const mappedRows = result.rows.map((row: any) => {
+        const newRow: any = {};
+        for (const key in row) {
+          const pascalKey = keyMapping[key] || key;
+          let val = row[key];
+          if (
+            (pascalKey === 'Price' ||
+              pascalKey === 'TotalAmount' ||
+              pascalKey === 'FinalAmount' ||
+              pascalKey === 'DiscountAmount' ||
+              pascalKey === 'ShippingFee' ||
+              pascalKey === 'Subtotal' ||
+              pascalKey === 'MaxDiscountAmount' ||
+              pascalKey === 'MinOrderValue' ||
+              pascalKey === 'Latitude' ||
+              pascalKey === 'Longitude' ||
+              pascalKey === 'UnitPrice') &&
+            typeof val === 'string'
+          ) {
+            val = Number(val);
+          }
+          newRow[pascalKey] = val;
+        }
+        return newRow;
+      });
+      return { recordset: mappedRows, rowsAffected: [result.rowCount] };
     } catch (err) {
-      this.logger.error(
-        `Function execution failed: ${procedureName}`,
-        err,
-      );
+      this.logger.error(`Function execution failed: ${procedureName}`, err);
       throw err;
     }
   }
