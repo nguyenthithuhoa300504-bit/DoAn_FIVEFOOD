@@ -433,6 +433,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
       // 1.2 Lệnh Giảm / Xóa số lượng từng món trong giỏ (Chống hiểu nhầm thành Xóa toàn bộ giỏ) -> Xử lý ngay 0ms!
       const isUserAskingReduceOrRemoveItem =
         !isLocalHandled &&
+        !lowerMsg.includes('giảm giá') &&
         ([
           'bớt',
           'giảm',
@@ -1369,9 +1370,22 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               
               const isVNPay = intentData.paymentMethod && intentData.paymentMethod.toLowerCase().includes('vnpay');
               if (isVNPay && orderResult && orderResult.OrderID) {
-                const paymentUrl = await this.paymentService.createPaymentUrl(userId, orderResult.OrderID, '127.0.0.1');
-                responseText = `✅ **Đơn hàng #${orderResult.OrderID} đã được tạo!**\n\n🔗 Vui lòng click vào nút bên dưới để tiến hành thanh toán VNPay. Nhà hàng sẽ bắt đầu chuẩn bị món ngay sau khi bạn thanh toán thành công!`;
-                richContent = { type: 'payment_link', url: paymentUrl };
+                // Lấy thông tin số tiền chính xác của đơn hàng
+                const orderData = await this.databaseService.query(
+                  'SELECT FinalAmount FROM Orders WHERE OrderID = @OrderID',
+                  [{ name: 'OrderID', value: orderResult.OrderID }]
+                );
+                const finalAmount = orderData.recordset[0]?.FinalAmount || 0;
+                
+                // Sinh mã VietQR tĩnh
+                const bankId = this.configService.get<string>('VIETQR_BANK_ID') || 'namabank';
+                const accountNo = this.configService.get<string>('VIETQR_ACCOUNT_NO') || '0824781046';
+                const accountName = this.configService.get<string>('VIETQR_ACCOUNT_NAME') || 'NGUYEN THI THU HOA';
+                const addInfo = `Thanh toan don hang ${orderResult.OrderID}`;
+                const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${finalAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
+                
+                responseText = `✅ **Đơn hàng #${orderResult.OrderID} đã được tạo!**\n\n📷 Vui lòng quét mã QR bên dưới bằng ứng dụng Ngân hàng/Momo để thanh toán. Nhà hàng sẽ bắt đầu chuẩn bị món ngay sau khi bạn thanh toán thành công!`;
+                richContent = { type: 'vietqr_link', url: qrUrl, orderId: orderResult.OrderID };
               } else {
                 let successMsg =
                   '✅ **Đặt hàng thành công!** Đơn sẽ được giao tới: **' +
@@ -1388,7 +1402,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           this.logger.error('Lỗi khi checkout từ Chatbot', err);
           require('fs').writeFileSync('debug_checkout_err.json', JSON.stringify({ message: err.message, stack: err.stack }, null, 2));
           responseText =
-            '❌ Lỗi thanh toán tự động, bạn vui lòng sử dụng nút Thanh Toán trên website!';
+            `❌ **Không thể đặt hàng!**\nLý do: ${err.message || 'Lỗi hệ thống'}\n\n👉 Bạn vui lòng thêm món hoặc đổi mã giảm giá khác nhé!`;
         }
       } else if (checkoutMatch && !userId) {
         responseText = '❌ Vui lòng **Đăng nhập** để AI đặt hàng cho bạn!';
@@ -1515,8 +1529,17 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             );
             if (mentionedPromos.length === 0) mentionedPromos = availablePromos; // Fallback to all if none explicitly matched but keyword was triggered
           }
+          
+          // Lọc bỏ những mã không đủ điều kiện áp dụng cho giỏ hàng hiện tại (MinOrderValue)
+          mentionedPromos = mentionedPromos.filter((p) => subtotalData >= p.MinOrderValue);
+
           if (mentionedPromos.length > 0) {
             richContent = { type: 'promotions', data: mentionedPromos };
+          } else {
+            // Nếu không có mã nào đủ điều kiện, thêm 1 câu nhắc nhở khách mua thêm
+            if (!responseText.includes('mua thêm')) {
+               responseText += '\n\n💡 *Gợi ý: Giỏ hàng của bạn chưa đủ điều kiện áp dụng các mã giảm giá hiện có. Bạn hãy đặt thêm vài món để được nhận ưu đãi nhé!*';
+            }
           }
         }
       }

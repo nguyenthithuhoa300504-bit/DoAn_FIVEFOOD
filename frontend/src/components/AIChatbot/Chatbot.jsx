@@ -166,29 +166,33 @@ const renderRichContent = (richContent, sendPromptToBot, setInputMessage) => {
           </button>
         </div>
       );
-    case 'payment_link':
+    case 'vietqr_link':
       return (
-        <div className="rich-message payment-link-card" style={{ marginTop: '10px' }}>
-          <a 
-            href={richContent.url} 
-            target="_blank" 
-            rel="noreferrer"
-            className="payment-btn"
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              textDecoration: 'none',
-              background: 'linear-gradient(135deg, #00509E 0%, #0072C6 100%)',
-              color: 'white',
-              padding: '12px',
-              borderRadius: '8px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 10px rgba(0, 114, 198, 0.3)'
-            }}
-          >
-            💳 THANH TOÁN VNPAY NGAY
-          </a>
+        <div className="rich-message vietqr-card" style={{ marginTop: '10px', textAlign: 'center', background: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#1F2937' }}>Quét mã để thanh toán</h4>
+          <img 
+            src={richContent.url} 
+            alt="VietQR" 
+            style={{ width: '100%', maxWidth: '250px', borderRadius: '8px', border: '1px solid #E5E7EB' }} 
+          />
+          <div style={{ marginTop: '15px' }}>
+            <button 
+              onClick={() => sendPromptToBot(`Tôi đã chuyển khoản cho đơn hàng #${richContent.orderId}`)}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                color: 'white',
+                padding: '12px',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              ✅ TÔI ĐÃ CHUYỂN KHOẢN
+            </button>
+          </div>
         </div>
       );
     default:
