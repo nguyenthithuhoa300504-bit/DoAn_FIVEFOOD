@@ -166,6 +166,31 @@ const renderRichContent = (richContent, sendPromptToBot, setInputMessage) => {
           </button>
         </div>
       );
+    case 'payment_link':
+      return (
+        <div className="rich-message payment-link-card" style={{ marginTop: '10px' }}>
+          <a 
+            href={richContent.url} 
+            target="_blank" 
+            rel="noreferrer"
+            className="payment-btn"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              textDecoration: 'none',
+              background: 'linear-gradient(135deg, #00509E 0%, #0072C6 100%)',
+              color: 'white',
+              padding: '12px',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 10px rgba(0, 114, 198, 0.3)'
+            }}
+          >
+            💳 THANH TOÁN VNPAY NGAY
+          </a>
+        </div>
+      );
     default:
       return null;
   }
@@ -276,15 +301,16 @@ const Chatbot = () => {
     dragRef.current.isMoved = false;
   };
 
-  // Khôi phục lịch sử chat TỪNG TÀI KHOẢN (Chỉ khôi phục cho thành viên nếu tin nhắn KHÔNG BỊ LẪN lời chào vãng lai cũ)
   const [messages, setMessages] = useState(() => {
     try {
       const uid = getUserId(user) || 'guest';
       const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0 && !isGuestWelcomeMessage(parsed[0]?.text)) {
-            return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (parsed.length > 1 || !isGuestWelcomeMessage(parsed[0]?.text)) {
+              return parsed;
+            }
           }
         }
       return [];
@@ -297,7 +323,9 @@ const Chatbot = () => {
       const saved = localStorage.getItem(`chatbot_messages_user_${uid}`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) && parsed.length > 0 && !isGuestWelcomeMessage(parsed[0]?.text);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.length > 1 || !isGuestWelcomeMessage(parsed[0]?.text);
+          }
         }
       return false;
     } catch { return false; }
@@ -435,14 +463,16 @@ const Chatbot = () => {
       if (savedMessages) {
         try {
           const parsed = JSON.parse(savedMessages);
-          if (Array.isArray(parsed) && parsed.length > 0 && !isGuestWelcomeMessage(parsed[0]?.text)) {
-            setMessages(parsed);
-            setSessionId(savedSession || '');
-            setHasInitialized(true);
-            return;
-          } else {
-            localStorage.removeItem(`chatbot_messages_user_${uid}`);
-            localStorage.removeItem(`chatbot_session_user_${uid}`);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (parsed.length > 1 || !isGuestWelcomeMessage(parsed[0]?.text)) {
+              setMessages(parsed);
+              setSessionId(savedSession || '');
+              setHasInitialized(true);
+              return;
+            } else {
+              localStorage.removeItem(`chatbot_messages_user_${uid}`);
+              localStorage.removeItem(`chatbot_session_user_${uid}`);
+            }
           }
         } catch (e) {}
       }

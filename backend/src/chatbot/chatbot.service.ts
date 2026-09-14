@@ -9,6 +9,7 @@ import { OrdersService } from '../orders/orders.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PaymentService } from '../payment/payment.service';
 
 @Injectable()
 export class ChatbotService {
@@ -19,6 +20,7 @@ export class ChatbotService {
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
     private readonly ordersService: OrdersService,
+    private readonly paymentService: PaymentService,
   ) {
     this.apiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
     if (!this.apiKey) {
@@ -264,36 +266,40 @@ QUY TẮC BẮT BUỘC:
 4. Nhờ yêu cầu chay/không cay/ngân sách để tư vấn món có giá và thành phần phù hợp.
 5. LUÔN TRẢ LỜI NGẮN GỌN, SÚC TÍCH, CHUYÊN NGHIỆP. Tránh dài dòng rườm rà (Tối đa 1-3 câu hoặc gạch đầu dòng ngắn).
 6. Khi khách hỏi về đơn hàng hay việc giao đồ ăn (dù dùng từ ngữ tự nhiên nào), hãy đọc trạng thái thực từ CSDL. Nếu đơn đang "Đang giao", hướng dẫn khách mở hóa đơn trên web để xem Bản đồ định vị Shipper trực tuyến!
+7. CHỐNG ẢO GIÁC TÊN MÓN: Nếu khách gọi tên món CHUNG CHUNG (VD: "bún", "cơm", "trà") mà trong thực đơn có nhiều loại khác nhau (VD: Bún Bò Huế, Bún Thịt Nướng), BẮT BUỘC phải liệt kê các món đó ra và hỏi khách muốn chọn loại nào. TUYỆT ĐỐI không được tự ý "đoán" hoặc "chọn đại" một món!
 
 🔥 QUY TẮC THÊM GIỎ HÀNG (NGUYÊN TẮC VÀNG BẮT BUỘC TUÂN THỦ 100%):
 1. CHỈ ĐƯA VÀO [CART_INTENT] ĐÚNG DUY NHẤT MÓN MÀ KHÁCH YÊU CẦU TRONG TIN NHẮN HIỆN TẠI! TUYỆT ĐỐI KHÔNG ĐƯA CÁC MÓN KHÁCH ĐÃ ĐẶT Ở CÁC CÂU CHAT TRƯỚC HẠO MÓN ĐANG CÓ SẴN TRONG GIỎ VÀO LẠI BẢNG LỆNH!
    (Ví dụ: Trong giỏ đang có sẵn Pizza và Phở, khi khách nhắn câu mới "thêm 1 Phở Bò", bạn CHỈ được xuất duy nhất ID Phở Bò với qty = 1. TUYỆT ĐỐI KHÔNG kèm theo Pizza hay sửa qty thành con số khác!).
 2. GIÁ TRỊ "qty" CHÍNH BẰNG ĐÚNG SỐ LƯỢNG KHÁCH NÓI Ở CÂU CHAT HIỆN TẠI (Khách nói "thêm 1" thì qty = 1). TUYỆT ĐỐI KHÔNG TỰ CỘNG DỒN HAY BỊA ĐẶT SỐ LƯỢNG MÓN!
-3. KHI KHÁCH YÊU CẦU MỘT MÓN CỤ THỂ NHƯNG CHƯA NÓI RÕ SỐ LƯỢNG (Ví dụ khách chỉ nhắn: "pizza hải sản", "mì quảng"):
-   - Bước 1: KIỂM TRA NGAY trong phần "GIỎ HÀNG HIỆN TẠI" xem tên món khách vừa nhắn đã có trong giỏ chưa.
-   - Bước 2: NẾU ĐÃ CÓ SẴN (Trùng khớp tên món): BẮT BUỘC phải nhắc nhở khách bằng câu sau: "Giỏ hàng của bạn hiện đang có sẵn [X] phần [Tên món]. Bạn có chắc chắn muốn mua thêm không, và thêm bao nhiêu phần ạ?".
-   - Bước 3: NẾU CHƯA CÓ TRONG GIỎ: Hãy hỏi trực tiếp: "Dạ, bạn muốn đặt bao nhiêu phần [Tên món] ạ?".
+3. KHI KHÁCH YÊU CẦU THÊM MỘT MÓN NHƯNG CHƯA NÓI RÕ SỐ LƯỢNG (Ví dụ khách nhắn: "bánh mì heo quay", "thêm pizza"):
+   - Bước 1: KIỂM TRA NGAY phần "GIỎ HÀNG HIỆN TẠI" xem món đó ĐÃ CÓ TRONG GIỎ CHƯA.
+   - Bước 2: NẾU ĐÃ CÓ SẴN (Trùng khớp): BẮT BUỘC trả lời bằng ĐÚNG mẫu sau: "⚠️ **Món đã có trong giỏ:**\n• **[Tên món]** (trong giỏ đang có **[X]** phần). Bạn có chắc muốn thêm nữa không, và thêm bao nhiêu phần?"
+   - Bước 3: NẾU CHƯA CÓ TRONG GIỎ: Hãy hỏi trực tiếp: "Dạ, bạn muốn đặt bao nhiêu phần [Tên món] ạ?"
 5. Khi được hỏi xác nhận món trùng (có/không): Nếu khách trả lời đồng ý/ok -> xuất ngay [CART_INTENT]. Nếu từ chối -> hủy thao tác.
 6. *** KHÔNG nói "đã thêm", "mình thêm xong". Chỉ xuất đúng mã lệnh [CART_INTENT]. ***
 
-🔥 QUY TẮC CHECKOUT / THANH TOÁN / GIẢM & XÓA MÓN:
-- Khi khách báo "thanh toán", "chốt đơn": NẾU khách chưa cung cấp địa chỉ, BẮT BUỘC phải hỏi: "Bạn kiểm tra lại giỏ hàng xem đã đúng chưa nhé. Nếu OK thì cho mình xin Địa chỉ giao hàng ạ!".
-- Khi khách ĐÃ cung cấp ĐỊA CHỈ nhưng CHƯA chọn phương thức thanh toán: BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?" (Câu này sẽ tự động kích hoạt bảng nút chọn thanh toán).
-- Khi khách đã cung cấp ĐẦY ĐỦ CẢ ĐỊA CHỈ LẪN PHƯƠNG THỨC THANH TOÁN (Tiền mặt hoặc VNPay): CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ từ lịch sử chat>", "paymentMethod": "<Tiền mặt hoặc VNPay>", "promoCode": "<mã nếu có>"}] và im lặng! TUYỆT ĐỐI KHÔNG tự nói xác nhận!
-- Khi muốn giảm số lượng hoặc xóa 1 món cụ thể khỏi giỏ: [REMOVE_ITEM_INTENT: {"name": "<Tên món>", "qty": 1}]
-- TUYỆT ĐỐI KHÔNG dùng [CLEAR_CART_INTENT] khi khách chỉ muốn bớt 1 phần!
-- Khi muốn hủy đơn: [CANCEL_ORDER_INTENT: {"orderId": <ID đơn>}]
+🔥 QUY TẮC CHECKOUT / THANH TOÁN (THỰC HIỆN ĐÚNG THỨ TỰ):
+- BƯỚC 1: Khi khách báo "thanh toán", "chốt đơn", hoặc nói "không" (khi được hỏi có đặt thêm không): 
+  Hãy tóm tắt lại giỏ hàng (BẮT BUỘC liệt kê chính xác số lượng từng món và tổng tiền dựa ĐÚNG vào số liệu từ bảng GIỎ HÀNG HIỆN TẠI ở trên, TUYỆT ĐỐI KHÔNG lấy số lượng từ lịch sử chat hoặc tự cộng dồn). SAU ĐÓ, chủ động gợi ý mã giảm giá (nếu có) và BẮT BUỘC hỏi: "Bạn có muốn áp dụng mã giảm giá nào không?". TUYỆT ĐỐI dùng cụm từ "tóm tắt lại" để hệ thống hiển thị hóa đơn!
+- BƯỚC 2: Khi khách trả lời về mã giảm giá (VD: đọc mã hoặc nói không có):
+  Xác nhận đã ghi nhận mã VÀ BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?".
+- BƯỚC 3: Khi khách đã chọn Phương thức thanh toán (Tiền mặt hoặc VNPay) NHƯNG CHƯA có địa chỉ:
+  BẮT BUỘC hỏi: "Bạn cho mình xin Địa chỉ giao hàng nhé!".
+- BƯỚC 4: Khi khách đã cung cấp ĐẦY ĐỦ CẢ (1) MÃ GIẢM GIÁ (nếu có), (2) PHƯƠNG THỨC THANH TOÁN, (3) ĐỊA CHỈ:
+  CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ từ lịch sử chat>", "paymentMethod": "<Tiền mặt hoặc VNPay>", "promoCode": "<mã nếu có>"}] và im lặng! TUYỆT ĐỐI KHÔNG tự nói xác nhận!
 
 VÍ DỤ CÁCH TRẢ LỜI ĐÚNG:
 Khách: "cho 1 Phở Bò Đặc Biệt" (hoặc "đặt 1 phở bò") → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "Cho mình đặt 1 Phở Bò Đặc Biệt và 2 Pizza Margherita" → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}, {"id": <ID pizza>, "qty": 2}]}]"
 Khách: "pizza phô mai" (TRONG GIỎ CHƯA CÓ MÓN NÀY) → Bạn: "Dạ, bạn muốn đặt bao nhiêu phần ạ?"
-Khách: "pizza phô mai" (TRONG GIỎ ĐÃ CÓ SẴN 4 PHẦN) → Bạn: "Giỏ hàng hiện tại đang có sẵn 4 phần Pizza Phô Mai. Bạn có muốn đặt thêm không?"
-Khách: "có" (Trả lời sau khi bạn hỏi có muốn đặt thêm không) → Bạn: "Dạ, bạn muốn đặt thêm bao nhiêu phần ạ?"
+Khách: "thêm pizza phô mai" (TRONG GIỎ ĐÃ CÓ SẴN 4 PHẦN) → Bạn: "⚠️ **Món đã có trong giỏ:**\n• **Pizza Phô Mai** (trong giỏ đang có **4** phần). Bạn có chắc muốn thêm nữa không, và thêm bao nhiêu phần?"
+Khách: "thêm 1 phần" (Trả lời sau khi bạn hỏi) → Bạn: "[CART_INTENT: {"items": [{"id": <ID pizza>, "qty": 1}]}]"
 Khách: "1 tô" (hoặc "1 phần" sau khi được hỏi) → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "thêm 1 phở nữa" → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
 Khách: "xóa 1 phần khỏi giỏ" (hoặc "bớt 1 phở") → Bạn: "[REMOVE_ITEM_INTENT: {"name": "phở", "qty": 1}]"
 Khách: "xóa giỏ hàng cho mình" (hoặc "xóa giỏ", "dọn sạch giỏ hàng") → Bạn: "[CLEAR_CART_INTENT]"
+Khách: "Hủy đơn hàng 14" (hoặc "hủy đơn 14") → Bạn: "[CANCEL_ORDER_INTENT: {"orderId": 14}]"
 Khách: "Giao tới 123 Lê Duẩn" → Bạn: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?"
 Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu trước) → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "paymentMethod": "VNPay", "promoCode": "GIAM20K"}]"`;
 
@@ -946,15 +952,30 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
 
               msg +=
                 '⚠️ **Trong thực đơn có nhiều món liên quan đến yêu cầu của bạn:**\n';
+              const allAmbiguousMatches: any[] = [];
               for (const amb of ambiguousList) {
                 msg += `\n• Với từ khóa **"${amb.keyword}"** (bạn muốn đặt **${amb.qty}** phần):\n`;
                 for (const m of amb.matches) {
                   msg += `  - **${m.ProductName}** (${m.Price.toLocaleString('vi-VN')}đ)\n`;
+                  if (!allAmbiguousMatches.some(x => x.ProductID === m.ProductID)) {
+                    allAmbiguousMatches.push({
+                      ProductID: m.ProductID,
+                      ProductName: m.ProductName,
+                      Price: m.Price,
+                      ImageURL: m.ImageURL,
+                      Ingredients: m.Ingredients,
+                      Inventory: m.Inventory,
+                    });
+                  }
                 }
               }
-              msg += '\n👉 Bạn muốn đặt cụ thể loại nào và bao nhiêu phần ạ?';
+              msg += '\n👉 Bạn có thể bấm Thêm Vào Giỏ ở ngay bên dưới, hoặc chat cho mình biết cụ thể loại nào và bao nhiêu phần ạ?';
 
               responseText = msg;
+              if (allAmbiguousMatches.length > 0) {
+                richContent = { type: 'food_recommendation', data: allAmbiguousMatches.slice(0, 4) };
+              }
+
               intentItems = [];
             }
           }
@@ -1234,49 +1255,14 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
             );
             const subtotal = updatedCartResult.recordset[0]?.Subtotal || 0;
 
-            // Lấy danh sách voucher đủ điều kiện áp dụng
-            const validPromos = await this.databaseService.query(
-              `SELECT PromoCode, Description, MinOrderValue 
-                 FROM Promotions 
-                 WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate 
-                   AND UsedCount < UsageLimit 
-                   AND MinOrderValue <= @Subtotal
-                 ORDER BY MinOrderValue DESC
-                 LIMIT 2`,
-              [{ name: 'Subtotal', value: subtotal }],
-            );
-
-            // Lấy voucher có giá trị gần nhất mà khách chưa đủ điều kiện để kích thích upsale
-            const nextPromos = await this.databaseService.query(
-              `SELECT  PromoCode, Description, MinOrderValue 
-                 FROM Promotions 
-                 WHERE CURRENT_TIMESTAMP BETWEEN StartDate AND EndDate 
-                   AND UsedCount < UsageLimit 
-                   AND MinOrderValue > @Subtotal
-                 ORDER BY MinOrderValue ASC`,
-              [{ name: 'Subtotal', value: subtotal }],
-            );
-
-            let promoMsg = '';
-            if (validPromos.recordset.length > 0) {
-              const codes = validPromos.recordset
-                .map((p) => `**${p.PromoCode}** (${p.Description})`)
-                .join(', ');
-              promoMsg = `\n🎁 **Mã ưu đãi khả dụng:** ${codes}\n💡 Nhắn **Địa chỉ kèm tên mã** để đặt đơn *(VD: "Giao tới 123 Lê Duẩn, mã ${validPromos.recordset[0].PromoCode}")*`;
-            } else if (nextPromos.recordset.length > 0) {
-              const nextP = nextPromos.recordset[0];
-              const diff = nextP.MinOrderValue - subtotal;
-              promoMsg = `\n🔥 **Mẹo ưu đãi:** Mua thêm **${diff.toLocaleString('vi-VN')}đ** để đủ ĐK dùng mã **${nextP.PromoCode}** (${nextP.Description})!`;
-            } else {
-              promoMsg = `\n💡 Nhắn **Địa chỉ giao hàng** khi bạn sẵn sàng đặt đơn nhé!`;
-            }
+            // Lấy danh sách voucher đủ điều kiện áp dụng (đã chuyển sang bước Checkout)
 
             let outOfStockMsg = '';
             if (outOfStockItems.length > 0) {
               outOfStockMsg = `\n⚠️ Lưu ý: ${outOfStockItems.join(', ')} không đủ tồn kho nên chưa được thêm.`;
             }
 
-            responseText = `✅ **Đã thêm vào giỏ hàng!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)${promoMsg}${outOfStockMsg}`;
+            responseText = `✅ **Đã thêm vào giỏ hàng!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)\n\n👉 Bạn có muốn đặt thêm gì nữa không?${outOfStockMsg}`;
           }
         } catch (err) {
           this.logger.error('Lỗi khi tự động thêm giỏ hàng từ Chatbot', err);
@@ -1336,7 +1322,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               (sum, r) => sum + r.Price * r.Quantity,
               0,
             );
-            responseText = `✅ **Đã thêm vào giỏ hàng tạm!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)\nĐã thêm: ${addedNames.join(', ')}\n\n💡 Bạn có thể tiếp tục hỏi thêm món, hoặc báo "Thanh toán" để chốt đơn nhé!`;
+            responseText = `✅ **Đã thêm vào giỏ hàng tạm!** (Tạm tính: **${subtotal.toLocaleString('vi-VN')}đ**)\nĐã thêm: ${addedNames.join(', ')}\n\n👉 Bạn có muốn đặt thêm gì nữa không?`;
             newLocalCartToReturn = tempLocalCart;
           } else if (intentItems.length > 0) {
             responseText = `❌ Không thể thêm món (Có thể do món đã hết hàng). Bạn chọn món khác nhé!`;
@@ -1370,7 +1356,7 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               const appliedPromo = intentData.promoCode
                 ? intentData.promoCode
                 : null;
-              await this.ordersService.createOrder(
+              const orderResult = await this.ordersService.createOrder(
                 userId,
                 intentData.address,
                 null,
@@ -1380,18 +1366,27 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
                 15000,
               );
               isOrderPlaced = true;
-              let successMsg =
-                '✅ **Đặt hàng thành công!** Đơn sẽ được giao tới: **' +
-                intentData.address +
-                '**';
-              if (appliedPromo) {
-                successMsg += ` *(Mã giảm giá: ${appliedPromo})*`;
+              
+              const isVNPay = intentData.paymentMethod && intentData.paymentMethod.toLowerCase().includes('vnpay');
+              if (isVNPay && orderResult && orderResult.OrderID) {
+                const paymentUrl = await this.paymentService.createPaymentUrl(userId, orderResult.OrderID, '127.0.0.1');
+                responseText = `✅ **Đơn hàng #${orderResult.OrderID} đã được tạo!**\n\n🔗 Vui lòng click vào nút bên dưới để tiến hành thanh toán VNPay. Nhà hàng sẽ bắt đầu chuẩn bị món ngay sau khi bạn thanh toán thành công!`;
+                richContent = { type: 'payment_link', url: paymentUrl };
+              } else {
+                let successMsg =
+                  '✅ **Đặt hàng thành công!** Đơn sẽ được giao tới: **' +
+                  intentData.address +
+                  '**';
+                if (appliedPromo) {
+                  successMsg += ` *(Mã giảm giá: ${appliedPromo})*`;
+                }
+                responseText = successMsg;
               }
-              responseText = successMsg;
             }
           }
         } catch (err) {
           this.logger.error('Lỗi khi checkout từ Chatbot', err);
+          require('fs').writeFileSync('debug_checkout_err.json', JSON.stringify({ message: err.message, stack: err.stack }, null, 2));
           responseText =
             '❌ Lỗi thanh toán tự động, bạn vui lòng sử dụng nút Thanh Toán trên website!';
         }
@@ -1504,7 +1499,9 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
       // Tự động nhận diện Mã giảm giá (Promo Codes)
       if (
         !hasCheckoutIntent &&
+        !checkoutMatch &&
         typeof responseText === 'string' &&
+        !responseText.includes('Đặt hàng thành công') &&
         (responseText.includes('🎁') ||
           responseText.toLowerCase().includes('mã giảm giá') ||
           message.toLowerCase().includes('mã giảm giá'))
@@ -1542,6 +1539,12 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               type: 'cart_summary',
               data: { items: cartItemsData, subtotal: subtotalData },
             };
+            
+            // Ép buộc ghi đè lại nội dung do AI sinh ra bằng dữ liệu thật từ DB để tránh ảo giác
+            const cartLinesText = cartItemsData.map(r => `• ${r.Quantity}x ${r.ProductName} — ${(r.Price * r.Quantity).toLocaleString('vi-VN')}đ`).join('\n');
+            const shippingFee = 15000;
+            const totalTT = subtotalData + shippingFee;
+            responseText = `Dạ, mình **tóm tắt lại** giỏ hàng của bạn:\n\n${cartLinesText}\n**Tổng: ${subtotalData.toLocaleString('vi-VN')}đ** | Ship: ${shippingFee.toLocaleString('vi-VN')}đ | **Tổng TT: ${totalTT.toLocaleString('vi-VN')}đ**\n\n🎁 Bạn có muốn áp dụng mã giảm giá nào không?`;
           }
         }
       }

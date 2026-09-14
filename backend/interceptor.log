@@ -12,3 +12,6 @@
 [2026-09-04T16:57:03.721Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
 [2026-09-04T16:57:04.733Z] msg: "thêm 1 phần bún bò", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":1}]}
 [2026-09-05T05:47:46.920Z] msg: "thêm 2 phần **mì quảng**", hasQtyWord: true, parsedData: {"items":[{"id":13,"qty":2}]}
+[2026-09-13T15:25:57.276Z] msg: "bánh mì heo quay", hasQtyWord: false, parsedData: {"items":[{"id":4,"qty":1}]}
+[2026-09-14T14:11:40.609Z] msg: "bún bò huế", hasQtyWord: false, parsedData: {"items":[{"id":11,"qty":2}]}
+[2026-09-14T14:11:47.394Z] msg: "thêm 2 phần", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":2}]}

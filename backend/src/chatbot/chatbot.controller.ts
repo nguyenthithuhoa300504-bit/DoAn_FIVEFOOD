@@ -14,13 +14,13 @@ export class ChatbotController {
     @Body() body: { message: string; sessionId?: string; localCart?: any[] },
     @Req() req: any,
   ) {
-    let userId = null;
+    let userId: number | null = null;
     try {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
         const payload = this.jwtService.verify(token);
-        userId = payload.sub; // payload.sub chứa UserID
+        userId = parseInt(payload.sub, 10); // payload.sub chứa UserID
       }
     } catch (e) {
       // Bỏ qua lỗi token (ví dụ hết hạn), coi như là guest
