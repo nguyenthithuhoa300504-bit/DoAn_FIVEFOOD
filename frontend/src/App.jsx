@@ -3349,7 +3349,11 @@ function App() {
                     </div>
 
                     {/* Live Order Status Stepper */}
-                    <OrderProgressStepper status={order.Status} />
+                    <OrderProgressStepper 
+                      status={order.Status} 
+                      shipperLat={shipperLocation && shipperLocation.orderId === order.OrderID ? shipperLocation.lat : null}
+                      shipperLng={shipperLocation && shipperLocation.orderId === order.OrderID ? shipperLocation.lng : null}
+                    />
 
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                       <button 
@@ -3588,7 +3592,11 @@ function App() {
 
             <div style={{ padding: '20px 25px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
               {/* Visual Status Progress Timeline */}
-              <OrderProgressStepper status={selectedOrderDetails.Status} />
+              <OrderProgressStepper 
+                status={selectedOrderDetails.Status} 
+                shipperLat={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lat : null}
+                shipperLng={shipperLocation && shipperLocation.orderId === selectedOrderDetails.OrderID ? shipperLocation.lng : null}
+              />
 
               {/* Info Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0,0,0,0.02)', padding: '20px', borderRadius: '16px', border: '2px dashed rgba(150, 150, 150, 0.4)' }}>

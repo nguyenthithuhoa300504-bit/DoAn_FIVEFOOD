@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import './OrderProgressStepper.css';
 
 const STEPS = [
@@ -8,7 +10,47 @@ const STEPS = [
   { label: 'Hoàn thành', icon: '🎉' },
 ];
 
-export default function OrderProgressStepper({ status }) {
+export default function OrderProgressStepper({ status, shipperLat, shipperLng }) {
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markerInstance = useRef(null);
+
+  useEffect(() => {
+    // Only init map if we are delivering
+    if (status === 'Đang giao' && mapRef.current) {
+      const lat = shipperLat || 10.9333; // Fallback to store lat
+      const lng = shipperLng || 108.1000; // Fallback to store lng
+
+      if (!mapInstance.current) {
+        mapInstance.current = L.map(mapRef.current, {
+          zoomControl: false,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false
+        }).setView([lat, lng], 15);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          attribution: ''
+        }).addTo(mapInstance.current);
+
+        const customIcon = L.divIcon({
+          html: `<div style="font-size: 30px; animation: bounce 1s infinite alternate; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.3));">🛵</div>`,
+          className: 'shipper-icon-marker',
+          iconSize: [30, 30],
+          iconAnchor: [15, 30]
+        });
+
+        markerInstance.current = L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance.current);
+      } else {
+        // Update position smoothly
+        mapInstance.current.setView([lat, lng]);
+        if (markerInstance.current) {
+          markerInstance.current.setLatLng([lat, lng]);
+        }
+      }
+    }
+  }, [status, shipperLat, shipperLng]);
+
   // Nếu đơn bị hủy
   if (status === 'Đã hủy' || status === 'Canceled' || status === 'Hủy') {
     return (
@@ -54,6 +96,20 @@ export default function OrderProgressStepper({ status }) {
           );
         })}
       </div>
+      
+      {/* Live Map Tracking for Shipper */}
+      {status === 'Đang giao' && (
+        <div style={{ marginTop: '25px', borderRadius: '16px', overflow: 'hidden', border: '3px solid #00e676', position: 'relative', boxShadow: '0 12px 24px rgba(0, 230, 118, 0.25)' }}>
+          <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 1000, background: 'rgba(255, 255, 255, 0.95)', padding: '6px 14px', borderRadius: '20px', fontWeight: 'bold', color: '#00c853', fontSize: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(4px)' }}>
+            <span style={{ width: '10px', height: '10px', background: '#00e676', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
+            Shipper đang di chuyển
+          </div>
+          <div ref={mapRef} style={{ width: '100%', height: '280px', background: '#e9ecef' }}></div>
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); } }
+          `}} />
+        </div>
+      )}
     </div>
   );
 }

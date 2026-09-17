@@ -198,19 +198,22 @@ export class OrdersService {
 
     if (status === 'Đang giao') {
       const { UserID, Latitude, Longitude } = orderResult.recordset[0];
-      if (Latitude && Longitude) {
-        // Tọa độ cửa hàng cố định (Đồng bộ với Frontend: Bình Thuận)
-        const storeLat = 10.9333;
-        const storeLng = 108.1000;
-        this.eventsGateway.startDeliverySimulation(
-          orderId,
-          UserID,
-          storeLat,
-          storeLng,
-          Latitude,
-          Longitude,
-        );
-      }
+      // Tọa độ cửa hàng cố định (Đồng bộ với Frontend: Bình Thuận)
+      const storeLat = 10.9333;
+      const storeLng = 108.1000;
+      
+      // Fallback tọa độ khách hàng (nếu đơn hàng bị thiếu tọa độ)
+      const targetLat = Latitude || 10.9400;
+      const targetLng = Longitude || 108.1100;
+
+      this.eventsGateway.startDeliverySimulation(
+        orderId,
+        UserID,
+        storeLat,
+        storeLng,
+        targetLat,
+        targetLng,
+      );
     }
 
     return {

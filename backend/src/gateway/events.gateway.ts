@@ -94,7 +94,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             [{ name: 'OrderID', value: orderId }],
           )
           .then(() => {
-            this.server.to(`room_user_${userId}`).emit('orderStatusUpdate', {
+            // Phát cho tất cả mọi người (bao gồm Admin) để đồng bộ trạng thái "Hoàn thành"
+            this.server.emit('orderStatusUpdate', {
               orderId,
               status: 'Hoàn thành',
             });

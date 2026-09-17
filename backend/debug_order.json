@@ -1,14 +1,14 @@
 {
-  "OrderID": 73,
+  "OrderID": 77,
   "UserID": 3,
-  "OrderDate": "2026-09-17T08:12:11.925Z",
-  "TotalAmount": 80000,
-  "DiscountAmount": 8000,
+  "OrderDate": "2026-09-17T09:30:03.215Z",
+  "TotalAmount": 102000,
+  "DiscountAmount": 20000,
   "ShippingFee": 15000,
-  "FinalAmount": 87000,
-  "PromotionID": 1,
+  "FinalAmount": 97000,
+  "PromotionID": 2,
   "Status": "Chờ xác nhận",
-  "ShippingAddress": "32 lê hồng phong",
+  "ShippingAddress": "12 Lê Lợi",
   "Latitude": 10.988564,
   "Longitude": 106.67758,
   "PaymentMethod": "COD",
@@ -17,5 +17,5 @@
   "FullName": "ThuHoa",
   "Email": "thu@fivefood.com",
   "Phone": "0919458888",
-  "PromoCode": "GIAM10K"
+  "PromoCode": "GIAM20K"
 }
