@@ -30,6 +30,23 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
     ));
   };
 
+  const handleFavorite = async (e) => {
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      toast('Vui lòng đăng nhập để thêm vào yêu thích!');
+      return;
+    }
+    try {
+      await apiFetch('http://localhost:3000/api/favorites', {
+        method: 'POST',
+        body: JSON.stringify({ productId: product.ProductID }),
+      });
+      toast.success('Đã thêm vào danh sách yêu thích! ❤️');
+    } catch (err) {
+      toast.error(err.message || 'Lỗi khi thêm yêu thích');
+    }
+  };
+
   return (
     <div className="premium-food-detail-overlay fade-in" onClick={onClose}>
       <div className="premium-food-detail-container" onClick={(e) => e.stopPropagation()}>
@@ -42,7 +59,7 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
               <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
           </button>
-          <button className="premium-heart-btn">
+          <button className="premium-heart-btn" onClick={handleFavorite} style={{ marginRight: '10px' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>

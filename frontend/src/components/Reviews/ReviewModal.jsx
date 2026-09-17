@@ -31,8 +31,8 @@ export default function ReviewModal({ product, orderId, onClose, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 2000 }}>
-      <div className="modal-content glass-panel fade-in" style={{ maxWidth: '400px' }}>
+    <div className="checkout-modal-overlay" style={{ zIndex: 2000 }}>
+      <div className="checkout-modal glass-panel fade-in" style={{ maxWidth: '400px' }}>
         <h2>Đánh giá món ăn</h2>
         <p style={{ marginBottom: '15px', fontWeight: 'bold' }}>{product.ProductName}</p>
 
@@ -72,7 +72,7 @@ export default function ReviewModal({ product, orderId, onClose, onSuccess }) {
             ></textarea>
           </div>
 
-          <div className="modal-actions">
+          <div className="modal-actions" style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '20px' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Hủy
             </button>

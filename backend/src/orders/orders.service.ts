@@ -150,12 +150,23 @@ export class OrdersService {
   ) {
     // 1. Kiểm tra đơn hàng có tồn tại không
     const orderResult = await this.dbService.query(
-      `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod FROM Orders WHERE OrderID = @OrderID`,
+      `SELECT OrderID, UserID, Latitude, Longitude, PaymentMethod, PaymentStatus FROM Orders WHERE OrderID = @OrderID`,
       [{ name: 'OrderID', value: orderId }],
     );
 
     if (orderResult.recordset.length === 0) {
       throw new NotFoundException('Đơn hàng không tồn tại.');
+    }
+
+    const order = orderResult.recordset[0];
+
+    // Chặn duyệt đơn nếu khách chưa thanh toán online (VNPay/VietQR)
+    if (
+      (status === 'Đang chuẩn bị' || status === 'Đang giao' || status === 'Hoàn thành') &&
+      order.PaymentStatus === 'Chưa thanh toán' &&
+      order.PaymentMethod?.toUpperCase() !== 'COD'
+    ) {
+      throw new BadRequestException('Không thể duyệt! Khách hàng chưa hoàn tất thanh toán online.');
     }
 
     // Tự động chuyển PaymentStatus sang Đã thanh toán nếu hoàn thành đơn COD
@@ -205,6 +216,44 @@ export class OrdersService {
     return {
       success: true,
       message: `Cập nhật đơn hàng sang "${status}" thành công.`,
+    };
+  }
+
+  /**
+   * Đổi phương thức thanh toán cho đơn hàng chưa thanh toán
+   */
+  async changePaymentMethod(
+    userId: number,
+    orderId: number,
+    paymentMethod: string,
+  ) {
+    const orderResult = await this.dbService.query(
+      `SELECT OrderID, UserID, PaymentStatus FROM Orders WHERE OrderID = @OrderID AND UserID = @UserID`,
+      [
+        { name: 'OrderID', value: orderId },
+        { name: 'UserID', value: userId },
+      ],
+    );
+
+    if (orderResult.recordset.length === 0) {
+      throw new NotFoundException('Đơn hàng không tồn tại hoặc không thuộc về bạn.');
+    }
+
+    if (orderResult.recordset[0].PaymentStatus !== 'Chưa thanh toán') {
+      throw new BadRequestException('Chỉ có thể đổi phương thức cho đơn hàng chưa thanh toán.');
+    }
+
+    await this.dbService.query(
+      `UPDATE Orders SET PaymentMethod = @PaymentMethod WHERE OrderID = @OrderID`,
+      [
+        { name: 'PaymentMethod', value: paymentMethod },
+        { name: 'OrderID', value: orderId },
+      ],
+    );
+
+    return {
+      success: true,
+      message: 'Đổi phương thức thanh toán thành công.',
     };
   }
 

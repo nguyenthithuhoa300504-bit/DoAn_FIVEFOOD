@@ -99,6 +99,19 @@ export class OrdersController {
     const userId = req.user.userId;
     return await this.ordersService.cancelOrder(userId, id);
   }
+  /**
+   * Đổi phương thức thanh toán cho đơn hàng chưa thanh toán
+   * PATCH /api/orders/:id/payment-method
+   */
+  @Put(':id/payment-method')
+  async changePaymentMethod(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Body('paymentMethod') paymentMethod: string,
+  ) {
+    const userId = req.user.userId;
+    return await this.ordersService.changePaymentMethod(userId, id, paymentMethod);
+  }
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

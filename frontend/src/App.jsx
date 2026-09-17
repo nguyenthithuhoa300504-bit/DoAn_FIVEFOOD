@@ -637,6 +637,22 @@ function App() {
     }
   };
 
+  const handleChangePaymentMethod = async (orderId, newMethod) => {
+    try {
+      await apiFetch(`${API_BASE_URL}/orders/${orderId}/payment-method`, {
+        method: 'PUT',
+        body: JSON.stringify({ paymentMethod: newMethod })
+      });
+      toast.success(`Đã đổi phương thức thanh toán sang ${newMethod}`);
+      // Refresh order details
+      loadOrderDetails(orderId, false);
+      // Refresh order list
+      fetchUserOrders();
+    } catch (err) {
+      toast.error('Lỗi khi đổi phương thức: ' + err.message);
+    }
+  };
+
   // Admin cập nhật trạng thái đơn hàng
   const handleUpdateOrderStatus = async (orderId, newStatus, reason = '') => {
     try {
@@ -3695,27 +3711,67 @@ function App() {
                 </button>
               </div>
 
-              {/* Nút thanh toán lại VNPay nếu đơn chưa thanh toán */}
-              {selectedOrderDetails.PaymentStatus === 'Chưa thanh toán' && selectedOrderDetails.PaymentMethod === 'VNPAY' && (
-                <div style={{ marginTop: '15px' }}>
-                  <button 
-                    style={{ width: '100%', padding: '14px', background: '#005baa', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    onClick={async () => {
-                      try {
-                        const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
-                          method: 'POST',
-                          body: JSON.stringify({ orderId: selectedOrderDetails.OrderID })
-                        });
-                        if (paymentRes && paymentRes.paymentUrl) {
-                          window.location.href = paymentRes.paymentUrl;
+              {/* Nút thanh toán lại VNPay và đổi phương thức nếu đơn chưa thanh toán */}
+              {selectedOrderDetails.PaymentStatus === 'Chưa thanh toán' && (
+                <div style={{ marginTop: '20px' }}>
+                  {selectedOrderDetails.PaymentMethod?.toUpperCase() === 'VNPAY' && (
+                    <button 
+                      style={{ width: '100%', padding: '14px', background: 'linear-gradient(45deg, #005baa, #007bff)', color: '#fff', border: 'none', borderRadius: '30px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(0, 91, 170, 0.3)', transition: 'all 0.3s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
+                      onClick={async () => {
+                        try {
+                          const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
+                            method: 'POST',
+                            body: JSON.stringify({ orderId: selectedOrderDetails.OrderID })
+                          });
+                          if (paymentRes && paymentRes.paymentUrl) {
+                            window.location.href = paymentRes.paymentUrl;
+                          }
+                        } catch (err) {
+                          toast.error('Lỗi khi tạo lại URL thanh toán VNPay');
                         }
-                      } catch (err) {
-                        toast.error('Lỗi khi tạo lại URL thanh toán VNPay');
-                      }
-                    }}
-                  >
-                    💳 Thanh toán lại bằng VNPay
-                  </button>
+                      }}
+                    >
+                      💳 Tiếp tục thanh toán bằng VNPay
+                    </button>
+                  )}
+                  
+                  <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '12px', color: '#999', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 'bold' }}>Hoặc chọn phương thức khác</p>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                      {selectedOrderDetails.PaymentMethod?.toUpperCase() !== 'VIETQR' && (
+                        <button 
+                          style={{ padding: '8px 16px', background: 'transparent', color: '#666', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.borderColor = '#ccc' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#e0e0e0' }}
+                          onClick={() => handleChangePaymentMethod(selectedOrderDetails.OrderID, 'VIETQR')}
+                        >
+                          🏦 Đổi sang VietQR
+                        </button>
+                      )}
+                      {selectedOrderDetails.PaymentMethod?.toUpperCase() !== 'COD' && (
+                        <button 
+                          style={{ padding: '8px 16px', background: 'transparent', color: '#666', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.borderColor = '#ccc' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#e0e0e0' }}
+                          onClick={() => handleChangePaymentMethod(selectedOrderDetails.OrderID, 'COD')}
+                        >
+                          💵 Đổi sang Tiền mặt
+                        </button>
+                      )}
+                      {selectedOrderDetails.PaymentMethod?.toUpperCase() !== 'VNPAY' && (
+                        <button 
+                          style={{ padding: '8px 16px', background: 'transparent', color: '#666', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.borderColor = '#ccc' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#e0e0e0' }}
+                          onClick={() => handleChangePaymentMethod(selectedOrderDetails.OrderID, 'VNPAY')}
+                        >
+                          💳 Đổi sang VNPay
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
