@@ -1,7 +1,7 @@
 # TÀI LIỆU THIẾT KẾ CÁC PHÂN HỆ HỆ THỐNG (DESIGN_MODULES)
 ## DỰ ÁN: PHÁT TRIỂN ỨNG DỤNG WEB ĐẶT VÀ GIAO ĐỒ ĂN TRỰC TUYẾN FIVEFOOD
 
-Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **13 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS). Hệ thống được thiết kế mở rộng với **18 Bảng vật lý (Tables) + 1 Bảng Lịch sử + 1 View**.
+Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật của **13 phân hệ (modules)** cấu thành nên hệ thống FIVEFOOD, đóng vai trò làm tài liệu tham chiếu (documentation) trong quá trình phát triển mã nguồn (Backend NestJS, Database SQL Server 2022, Frontend ReactJS). Hệ thống được thiết kế mở rộng với **18 Bảng vật lý (Tables) + 1 Bảng Lịch sử + 2 Views**.
 
 ---
 
@@ -18,7 +18,7 @@ Tài liệu này tổng hợp toàn bộ thông tin thiết kế kỹ thuật c�
 ### 2. Dịch vụ API (Backend)
 *   **Core Framework**: **NestJS** với cấu trúc 3 lớp (3-Tier Architecture).
 *   **Xác thực & Bảo mật**: **Passport.js** tích hợp **JWT**, mã hóa mật khẩu bằng **bcrypt**.
-*   **Tích hợp AI**: Gọi trực tiếp API Groq với mô hình **LLaMA-3.1-8B**.
+*   **Tích hợp AI**: Gọi trực tiếp API DeepSeek (sử dụng mô hình DeepSeek Chat).
 *   **Kết nối Database**: Thư viện mssql (TypeORM).
 *   **Tài liệu API Tự động**: **Swagger UI**.
 
@@ -339,4 +339,4 @@ Frontend ReactJS đảm nhiệm logic Social Proof, FOMO Popup, Cross-sell và Z
 ---
 
 ## 13. PHÂN HỆ 13: QUẢN TRỊ TRUNG TÂM (Admin Dashboard)
-Tích hợp Recharts vẽ biểu đồ từ **View 1: `vw_DailyRevenue`**, xuất dữ liệu Excel (.csv) và cung cấp tài liệu API tự động qua Swagger UI.
+Tích hợp Recharts vẽ biểu đồ từ cơ sở dữ liệu (tối ưu qua các Views như v_SanPhamBanChay), xuất dữ liệu Excel (.csv) và cung cấp tài liệu API tự động qua Swagger UI.

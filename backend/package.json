@@ -31,6 +31,7 @@
     "@nestjs/websockets": "^11.1.27",
     "@types/pg": "^8.23.1",
     "bcrypt": "^6.0.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.4.2",
     "mssql": "^12.7.0",
     "passport": "^0.7.0",

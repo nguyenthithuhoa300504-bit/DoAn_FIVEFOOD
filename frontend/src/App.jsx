@@ -47,18 +47,18 @@ const VALID_BOUNDS = [
 ];
 
 // Component bản đồ Leaflet tích hợp trực tiếp không qua react-leaflet để tránh conflict React 19
-function LeafletMap({ onLocationSelected }) {
+function LeafletMap({ onLocationSelected, selectedLat, selectedLng }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerInstance = useRef(null);
 
   useEffect(() => {
     if (!mapInstance.current && mapRef.current) {
-      // Khởi tạo bản đồ tại Phan Thiết, giới hạn Lâm Đồng & Bình Thuận
+      // Khởi tạo bản đồ tại Phan Thiết, giới hạn chặt chẽ trong khu vực Bình Thuận
       mapInstance.current = L.map(mapRef.current, {
-        maxBounds: VIEW_BOUNDS,
-        maxBoundsViscosity: 0.8,
-        minZoom: 8
+        maxBounds: VALID_BOUNDS,
+        maxBoundsViscosity: 1.0, // Đặt 1.0 để giữ cứng bản đồ không cho kéo ra ngoài
+        minZoom: 9
       }).setView(STORE_COORDS, 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -101,18 +101,33 @@ function LeafletMap({ onLocationSelected }) {
     }
 
     return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-        markerInstance.current = null;
-      }
+      // Cleanup nếu unmount
     };
   }, [onLocationSelected]);
+
+  // Sync marker khi prop selectedLat/selectedLng thay đổi (ví dụ: tìm từ address)
+  useEffect(() => {
+    if (mapInstance.current && selectedLat && selectedLng) {
+      const latlng = [selectedLat, selectedLng];
+      if (markerInstance.current) {
+        markerInstance.current.setLatLng(latlng);
+      } else {
+        markerInstance.current = L.marker(latlng, {
+          icon: L.divIcon({
+            html: renderToString(<MapPin color="#f44336" size={30} strokeWidth={2.5} />),
+            className: 'user-emoji-icon',
+            iconAnchor: [15, 15]
+          })
+        }).addTo(mapInstance.current);
+      }
+      mapInstance.current.flyTo(latlng, 14, { duration: 1.5 });
+    }
+  }, [selectedLat, selectedLng]);
 
   return (
     <div style={{ margin: '10px 0' }}>
       <label style={{ display: 'block', fontSize: '12px', color: '#00a8ff', marginBottom: '5px', fontWeight: 'bold' }}>
-        🗺️ Click vào bản đồ để chọn vị trí giao hàng:
+        🗺️ Click vào bản đồ hoặc Tìm kiếm địa chỉ:
       </label>
       <div 
         ref={mapRef} 
@@ -364,6 +379,7 @@ function App() {
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoSuccess, setPromoSuccess] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [vietQRData, setVietQRData] = useState(null);
   const [checkoutError, setCheckoutError] = useState('');
 
   // Fetch active promotions khi mở modal thanh toán
@@ -690,6 +706,18 @@ function App() {
     setLatitude(lat);
     setLongitude(lng);
     setCheckoutError('');
+    
+    // Reverse Geocoding (Lấy địa chỉ từ tọa độ)
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      const geoData = await geoRes.json();
+      if (geoData && geoData.display_name) {
+        setShippingAddress(geoData.display_name);
+      }
+    } catch (err) {
+      console.error('Lỗi lấy địa chỉ từ toạ độ:', err);
+    }
+
     try {
       // OSRM format: lon,lat
       const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${STORE_COORDS[1]},${STORE_COORDS[0]};${lng},${lat}?overview=false`);
@@ -743,84 +771,92 @@ function App() {
     }
   };
 
-  // Tiến hành thanh toán / đặt đơn hàng
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-    setCheckoutError('');
-    
-    if (!shippingAddress.trim()) {
-      setCheckoutError('Vui lòng điền địa chỉ giao hàng.');
-      return;
-    }
-    if (!latitude || !longitude) {
-      setCheckoutError('Vui lòng bấm chọn vị trí giao hàng trên bản đồ số.');
-      return;
-    }
-
-    try {
-      const orderData = {
-        shippingAddress,
-        latitude,
-        longitude,
-        paymentMethod,
-        promoCode: appliedPromo || null,
-        shippingFee
-      };
-
-      const result = await apiFetch(`${API_BASE_URL}/orders`, {
-        method: 'POST',
-        body: JSON.stringify(orderData)
-      });
-
-      // Nếu chọn thanh toán VNPAY, gọi tiếp API tạo link và chuyển hướng
-      if (paymentMethod === 'VNPAY') {
-        const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
-          method: 'POST',
-          body: JSON.stringify({ orderId: result.OrderID })
-        });
-        if (paymentRes && paymentRes.paymentUrl) {
-          setIsCheckoutOpen(false);
-          setShippingAddress('');
-          setLatitude(null);
-          setLongitude(null);
-          setDistance(null);
-          setDuration(null);
-          setShippingFee(0);
-          setPromoCodeInput('');
-          setAppliedPromo('');
-          setDiscountAmount(0);
-          setPromoSuccess('');
-          await fetchCartFromServer();
-          window.location.href = paymentRes.paymentUrl;
-          return;
-        }
+    // Tiến hành thanh toán / đặt đơn hàng
+    const handlePlaceOrder = async (e) => {
+      e.preventDefault();
+      setCheckoutError('');
+      
+      if (!shippingAddress.trim()) {
+        setCheckoutError('Vui lòng điền địa chỉ giao hàng.');
+        return;
       }
+      if (!latitude || !longitude) {
+        setCheckoutError('Vui lòng bấm chọn vị trí giao hàng trên bản đồ số.');
+        return;
+      }
+  
+      try {
+        const orderData = {
+          shippingAddress,
+          latitude,
+          longitude,
+          paymentMethod,
+          promoCode: appliedPromo || null,
+          shippingFee
+        };
+  
+        const result = await apiFetch(`${API_BASE_URL}/orders`, {
+          method: 'POST',
+          body: JSON.stringify(orderData)
+        });
+  
+        // Nếu chọn thanh toán VNPAY, gọi tiếp API tạo link và chuyển hướng
+        if (paymentMethod === 'VNPAY') {
+          const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
+            method: 'POST',
+            body: JSON.stringify({ orderId: result.OrderID })
+          });
+          if (paymentRes && paymentRes.paymentUrl) {
+            setIsCheckoutOpen(false);
+            setShippingAddress('');
+            setLatitude(null);
+            setLongitude(null);
+            setDistance(null);
+            setDuration(null);
+            setShippingFee(0);
+            setPromoCodeInput('');
+            setAppliedPromo('');
+            setDiscountAmount(0);
+            setPromoSuccess('');
+            await fetchCartFromServer();
+            window.location.href = paymentRes.paymentUrl;
+            return;
+          }
+        }
+  
+        const finalAmount = Math.max(0, totalPrice + shippingFee - discountAmount);
 
-      toast(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
-      
-      // Xóa các state tạm
-      setIsCheckoutOpen(false);
-      setShippingAddress('');
-      setLatitude(null);
-      setLongitude(null);
-      setDistance(null);
-      setDuration(null);
-      setShippingFee(0);
-      setPromoCodeInput('');
-      setAppliedPromo('');
-      setDiscountAmount(0);
-      setPromoSuccess('');
-      
-      // Đồng bộ lại giỏ hàng từ server để cập nhật trống
-      await fetchCartFromServer();
-      
-      // Chuyển sang tab xem lịch sử đơn hàng
-      setActiveTab('orders');
-      fetchClientOrders();
-    } catch (err) {
-      setCheckoutError(err.message || 'Lỗi xảy ra khi tạo đơn hàng.');
-    }
-  };
+        // Nếu chọn VietQR, sinh link ảnh và hiển thị Modal
+        if (paymentMethod === 'VIETQR') {
+          const qrUrl = `https://img.vietqr.io/image/namabank-0824781046-compact2.png?amount=${finalAmount}&addInfo=Thanh_toan_don_hang_${result.OrderID}&accountName=NGUYEN%20THI%20THU%20HOA`;
+          setVietQRData({ url: qrUrl, orderId: result.OrderID, amount: finalAmount });
+        } else {
+          toast(`Đặt hàng thành công! Mã hóa đơn: #${result.OrderID}`);
+        }
+        
+        // Xóa các state tạm
+        setIsCheckoutOpen(false);
+        setShippingAddress('');
+        setLatitude(null);
+        setLongitude(null);
+        setDistance(null);
+        setDuration(null);
+        setShippingFee(0);
+        setPromoCodeInput('');
+        setAppliedPromo('');
+        setDiscountAmount(0);
+        setPromoSuccess('');
+        
+        // Đồng bộ lại giỏ hàng từ server để cập nhật trống
+        await fetchCartFromServer();
+        
+        // Chuyển sang tab xem lịch sử đơn hàng
+        setActiveTab('orders');
+        fetchClientOrders();
+      } catch (err) {
+        setCheckoutError(err.message || 'Lỗi xảy ra khi tạo đơn hàng.');
+      }
+    };
 
   // Tải danh sách sản phẩm từ backend
   const fetchProducts = async () => {
@@ -3355,7 +3391,11 @@ function App() {
                 </div>
 
                 {/* Leaflet Map */}
-                <LeafletMap onLocationSelected={handleLocationSelected} />
+                <LeafletMap 
+                  onLocationSelected={handleLocationSelected} 
+                  selectedLat={latitude} 
+                  selectedLng={longitude} 
+                />
 
                 {latitude && longitude && (
                   <div style={{ fontSize: '12px', background: 'rgba(255, 87, 34, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255, 87, 34, 0.2)' }}>
@@ -3417,6 +3457,16 @@ function App() {
                         />
                         <span>🏦 Ví điện tử VNPAY (Sandbox)</span>
                       </label>
+                      <label className="payment-option">
+                        <input 
+                          type="radio" 
+                          name="paymentMethod" 
+                          value="VIETQR" 
+                          checked={paymentMethod === 'VIETQR'}
+                          onChange={() => setPaymentMethod('VIETQR')}
+                        />
+                        <span>💳 Chuyển khoản ngân hàng (VietQR)</span>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -3455,6 +3505,43 @@ function App() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- PHÂN HỆ 4.1: VIETQR MODAL OVERLAY --- */}
+      {vietQRData && (
+        <div className="checkout-modal-overlay">
+          <div className="checkout-modal glass-panel" style={{ borderRadius: '24px', maxWidth: '400px', textAlign: 'center', padding: '30px' }}>
+            <h3 style={{ margin: '0 0 15px 0', color: 'var(--primary-color)' }}>Quét mã VietQR để thanh toán</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
+              Đơn hàng <strong>#{vietQRData.orderId}</strong> - Số tiền: <strong>{vietQRData.amount.toLocaleString('vi-VN')} đ</strong>
+            </p>
+            <div style={{ background: '#fff', padding: '15px', borderRadius: '15px', display: 'inline-block' }}>
+              <img src={vietQRData.url} alt="VietQR" style={{ width: '100%', maxWidth: '300px', height: 'auto' }} />
+            </div>
+            <p style={{ margin: '20px 0 0 0', fontSize: '13px', color: '#ff9800' }}>
+              ⚠️ Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống tự động xác nhận đơn hàng.
+            </p>
+            <button 
+              className="btn btn-primary w-full" 
+              style={{ marginTop: '20px', padding: '12px' }}
+              onClick={async () => {
+                try {
+                  await apiFetch(`${API_BASE_URL}/payment/confirm-vietqr`, {
+                    method: 'POST',
+                    body: JSON.stringify({ orderId: vietQRData.orderId })
+                  });
+                  toast.success('Đã xác nhận thanh toán VietQR thành công!');
+                  setVietQRData(null);
+                  loadOrders();
+                } catch (err) {
+                  toast.error('Lỗi khi xác nhận thanh toán.');
+                }
+              }}
+            >
+              Đã thanh toán xong
+            </button>
           </div>
         </div>
       )}
@@ -3607,6 +3694,30 @@ function App() {
                   <span style={{ fontSize: '18px' }}>❌</span> Đóng Hóa Đơn
                 </button>
               </div>
+
+              {/* Nút thanh toán lại VNPay nếu đơn chưa thanh toán */}
+              {selectedOrderDetails.PaymentStatus === 'Chưa thanh toán' && selectedOrderDetails.PaymentMethod === 'VNPAY' && (
+                <div style={{ marginTop: '15px' }}>
+                  <button 
+                    style={{ width: '100%', padding: '14px', background: '#005baa', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    onClick={async () => {
+                      try {
+                        const paymentRes = await apiFetch(`${API_BASE_URL}/payment/create-vnpay-url`, {
+                          method: 'POST',
+                          body: JSON.stringify({ orderId: selectedOrderDetails.OrderID })
+                        });
+                        if (paymentRes && paymentRes.paymentUrl) {
+                          window.location.href = paymentRes.paymentUrl;
+                        }
+                      } catch (err) {
+                        toast.error('Lỗi khi tạo lại URL thanh toán VNPay');
+                      }
+                    }}
+                  >
+                    💳 Thanh toán lại bằng VNPay
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { VNPay, ProductCode } from 'vnpay';
 
+import { formatInTimeZone } from 'date-fns-tz';
+
 @Injectable()
 export class PaymentService {
   private vnpayInstance: VNPay;
@@ -68,14 +70,10 @@ export class PaymentService {
       this.configService.get<string>('VNP_RETURN_URL')?.trim() ||
       'http://localhost:5173/';
 
-    const date = new Date();
-    const yyyy = date.getFullYear().toString();
-    const MM = (date.getMonth() + 1).toString().padStart(2, '0');
-    const dd = date.getDate().toString().padStart(2, '0');
-    const HH = date.getHours().toString().padStart(2, '0');
-    const mm = date.getMinutes().toString().padStart(2, '0');
-    const ss = date.getSeconds().toString().padStart(2, '0');
-    const createDate = Number(yyyy + MM + dd + HH + mm + ss);
+    const now = new Date();
+    const expireDate = new Date(now.getTime() + 15 * 60 * 1000); // 15 phút sau
+    const vnp_CreateDate = Number(formatInTimeZone(now, 'Asia/Ho_Chi_Minh', 'yyyyMMddHHmmss'));
+    const vnp_ExpireDate = Number(formatInTimeZone(expireDate, 'Asia/Ho_Chi_Minh', 'yyyyMMddHHmmss'));
 
     // Build URL using official vnpay library
     const finalUrl = this.vnpayInstance.buildPaymentUrl({
@@ -85,7 +83,8 @@ export class PaymentService {
       vnp_TxnRef: orderId.toString() + '_' + Date.now(),
       vnp_OrderInfo: `Thanh_toan_don_hang_${orderId}`,
       vnp_OrderType: ProductCode.Other,
-      vnp_CreateDate: createDate, // Explicitly pass to prevent timezone issues
+      vnp_CreateDate: vnp_CreateDate,
+      vnp_ExpireDate: vnp_ExpireDate,
     });
 
     return finalUrl;
@@ -250,5 +249,43 @@ export class PaymentService {
         Message: 'Input required data invalid / System error',
       };
     }
+  }
+
+  /**
+   * Xác nhận thanh toán thủ công cho VietQR (chỉ dùng cho mục đích Đồ Án)
+   */
+  async confirmVietQrPayment(orderId: number, userId: number) {
+    const orderResult = await this.dbService.query(
+      `SELECT OrderID, UserID, FinalAmount, PaymentStatus FROM Orders WHERE OrderID = @OrderID`,
+      [{ name: 'OrderID', value: orderId }],
+    );
+
+    if (orderResult.recordset.length === 0) {
+      throw new NotFoundException('Đơn hàng không tồn tại.');
+    }
+
+    const order = orderResult.recordset[0];
+    if (order.UserID !== userId) {
+      throw new BadRequestException('Bạn không có quyền cập nhật đơn hàng này.');
+    }
+
+    await this.dbService.query(
+      `UPDATE Orders SET PaymentStatus = 'Đã thanh toán' WHERE OrderID = @OrderID`,
+      [{ name: 'OrderID', value: orderId }],
+    );
+
+    // Lưu transaction
+    await this.dbService.query(
+      `INSERT INTO Transactions (OrderID, PaymentGateway, TransactionNo, Amount, Status, ResponseCode, CreatedAt)
+       SELECT @OrderID, 'VIETQR', @TransactionNo, @Amount, 'Thanh cong', '00', CURRENT_TIMESTAMP
+       WHERE NOT EXISTS (SELECT 1 FROM Transactions WHERE OrderID = @OrderID)`,
+      [
+        { name: 'OrderID', value: orderId },
+        { name: 'TransactionNo', value: `VQR_${Date.now()}` },
+        { name: 'Amount', value: order.FinalAmount },
+      ],
+    );
+
+    return { success: true, message: 'Đã xác nhận thanh toán VietQR thành công.' };
   }
 }

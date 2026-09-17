@@ -137,11 +137,24 @@ const renderRichContent = (richContent, sendPromptToBot, setInputMessage) => {
       return (
         <div className="rich-message payment-options-container">
           <button className="payment-btn vnpay" onClick={() => sendPromptToBot('Thanh toán bằng VNPay')}>
-            💳 VNPay / Chuyển khoản
+            💳 VNPay (Ví điện tử)
           </button>
-          <button className="payment-btn cod" onClick={() => sendPromptToBot('Thanh toán Tiền mặt')}>
+          <button className="payment-btn vietqr" onClick={() => sendPromptToBot('Thanh toán bằng VietQR')} style={{ background: '#4caf50', color: 'white', marginTop: '8px', border: 'none', padding: '12px', borderRadius: '12px', width: '100%', cursor: 'pointer', fontWeight: 'bold' }}>
+            🏦 VietQR (Chuyển khoản)
+          </button>
+          <button className="payment-btn cod" onClick={() => sendPromptToBot('Thanh toán Tiền mặt')} style={{ marginTop: '8px' }}>
             💵 Thanh toán Tiền mặt (COD)
           </button>
+        </div>
+      );
+    case 'vnpay_link':
+      return (
+        <div className="rich-message vnpay-card" style={{ marginTop: '10px', textAlign: 'center', background: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+          <h4 style={{ color: '#005baa' }}>Thanh toán qua VNPay</h4>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>Đơn hàng #{richContent.orderId} đã được tạo. Vui lòng bấm nút bên dưới để thanh toán.</p>
+          <a href={richContent.url} className="payment-btn vnpay" style={{ display: 'inline-block', textDecoration: 'none', padding: '12px 20px', borderRadius: '12px', fontWeight: 'bold' }}>
+            Thanh toán ngay
+          </a>
         </div>
       );
     case 'cart_summary':
@@ -594,6 +607,7 @@ const Chatbot = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
+    if (isLoading) return;
     sendPromptToBot(inputMessage);
   };
 

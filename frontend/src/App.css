@@ -2095,7 +2095,7 @@ body.dark-theme .user-avatar {
 }
 
 .premium-hero-image img {
-  width: 100%; height: 100%; object-fit: cover;
+  width: 100%; height: 100%; object-fit: cover; object-position: center;
 }
 
 .premium-emoji-placeholder {
@@ -2980,7 +2980,7 @@ body.dark-theme .premium-hero-image {
   border-top: 1px solid #ECECEC;
   color: #222222;
   padding: 70px 40px 30px 40px;
-  margin-top: 60px;
+  margin-top: auto;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02);
 }
 

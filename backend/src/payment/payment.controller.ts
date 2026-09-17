@@ -76,4 +76,17 @@ export class PaymentController {
   async processIpn(@Query() query: any) {
     return await this.paymentService.processIpn(query);
   }
+
+  /**
+   * Xác nhận thanh toán VietQR thủ công
+   * POST /api/payment/confirm-vietqr
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('confirm-vietqr')
+  async confirmVietQr(@Req() req: any, @Body('orderId') orderId: number) {
+    if (!orderId) {
+      throw new BadRequestException('Mã hóa đơn (orderId) là bắt buộc.');
+    }
+    return await this.paymentService.confirmVietQrPayment(orderId, req.user.userId);
+  }
 }

@@ -78,8 +78,8 @@ export default function ProductDetailOverlay({ product, onClose, addToCart, isLo
             <div className="premium-meta-stats">
               <div className="premium-stat-pill">
                 <span className="stat-icon">⭐</span>
-                <span className="stat-value">{stats ? Number(stats.AvgRating).toFixed(1) : '0.0'}</span>
-                <span className="stat-count">({stats ? stats.TotalReviews : 0})</span>
+                <span className="stat-value">{stats ? Number(stats.AvgRating || stats.avgrating || 0).toFixed(1) : '0.0'}</span>
+                <span className="stat-count">({stats ? (stats.TotalReviews || stats.totalreviews || 0) : 0})</span>
               </div>
               <div className="premium-stat-pill">
                 <span className="stat-icon">🔥</span>

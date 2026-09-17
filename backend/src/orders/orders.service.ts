@@ -188,9 +188,9 @@ export class OrdersService {
     if (status === 'Đang giao') {
       const { UserID, Latitude, Longitude } = orderResult.recordset[0];
       if (Latitude && Longitude) {
-        // Tọa độ cửa hàng cố định (Hà Nội Center)
-        const storeLat = 21.0285;
-        const storeLng = 105.8542;
+        // Tọa độ cửa hàng cố định (Đồng bộ với Frontend: Bình Thuận)
+        const storeLat = 10.9333;
+        const storeLng = 108.1000;
         this.eventsGateway.startDeliverySimulation(
           orderId,
           UserID,

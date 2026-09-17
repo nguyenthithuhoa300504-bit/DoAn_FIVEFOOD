@@ -249,7 +249,7 @@ export class ChatbotService {
 - Giờ mở cửa: Từ 07:00 sáng đến 22:00 tối hàng ngày (T2 - CN).
 - Thời gian giao hàng: Trung bình khoảng 20 - 35 phút tùy địa điểm nội thành.
 - Phí vận chuyển (Phí ship): Mặc định 15.000đ cho tất cả đơn hàng nội thành.
-- Phương thức thanh toán: Hỗ trợ Tiền mặt khi nhận hàng (COD) và Chuyển khoản online qua cổng VNPay/ATM/QR Code tiện lợi.
+- Phương thức thanh toán: Hỗ trợ Tiền mặt khi nhận hàng (COD), Chuyển khoản online qua VNPay, hoặc quét mã VietQR tiện lợi.
 - Chính sách hoàn/đổi: Cam kết đổi món mới hoặc hoàn tiền 100% trong vòng 30 phút nếu món ăn bị đổ vỡ, hư hỏng hoặc làm sai đơn.
 - Hỗ trợ tư vấn món: Sẵn sàng gợi ý các món cay, món không hành, món chay, đồ uống, combo, hoặc món rẻ theo mức giá khách chọn dựa theo bảng THỰC ĐƠN.`;
 
@@ -284,10 +284,10 @@ QUY TẮC BẮT BUỘC:
   Hãy tóm tắt lại giỏ hàng (BẮT BUỘC liệt kê chính xác số lượng từng món và tổng tiền dựa ĐÚNG vào số liệu từ bảng GIỎ HÀNG HIỆN TẠI ở trên, TUYỆT ĐỐI KHÔNG lấy số lượng từ lịch sử chat hoặc tự cộng dồn). SAU ĐÓ, chủ động gợi ý mã giảm giá (nếu có) và BẮT BUỘC hỏi: "Bạn có muốn áp dụng mã giảm giá nào không?". TUYỆT ĐỐI dùng cụm từ "tóm tắt lại" để hệ thống hiển thị hóa đơn!
 - BƯỚC 2: Khi khách trả lời về mã giảm giá (VD: đọc mã hoặc nói không có):
   Xác nhận đã ghi nhận mã VÀ BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?".
-- BƯỚC 3: Khi khách đã chọn Phương thức thanh toán (Tiền mặt hoặc VNPay) NHƯNG CHƯA có địa chỉ:
+- BƯỚC 3: Khi khách đã chọn Phương thức thanh toán (Tiền mặt, VietQR, hoặc VNPay) NHƯNG CHƯA có địa chỉ:
   BẮT BUỘC hỏi: "Bạn cho mình xin Địa chỉ giao hàng nhé!".
 - BƯỚC 4: Khi khách đã cung cấp ĐẦY ĐỦ CẢ (1) MÃ GIẢM GIÁ (nếu có), (2) PHƯƠNG THỨC THANH TOÁN, (3) ĐỊA CHỈ:
-  CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ từ lịch sử chat>", "paymentMethod": "<Tiền mặt hoặc VNPay>", "promoCode": "<mã nếu có>"}] và im lặng! TUYỆT ĐỐI KHÔNG tự nói xác nhận!
+  CHỈ IN RA DUY NHẤT MÃ LỆNH: [CHECKOUT_INTENT: {"address": "<địa chỉ từ lịch sử chat>", "paymentMethod": "<Tiền mặt, VietQR, hoặc VNPay>", "promoCode": "<mã nếu có>"}] và im lặng! TUYỆT ĐỐI KHÔNG tự nói xác nhận!
 
 VÍ DỤ CÁCH TRẢ LỜI ĐÚNG:
 Khách: "cho 1 Phở Bò Đặc Biệt" (hoặc "đặt 1 phở bò") → Bạn: "[CART_INTENT: {"items": [{"id": <ID phở bò>, "qty": 1}]}]"
@@ -1357,11 +1357,41 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               const appliedPromo = intentData.promoCode
                 ? intentData.promoCode
                 : null;
+              
+              // [NEW] Cố gắng lấy Tọa độ GPS từ địa chỉ bằng Geocoding API (Nominatim)
+              let lat: number | null = null;
+              let lng: number | null = null;
+              try {
+                // Xử lý thông minh: Tránh lặp chữ Bình Thuận / Việt Nam nếu khách đã tự gõ
+                let searchQuery = intentData.address;
+                if (!searchQuery.toLowerCase().includes('bình thuận')) {
+                  searchQuery += ', Bình Thuận';
+                }
+                if (!searchQuery.toLowerCase().includes('việt nam')) {
+                  searchQuery += ', Việt Nam';
+                }
+                
+                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`;
+                
+                const geoRes = await fetch(url, { headers: { 'User-Agent': 'FiveFood-DoAn/1.0' } });
+                const geoData = await geoRes.json();
+                
+                if (geoData && geoData.length > 0) {
+                  lat = parseFloat(geoData[0].lat);
+                  lng = parseFloat(geoData[0].lon);
+                  this.logger.log(`Geocoding thành công: ${intentData.address} -> Lat: ${lat}, Lng: ${lng}`);
+                } else {
+                  this.logger.warn(`Geocoding không tìm thấy tọa độ cho: ${intentData.address}`);
+                }
+              } catch (geoErr) {
+                this.logger.warn(`Lỗi khi gọi API Geocoding: ${geoErr.message}`);
+              }
+
               const orderResult = await this.ordersService.createOrder(
                 userId,
                 intentData.address,
-                null,
-                null,
+                lat,  // Đã thay null bằng lat lấy từ Geocoding
+                lng,  // Đã thay null bằng lng lấy từ Geocoding
                 intentData.paymentMethod || 'Tiền mặt',
                 appliedPromo,
                 15000,
@@ -1369,7 +1399,13 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
               isOrderPlaced = true;
               
               const isVNPay = intentData.paymentMethod && intentData.paymentMethod.toLowerCase().includes('vnpay');
+              const isVietQR = intentData.paymentMethod && intentData.paymentMethod.toLowerCase().includes('vietqr');
+              
               if (isVNPay && orderResult && orderResult.OrderID) {
+                const paymentUrl = await this.paymentService.createPaymentUrl(userId, orderResult.OrderID, '127.0.0.1');
+                responseText = `✅ **Đơn hàng #${orderResult.OrderID} đã được tạo!**\n\n💳 Vui lòng bấm vào nút thanh toán bên dưới để chuyển sang trang thanh toán VNPay.`;
+                richContent = { type: 'vnpay_link', url: paymentUrl, orderId: orderResult.OrderID };
+              } else if (isVietQR && orderResult && orderResult.OrderID) {
                 // Lấy thông tin số tiền chính xác của đơn hàng
                 const orderData = await this.databaseService.query(
                   'SELECT FinalAmount FROM Orders WHERE OrderID = @OrderID',
