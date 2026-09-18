@@ -4,7 +4,93 @@ import { useCart } from '../../context/CartContext';
 import { Send, Trash2, X, Sparkles, MessageCircle, Bot, Zap, Mic } from 'lucide-react';
 import './Chatbot.css';
 
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { MapPin } from 'lucide-react';
+import { renderToString } from 'react-dom/server';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const STORE_COORDS = [10.9333, 108.1000];
+const VALID_BOUNDS = [[10.700, 107.800], [11.200, 108.400]];
+
+function ChatbotMapSelector({ onLocationSelected, onClose }) {
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markerInstance = useRef(null);
+  const [selectedGeo, setSelectedGeo] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+
+  useEffect(() => {
+    if (!mapInstance.current && mapRef.current) {
+      mapInstance.current = L.map(mapRef.current, {
+        maxBounds: VALID_BOUNDS,
+        maxBoundsViscosity: 1.0,
+        minZoom: 9
+      }).setView(STORE_COORDS, 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(mapInstance.current);
+
+      mapInstance.current.on('click', async (e) => {
+        if (!L.latLngBounds(VALID_BOUNDS).contains(e.latlng)) {
+          alert('Vui lòng chọn vị trí nằm trong khu vực Bình Thuận.');
+          return;
+        }
+
+        const { lat, lng } = e.latlng;
+        
+        if (markerInstance.current) {
+          markerInstance.current.setLatLng(e.latlng);
+        } else {
+          markerInstance.current = L.marker(e.latlng, {
+            icon: L.divIcon({
+              html: renderToString(<MapPin color="#f44336" size={30} strokeWidth={2.5} />),
+              className: 'user-emoji-icon',
+              iconAnchor: [15, 15]
+            })
+          }).addTo(mapInstance.current);
+        }
+
+        setIsFetching(true);
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+          const geoData = await geoRes.json();
+          if (geoData && geoData.display_name) {
+            setSelectedGeo(geoData.display_name);
+          } else {
+            setSelectedGeo(`Tọa độ: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          }
+        } catch (err) {
+          setSelectedGeo(`Tọa độ: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+        setIsFetching(false);
+      });
+    }
+  }, []);
+
+  return (
+    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'white', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '15px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h4 style={{ margin: 0, color: '#111827', fontSize: '16px' }}>Chọn vị trí giao hàng</h4>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#6b7280" /></button>
+      </div>
+      <div ref={mapRef} style={{ flex: 1, width: '100%' }}></div>
+      <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ fontSize: '13px', color: '#4b5563', marginBottom: '10px', minHeight: '40px' }}>
+          {isFetching ? 'Đang lấy địa chỉ...' : (selectedGeo || 'Chạm vào bản đồ để chọn vị trí')}
+        </div>
+        <button 
+          disabled={!selectedGeo || isFetching}
+          onClick={() => onLocationSelected(selectedGeo)}
+          style={{ width: '100%', padding: '12px', background: selectedGeo ? '#ef4444' : '#d1d5db', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: selectedGeo ? 'pointer' : 'not-allowed' }}
+        >
+          Xác nhận vị trí này
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Các hàm bổ trợ rút trích thông tin Khách hàng chuẩn xác
 const getUserId = (u) => u && (u.userId || u.UserID || u.id || u.email);
@@ -79,10 +165,24 @@ const QuantitySelector = ({ productName, sendPromptToBot }) => {
   );
 };
 
-const renderRichContent = (richContent, sendPromptToBot, setInputMessage) => {
-  if (!richContent) return null;
-
+const renderRichContent = (richContent, sendPromptToBot, setInputMessage, setShowAddressMap) => {
+  if (!richContent || !richContent.type) return null;
   switch (richContent.type) {
+    case 'address_picker':
+      return (
+        <div className="rich-message address-picker-container" style={{ marginTop: '12px' }}>
+          <button 
+            className="map-picker-btn" 
+            onClick={() => setShowAddressMap(true)} 
+          >
+            <div className="map-picker-icon-wrapper">
+              <MapPin size={22} color="#FFF" />
+            </div>
+            <span className="map-picker-text">Mở Bản Đồ Chọn Vị Trí</span>
+            <div className="map-picker-arrow">→</div>
+          </button>
+        </div>
+      );
     case 'food_recommendation':
       return (
         <div className="rich-message food-cards-container">
@@ -350,6 +450,7 @@ const Chatbot = () => {
   
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddressMap, setShowAddressMap] = useState(false);
   const messagesEndRef = useRef(null);
   
   // Khôi phục sessionId từ localStorage nếu đã đăng nhập
@@ -512,6 +613,15 @@ const Chatbot = () => {
               
               setMessages([{ sender: 'bot', text: newWelcomeMsg, richContent: { type: 'food_recommendation', data: top3 } }]);
               setHasInitialized(true);
+              
+              const pendingIntent = localStorage.getItem('chatbot_pending_intent');
+              if (pendingIntent) {
+                localStorage.removeItem('chatbot_pending_intent');
+                setTimeout(() => {
+                  setIsOpen(true);
+                  sendPromptToBot(pendingIntent);
+                }, 500);
+              }
               return;
             }
         } catch (err) {
@@ -520,6 +630,15 @@ const Chatbot = () => {
 
         setMessages([{ sender: 'bot', text: newWelcomeMsg }]);
         setHasInitialized(true);
+        
+        const pendingIntent = localStorage.getItem('chatbot_pending_intent');
+        if (pendingIntent) {
+          localStorage.removeItem('chatbot_pending_intent');
+          setTimeout(() => {
+            setIsOpen(true);
+            sendPromptToBot(pendingIntent);
+          }, 500);
+        }
       };
 
       if (hasInitialized || isOpen) {
@@ -580,7 +699,13 @@ const Chatbot = () => {
 
       const data = response?.data || response;
       if (data && data.reply) {
-        setMessages(prev => [...prev, { sender: 'bot', text: data.reply, richContent: data.richContent }]);
+        let finalRichContent = data.richContent;
+        // Tự động kích hoạt Bản đồ nếu AI nhắc đến địa chỉ
+        if (!finalRichContent && data.reply.toLowerCase().includes('địa chỉ')) {
+          finalRichContent = { type: 'address_picker' };
+        }
+
+        setMessages(prev => [...prev, { sender: 'bot', text: data.reply, richContent: finalRichContent }]);
         if (data.sessionId) {
           setSessionId(data.sessionId);
         }
@@ -663,6 +788,17 @@ const Chatbot = () => {
               </button>
             ))}
           </div>
+          
+          {/* Bản đồ chọn địa chỉ */}
+          {showAddressMap && (
+            <ChatbotMapSelector 
+              onClose={() => setShowAddressMap(false)}
+              onLocationSelected={(addressText) => {
+                setShowAddressMap(false);
+                sendPromptToBot('Mình chọn địa chỉ giao hàng tại: ' + addressText);
+              }}
+            />
+          )}
 
           {/* Messages */}
           <div className="chatbot-messages">
@@ -673,12 +809,14 @@ const Chatbot = () => {
                 </div>
                 <div className="message-content">
                   {msg.sender === 'bot' ? renderFormattedText(msg.text) : msg.text}
-                  {msg.sender === 'bot' && msg.richContent && renderRichContent(msg.richContent, sendPromptToBot, setInputMessage)}
+                  {msg.sender === 'bot' && msg.richContent && renderRichContent(msg.richContent, sendPromptToBot, setInputMessage, setShowAddressMap)}
                   {msg.sender === 'bot' && msg.text.includes('Đăng nhập') && msg.text.includes('❌') && (
                     <div style={{ marginTop: '12px' }}>
                       <button 
                         className="chatbot-login-btn"
                         onClick={() => {
+                          const lastUserMsg = messages.slice().reverse().find(m => m.sender === 'user')?.text || 'thanh toán';
+                          localStorage.setItem('chatbot_pending_intent', lastUserMsg);
                           window.dispatchEvent(new Event('openLoginTab'));
                           setIsOpen(false);
                         }}
@@ -715,6 +853,16 @@ const Chatbot = () => {
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', color: isListening ? '#EF4444' : '#6B7280' }}
             >
               <Mic size={18} className={isListening ? 'pulse-anim' : ''} />
+            </button>
+            <button
+              type="button"
+              className="map-btn"
+              onClick={() => setShowAddressMap(true)}
+              title="Gửi vị trí trên bản đồ"
+              disabled={isLoading}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', color: '#3b82f6' }}
+            >
+              <MapPin size={18} />
             </button>
             <input 
               type="text" 

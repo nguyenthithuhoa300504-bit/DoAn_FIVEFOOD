@@ -192,7 +192,13 @@ export class ChatbotService {
                 `- Mã "${p.PromoCode}": ${p.Description} (Áp dụng cho đơn từ ${p.MinOrderValue} đ)`,
             )
             .join('\n');
-          promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI:\n- Khi khách yêu cầu "Xem danh sách mã giảm giá": BẮT BUỘC liệt kê mã phù hợp nhất và CHẮC CHẮN dùng biểu tượng 🎁. Ví dụ: "🎁 Mình gợi ý cho bạn mã giảm giá..."\n- Khi khách NÓI MỘT MÃ GIẢM GIÁ CỤ THỂ (ví dụ khách chat "GIAMGIA50" hoặc "Dùng mã GIAMGIA50"): Hãy xác nhận đã ghi nhận mã và HỎI XIN ĐỊA CHỈ GIAO HÀNG. TUYỆT ĐỐI KHÔNG dùng biểu tượng 🎁 và KHÔNG dùng từ "mã giảm giá" trong câu trả lời này (ví dụ chỉ nói: "Dạ, mình đã ghi nhận voucher GIAMGIA50. Bạn cho mình xin địa chỉ giao hàng nhé!").`;
+            
+          const hasApplicablePromo = availablePromos.some(p => subtotalData >= p.MinOrderValue);
+          const applyWarning = hasApplicablePromo 
+            ? "Đang có mã đủ điều kiện áp dụng." 
+            : "HIỆN TẠI GIỎ HÀNG CHƯA ĐỦ ĐIỀU KIỆN ÁP DỤNG BẤT KỲ MÃ NÀO, VÌ VẬY BỎ QUA BƯỚC HỎI MÃ GIẢM GIÁ KHI THANH TOÁN!";
+
+          promoContext = `\nDANH SÁCH MÃ GIẢM GIÁ HIỆN CÓ:\n${promos}\n👉 NHIỆM VỤ CỦA AI:\n- Trạng thái áp dụng: ${applyWarning}\n- Khi khách yêu cầu "Xem danh sách mã giảm giá": BẮT BUỘC liệt kê mã phù hợp nhất và CHẮC CHẮN dùng biểu tượng 🎁. Ví dụ: "🎁 Mình gợi ý cho bạn mã giảm giá..."\n- Khi khách NÓI MỘT MÃ GIẢM GIÁ CỤ THỂ (ví dụ khách chat "GIAMGIA50"): Hãy xác nhận đã ghi nhận mã và HỎI XIN ĐỊA CHỈ GIAO HÀNG. TUYỆT ĐỐI KHÔNG dùng biểu tượng 🎁 và KHÔNG dùng từ "mã giảm giá" trong câu trả lời này.`;
         }
       } catch (e) {
         this.logger.warn('Không thể tải khuyến mãi cho chatbot:', e.message);
@@ -261,11 +267,11 @@ ${userContext}${historyContext}${cartContext}${promoContext}${orderTrackingConte
 
 QUY TẮC BẮT BUỘC:
 1. Chỉ tư vấn món trong THỰC ĐƠN và FAQ hợp lệ. KHÔNG in "ID=" ra cho khách thấy.
-2. Khi khách hỏi chung chung ("hôm nay ăn gì"), gợi ý 1 món bán chạy + 1 món khác. KHÔNG tự tạo mã lạ.
+2. Khi khách hỏi chung chung ("hôm nay ăn gì", "tôi đói"), hãy gợi ý ngay 1 món bán chạy + 1 món khác. KHÔNG tự tạo mã lạ. TUYỆT ĐỐI KHÔNG báo cáo trạng thái đơn hàng nếu khách chỉ than đói, trừ khi khách hỏi trực tiếp về đơn.
 3. Nếu GIỎ HÀNG là TRỐNG, tuyệt đối không nói khách đã có món trong giỏ.
 4. Nhờ yêu cầu chay/không cay/ngân sách để tư vấn món có giá và thành phần phù hợp.
 5. LUÔN TRẢ LỜI NGẮN GỌN, SÚC TÍCH, CHUYÊN NGHIỆP. Tránh dài dòng rườm rà (Tối đa 1-3 câu hoặc gạch đầu dòng ngắn).
-6. Khi khách hỏi về đơn hàng hay việc giao đồ ăn (dù dùng từ ngữ tự nhiên nào), hãy đọc trạng thái thực từ CSDL. Nếu đơn đang "Đang giao", hướng dẫn khách mở hóa đơn trên web để xem Bản đồ định vị Shipper trực tuyến!
+6. Khi khách hỏi đích danh về đơn hàng hay việc giao đồ ăn (VD: "đơn tới đâu", "shipper"), hãy đọc trạng thái thực từ CSDL. Nếu đơn đang "Đang giao", hướng dẫn khách xem Bản đồ Shipper!
 7. CHỐNG ẢO GIÁC TÊN MÓN: Nếu khách gọi tên món CHUNG CHUNG (VD: "bún", "cơm", "trà") mà trong thực đơn có nhiều loại khác nhau (VD: Bún Bò Huế, Bún Thịt Nướng), BẮT BUỘC phải liệt kê các món đó ra và hỏi khách muốn chọn loại nào. TUYỆT ĐỐI không được tự ý "đoán" hoặc "chọn đại" một món!
 
 🔥 QUY TẮC THÊM GIỎ HÀNG (NGUYÊN TẮC VÀNG BẮT BUỘC TUÂN THỦ 100%):
@@ -281,9 +287,9 @@ QUY TẮC BẮT BUỘC:
 
 🔥 QUY TẮC CHECKOUT / THANH TOÁN (THỰC HIỆN ĐÚNG THỨ TỰ):
 - BƯỚC 1: Khi khách báo "thanh toán", "chốt đơn", hoặc nói "không" (khi được hỏi có đặt thêm không): 
-  Hãy tóm tắt lại giỏ hàng (BẮT BUỘC liệt kê chính xác số lượng từng món và tổng tiền dựa ĐÚNG vào số liệu từ bảng GIỎ HÀNG HIỆN TẠI ở trên, TUYỆT ĐỐI KHÔNG lấy số lượng từ lịch sử chat hoặc tự cộng dồn). SAU ĐÓ, chủ động gợi ý mã giảm giá (nếu có) và BẮT BUỘC hỏi: "Bạn có muốn áp dụng mã giảm giá nào không?". TUYỆT ĐỐI dùng cụm từ "tóm tắt lại" để hệ thống hiển thị hóa đơn!
-- BƯỚC 2: Khi khách trả lời về mã giảm giá (VD: đọc mã hoặc nói không có):
-  Xác nhận đã ghi nhận mã VÀ BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?".
+  Hãy tóm tắt lại giỏ hàng (BẮT BUỘC liệt kê chính xác số lượng từng món và tổng tiền dựa ĐÚNG vào số liệu từ bảng GIỎ HÀNG HIỆN TẠI ở trên, TUYỆT ĐỐI KHÔNG lấy số lượng từ lịch sử chat hoặc tự cộng dồn). SAU ĐÓ, NẾU CÓ MÃ GIẢM GIÁ ĐỦ ĐIỀU KIỆN ÁP DỤNG (Tổng tiền giỏ hàng >= MinOrderValue của mã), hãy hỏi: "Bạn có muốn áp dụng mã giảm giá nào không?". NẾU KHÔNG CÓ MÃ NÀO ĐỦ ĐIỀU KIỆN, BỎ QUA việc hỏi mã giảm giá và HỎI NGAY: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?". TUYỆT ĐỐI dùng cụm từ "tóm tắt lại" để hệ thống hiển thị hóa đơn!
+- BƯỚC 2: Khi khách trả lời về mã giảm giá (VD: đọc mã hoặc nói không có) hoặc sau khi tóm tắt giỏ (nếu không có mã nào áp dụng được):
+  BẮT BUỘC hỏi: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?".
 - BƯỚC 3: Khi khách đã chọn Phương thức thanh toán (Tiền mặt, VietQR, hoặc VNPay) NHƯNG CHƯA có địa chỉ:
   BẮT BUỘC hỏi: "Bạn cho mình xin Địa chỉ giao hàng nhé!".
 - BƯỚC 4: Khi khách đã cung cấp ĐẦY ĐỦ CẢ (1) MÃ GIẢM GIÁ (nếu có), (2) PHƯƠNG THỨC THANH TOÁN, (3) ĐỊA CHỈ:
@@ -300,6 +306,7 @@ Khách: "thêm 1 phở nữa" → Bạn: "[CART_INTENT: {"items": [{"id": <ID ph
 Khách: "xóa 1 phần khỏi giỏ" (hoặc "bớt 1 phở") → Bạn: "[REMOVE_ITEM_INTENT: {"name": "phở", "qty": 1}]"
 Khách: "xóa giỏ hàng cho mình" (hoặc "xóa giỏ", "dọn sạch giỏ hàng") → Bạn: "[CLEAR_CART_INTENT]"
 Khách: "Hủy đơn hàng 14" (hoặc "hủy đơn 14") → Bạn: "[CANCEL_ORDER_INTENT: {"orderId": 14}]"
+Khách: "Đổi đơn 14 sang tiền mặt" (hoặc "đổi thanh toán đơn 14 sang VNPay") → Bạn: "[CHANGE_PAYMENT_INTENT: {"orderId": 14, "paymentMethod": "COD"}]" (lưu ý: paymentMethod chỉ nhận: COD, VNPay, VietQR)
 Khách: "Giao tới 123 Lê Duẩn" → Bạn: "Dạ, bạn muốn chọn phương thức thanh toán nào ạ?"
 Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu trước) → Bạn: "[CHECKOUT_INTENT: {"address": "123 Lê Duẩn", "paymentMethod": "VNPay", "promoCode": "GIAM20K"}]"`;
 
@@ -1458,6 +1465,27 @@ Khách: "Thanh toán bằng VNPay, mã GIAM20K" (đã có địa chỉ ở câu 
           }
         } catch (err) {
           responseText = `❌ **Không thể hủy đơn hàng!** Lý do: ${err.message || 'Chỉ có thể hủy đơn khi đang Chờ xác nhận.'}`;
+        }
+      }
+
+      // 5.5 Xử lý Đổi phương thức thanh toán tự động
+      const changePaymentMatch = responseText.match(
+        /\[CHANGE_PAYMENT_INTENT:\s*(\{.*\})\]/s,
+      );
+      if (changePaymentMatch && userId) {
+        try {
+          const intentData = JSON.parse(changePaymentMatch[1]);
+          if (intentData.orderId && intentData.paymentMethod) {
+            let method = intentData.paymentMethod;
+            if (method.toLowerCase().includes('tiền mặt') || method.toLowerCase().includes('cod')) method = 'COD';
+            if (method.toLowerCase().includes('vnpay')) method = 'VNPay';
+            if (method.toLowerCase().includes('vietqr')) method = 'VietQR';
+            
+            await this.ordersService.changePaymentMethod(userId, intentData.orderId, method);
+            responseText = `✅ **Đổi thanh toán thành công!** Đơn hàng #${intentData.orderId} đã được chuyển sang thanh toán bằng **${method}**.`;
+          }
+        } catch (err) {
+          responseText = `❌ **Không thể đổi thanh toán!** Lý do: ${err.message}`;
         }
       }
 

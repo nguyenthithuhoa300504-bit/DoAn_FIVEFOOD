@@ -56,7 +56,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Bắt đầu mô phỏng Shipper chạy
-  startDeliverySimulation(
+  async startDeliverySimulation(
     orderId: number,
     userId: number,
     startLat: number,
@@ -64,56 +64,99 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     endLat: number,
     endLng: number,
   ) {
-    const steps = 20; // Tổng số bước
-    const stepLat = (endLat - startLat) / steps;
-    const stepLng = (endLng - startLng) / steps;
-    let currentStep = 0;
-
     console.log(`Bắt đầu giao đơn hàng #${orderId} cho User #${userId}...`);
-
-    const interval = setInterval(() => {
-      currentStep++;
-      const currentLat = startLat + stepLat * currentStep;
-      const currentLng = startLng + stepLng * currentStep;
-
-      // Phát sự kiện tọa độ mới tới phòng user
-      this.server.to(`room_user_${userId}`).emit('shipperLocation', {
-        orderId,
-        lat: currentLat,
-        lng: currentLng,
-        progress: (currentStep / steps) * 100,
-      });
-
-      if (currentStep >= steps) {
-        clearInterval(interval);
-
-        // Tự động cập nhật DB sang Hoàn thành (và Đã thanh toán) khi đến nơi
-        this.dbService
-          .query(
-            `UPDATE Orders SET Status = 'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = 'Chưa thanh toán' THEN 'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
-            [{ name: 'OrderID', value: orderId }],
-          )
-          .then(() => {
-            // Phát cho tất cả mọi người (bao gồm Admin) để đồng bộ trạng thái "Hoàn thành"
-            this.server.emit('orderStatusUpdate', {
-              orderId,
-              status: 'Hoàn thành',
-            });
-            this.server
-              .to(`room_user_${userId}`)
-              .emit('deliveryCompleted', { orderId });
-            console.log(
-              `Đơn hàng #${orderId} đã giao thành công và cập nhật DB.`,
-            );
-          })
-          .catch((err) => {
-            console.error(
-              `Lỗi cập nhật đơn hàng #${orderId} thành Hoàn thành:`,
-              err,
-            );
-          });
+    
+    let routeCoords: [number, number][] = [];
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        routeCoords = data.routes[0].geometry.coordinates; // OSRM trả về [lon, lat]
       }
-    }, 3000); // Cứ mỗi 3 giây nhích 1 đoạn, 20 bước -> 60 giây
+    } catch (err) {
+      console.error('Lỗi lấy tuyến đường OSRM, dùng fallback đường chim bay:', err);
+    }
+
+    if (routeCoords.length > 0) {
+      // Đảm bảo điểm cuối cùng chính xác là điểm giao hàng
+      routeCoords.push([endLng, endLat]);
+      const steps = routeCoords.length;
+      let currentStep = 0;
+      
+      // Giới hạn tổng thời gian chạy mô phỏng khoảng 30s để Khách không phải đợi lâu
+      let intervalMs = Math.floor(30000 / steps);
+      if (intervalMs < 800) intervalMs = 800;
+      if (intervalMs > 3000) intervalMs = 3000;
+
+      const interval = setInterval(() => {
+        if (currentStep < steps) {
+          const coord = routeCoords[currentStep];
+          this.server.to(`room_user_${userId}`).emit('shipperLocation', {
+            orderId,
+            lat: coord[1],
+            lng: coord[0],
+            progress: (currentStep / steps) * 100,
+          });
+          currentStep++;
+        } else {
+          clearInterval(interval);
+          this.finishDelivery(orderId, userId);
+        }
+      }, intervalMs);
+    } else {
+      // Fallback: Đường chim bay như cũ
+      const steps = 20;
+      const stepLat = (endLat - startLat) / steps;
+      const stepLng = (endLng - startLng) / steps;
+      let currentStep = 0;
+  
+      const interval = setInterval(() => {
+        currentStep++;
+        const currentLat = startLat + stepLat * currentStep;
+        const currentLng = startLng + stepLng * currentStep;
+  
+        this.server.to(`room_user_${userId}`).emit('shipperLocation', {
+          orderId,
+          lat: currentLat,
+          lng: currentLng,
+          progress: (currentStep / steps) * 100,
+        });
+  
+        if (currentStep >= steps) {
+          clearInterval(interval);
+          this.finishDelivery(orderId, userId);
+        }
+      }, 1500); // Nhích nhanh hơn chút để khách không đợi lâu
+    }
+  }
+
+  private finishDelivery(orderId: number, userId: number) {
+    // Tự động cập nhật DB sang Hoàn thành (và Đã thanh toán) khi đến nơi
+    this.dbService
+      .query(
+        `UPDATE Orders SET Status = 'Hoàn thành', PaymentStatus = CASE WHEN PaymentStatus = 'Chưa thanh toán' THEN 'Đã thanh toán' ELSE PaymentStatus END WHERE OrderID = @OrderID`,
+        [{ name: 'OrderID', value: orderId }],
+      )
+      .then(() => {
+        // Phát cho tất cả mọi người (bao gồm Admin) để đồng bộ trạng thái "Hoàn thành"
+        this.server.emit('orderStatusUpdate', {
+          orderId,
+          status: 'Hoàn thành',
+        });
+        this.server
+          .to(`room_user_${userId}`)
+          .emit('deliveryCompleted', { orderId });
+        console.log(
+          `Đơn hàng #${orderId} đã giao thành công và cập nhật DB.`,
+        );
+      })
+      .catch((err) => {
+        console.error(
+          `Lỗi cập nhật đơn hàng #${orderId} thành Hoàn thành:`,
+          err,
+        );
+      });
   }
 
   // Gửi thông báo cập nhật trạng thái đơn hàng
