@@ -165,6 +165,53 @@ const QuantitySelector = ({ productName, sendPromptToBot }) => {
   );
 };
 
+const FoodCardWithQuantity = ({ food, sendPromptToBot }) => {
+  const [qty, setQty] = useState(1);
+  return (
+    <div className="food-card">
+      {food.ImageURL && (food.ImageURL.startsWith('http') || food.ImageURL.startsWith('/') || food.ImageURL.length > 5) ? (
+        <img src={food.ImageURL} alt={food.ProductName} />
+      ) : (
+        <div style={{ fontSize: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '90px', background: 'rgba(255, 122, 0, 0.1)' }}>
+          {food.ImageURL || '🍔'}
+        </div>
+      )}
+      <div className="food-card-info">
+        <h4>{food.ProductName}</h4>
+        {food.Ingredients && <div className="food-desc">{food.Ingredients.length > 30 ? food.Ingredients.substring(0, 30) + '...' : food.Ingredients}</div>}
+        <div className="food-meta">
+          <span className="price">{food.Price.toLocaleString('vi-VN')}đ</span>
+          <span className={`stock ${food.Inventory > 0 ? 'in-stock' : 'out-stock'}`}>
+            {food.Inventory > 0 ? `Còn ${food.Inventory}` : 'Hết hàng'}
+          </span>
+        </div>
+        
+        {food.Inventory > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', margin: '12px 0', background: 'rgba(0,0,0,0.03)', padding: '5px', borderRadius: '8px', width: 'fit-content' }}>
+            <button 
+              onClick={() => setQty(Math.max(1, qty - 1))} 
+              style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: '#333', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+            >-</button>
+            <span style={{ fontWeight: 'bold', fontSize: '15px', minWidth: '20px', textAlign: 'center', color: '#005baa' }}>{qty}</span>
+            <button 
+              onClick={() => setQty(Math.min(food.Inventory, qty + 1))} 
+              style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: '#333', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+            >+</button>
+          </div>
+        )}
+
+        <button 
+          onClick={() => sendPromptToBot(`Thêm ${qty} ${food.ProductName}`)}
+          disabled={food.Inventory <= 0}
+          style={food.Inventory <= 0 ? {background: '#ccc', cursor: 'not-allowed', color: '#666'} : {}}
+        >
+          {food.Inventory > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const renderRichContent = (richContent, sendPromptToBot, setInputMessage, setShowAddressMap) => {
   if (!richContent || !richContent.type) return null;
   switch (richContent.type) {
@@ -187,32 +234,7 @@ const renderRichContent = (richContent, sendPromptToBot, setInputMessage, setSho
       return (
         <div className="rich-message food-cards-container">
           {richContent.data.map((food, idx) => (
-            <div key={idx} className="food-card">
-              {food.ImageURL && (food.ImageURL.startsWith('http') || food.ImageURL.startsWith('/') || food.ImageURL.length > 5) ? (
-                <img src={food.ImageURL} alt={food.ProductName} />
-              ) : (
-                <div style={{ fontSize: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '90px', background: 'rgba(255, 122, 0, 0.1)' }}>
-                  {food.ImageURL || '🍔'}
-                </div>
-              )}
-              <div className="food-card-info">
-                <h4>{food.ProductName}</h4>
-                {food.Ingredients && <div className="food-desc">{food.Ingredients.length > 30 ? food.Ingredients.substring(0, 30) + '...' : food.Ingredients}</div>}
-                <div className="food-meta">
-                  <span className="price">{food.Price.toLocaleString('vi-VN')}đ</span>
-                  <span className={`stock ${food.Inventory > 0 ? 'in-stock' : 'out-stock'}`}>
-                    {food.Inventory > 0 ? `Còn ${food.Inventory}` : 'Hết hàng'}
-                  </span>
-                </div>
-                <button 
-                  onClick={() => sendPromptToBot(food.ProductName)}
-                  disabled={food.Inventory <= 0}
-                  style={food.Inventory <= 0 ? {background: '#ccc', cursor: 'not-allowed', color: '#666'} : {}}
-                >
-                  {food.Inventory > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
-                </button>
-              </div>
-            </div>
+            <FoodCardWithQuantity key={idx} food={food} sendPromptToBot={sendPromptToBot} />
           ))}
         </div>
       );

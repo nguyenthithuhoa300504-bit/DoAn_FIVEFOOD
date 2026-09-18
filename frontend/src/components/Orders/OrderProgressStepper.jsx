@@ -29,8 +29,8 @@ export default function OrderProgressStepper({ status, shipperLat, shipperLng })
           doubleClickZoom: false
         }).setView([lat, lng], 15);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-          attribution: ''
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
         }).addTo(mapInstance.current);
 
         const customIcon = L.divIcon({

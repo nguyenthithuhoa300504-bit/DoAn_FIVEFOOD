@@ -19,3 +19,4 @@
 [2026-09-17T15:10:48.112Z] msg: "thêm 2 phần bánh mì heo quay", hasQtyWord: true, parsedData: {"items":[{"id":4,"qty":2}]}
 [2026-09-17T16:28:38.088Z] msg: "hai", hasQtyWord: true, parsedData: {"items":[{"id":46,"qty":2}]}
 [2026-09-18T08:32:28.969Z] msg: "thêm 1 phần bánh mì heo quay", hasQtyWord: true, parsedData: {"items":[{"id":4,"qty":1}]}
+[2026-09-18T14:47:27.500Z] msg: "2", hasQtyWord: true, parsedData: {"items":[{"id":11,"qty":2}]}

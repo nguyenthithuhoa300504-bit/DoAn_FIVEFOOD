@@ -3653,7 +3653,7 @@ function App() {
                         <span style={{ fontSize: '15px', color: 'var(--text-main)', fontWeight: '600' }}>
                           {detail.ProductName} <strong style={{ color: 'var(--primary-color)', marginLeft: '6px', fontSize: '14px' }}>x{detail.Quantity}</strong>
                         </span>
-                        {selectedOrderDetails.Status === 'Hoàn thành' && user?.role !== 'Admin' && (
+                        {selectedOrderDetails.Status === 'Hoàn thành' && user?.role !== 'Admin' && !detail.IsReviewed && (
                           <button 
                             className="btn btn-sm" 
                             style={{ padding: '6px 12px', fontSize: '12px', marginTop: '6px', alignSelf: 'flex-start', background: 'linear-gradient(135deg, #FF9800, #FF5722)', border: 'none', color: '#fff', borderRadius: '20px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(255, 87, 34, 0.3)', fontWeight: 'bold', transition: 'transform 0.2s' }}
@@ -3666,6 +3666,11 @@ function App() {
                           >
                             ⭐ Đánh giá ngay
                           </button>
+                        )}
+                        {selectedOrderDetails.Status === 'Hoàn thành' && user?.role !== 'Admin' && detail.IsReviewed && (
+                          <span style={{ padding: '4px 8px', fontSize: '12px', marginTop: '6px', alignSelf: 'flex-start', color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', fontWeight: 'bold' }}>
+                            ✓ Đã đánh giá
+                          </span>
                         )}
                       </div>
                       <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-main)' }}>{((detail.UnitPrice || detail.Price) * detail.Quantity).toLocaleString('vi-VN')} đ</span>
@@ -3826,8 +3831,17 @@ function App() {
           orderId={reviewProductData.orderId}
           onClose={() => setReviewProductData(null)}
           onSuccess={() => {
+            const reviewedProductId = reviewProductData.product.ProductID;
             setReviewProductData(null);
             toast('Cảm ơn bạn đã gửi đánh giá!');
+            if (selectedOrderDetails) {
+              setSelectedOrderDetails(prev => ({
+                ...prev,
+                items: prev.items.map(item => 
+                  item.ProductID === reviewedProductId ? { ...item, IsReviewed: true } : item
+                )
+              }));
+            }
           }}
         />
       )}

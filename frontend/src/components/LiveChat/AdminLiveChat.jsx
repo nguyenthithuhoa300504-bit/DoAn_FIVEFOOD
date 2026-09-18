@@ -149,7 +149,7 @@ export default function AdminLiveChat({ socket, user }) {
               </div>
               <div className="chat-header-info">
                 <h3 style={{ margin: 0 }}>{activeUser?.FullName}</h3>
-                <span className="online-status">● Đang hoạt động</span>
+                <span className="online-status" style={{ color: '#9ca3af' }}>✉ {activeUser?.Email}</span>
               </div>
             </div>
             

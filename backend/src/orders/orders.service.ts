@@ -112,9 +112,11 @@ export class OrdersService {
 
     // 2. Lấy danh sách món ăn trong chi tiết đơn hàng
     const itemsResult = await this.dbService.query(
-      `SELECT od.OrderDetailID, od.ProductID, od.Quantity, od.UnitPrice, p.ProductName, p.ImageURL
+      `SELECT od.OrderDetailID, od.ProductID, od.Quantity, od.UnitPrice, p.ProductName, p.ImageURL,
+              CAST(CASE WHEN r.ReviewID IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS IsReviewed
        FROM OrderDetails od
        INNER JOIN Products p ON od.ProductID = p.ProductID
+       LEFT JOIN Reviews r ON r.OrderID = od.OrderID AND r.ProductID = od.ProductID
        WHERE od.OrderID = @OrderID`,
       [{ name: 'OrderID', value: orderId }],
     );
@@ -161,10 +163,13 @@ export class OrdersService {
     const order = orderResult.recordset[0];
 
     // Chặn duyệt đơn nếu khách chưa thanh toán online (VNPay/VietQR)
+    const method = (order.PaymentMethod || '').toUpperCase();
+    const isCash = method === 'COD' || method === 'TIỀN MẶT' || method === 'TIEN MAT';
+
     if (
       (status === 'Đang chuẩn bị' || status === 'Đang giao' || status === 'Hoàn thành') &&
       order.PaymentStatus === 'Chưa thanh toán' &&
-      order.PaymentMethod?.toUpperCase() !== 'COD'
+      !isCash
     ) {
       throw new BadRequestException('Không thể duyệt! Khách hàng chưa hoàn tất thanh toán online.');
     }

@@ -85,9 +85,13 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       let currentStep = 0;
       
       // Giới hạn tổng thời gian chạy mô phỏng khoảng 30s để Khách không phải đợi lâu
-      let intervalMs = Math.floor(30000 / steps);
-      if (intervalMs < 800) intervalMs = 800;
-      if (intervalMs > 3000) intervalMs = 3000;
+      // Nếu đường đi có quá nhiều điểm (steps), ta sẽ nhảy bước (stepJump) để kịp 30s
+      let stepJump = 1;
+      if (steps > 100) {
+        stepJump = Math.ceil(steps / 100); // Giới hạn tối đa khoảng 100 lần emit
+      }
+      let intervalMs = Math.floor(30000 / Math.ceil(steps / stepJump));
+      if (intervalMs < 200) intervalMs = 200;
 
       const interval = setInterval(() => {
         if (currentStep < steps) {
@@ -98,7 +102,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             lng: coord[0],
             progress: (currentStep / steps) * 100,
           });
-          currentStep++;
+          currentStep += stepJump;
         } else {
           clearInterval(interval);
           this.finishDelivery(orderId, userId);
