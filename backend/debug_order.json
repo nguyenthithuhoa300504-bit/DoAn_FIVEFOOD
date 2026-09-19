@@ -1,14 +1,14 @@
 {
-  "OrderID": 84,
+  "OrderID": 85,
   "UserID": 3,
-  "OrderDate": "2026-09-18T09:17:51.254Z",
-  "TotalAmount": 144000,
-  "DiscountAmount": 20000,
+  "OrderDate": "2026-09-18T17:51:01.516Z",
+  "TotalAmount": 74000,
+  "DiscountAmount": 7400,
   "ShippingFee": 15000,
-  "FinalAmount": 139000,
-  "PromotionID": 2,
+  "FinalAmount": 81600,
+  "PromotionID": 1,
   "Status": "Hoàn thành",
-  "ShippingAddress": "Phường Phan Thiết, Phan Thiết, Tỉnh Lâm Đồng, 77120, Việt Nam",
+  "ShippingAddress": "Nguyễn Gia Tú, Phường Phú Thủy, Phan Thiết, Tỉnh Lâm Đồng, 77120, Việt Nam",
   "Latitude": null,
   "Longitude": null,
   "PaymentMethod": "Tiền mặt",
@@ -17,5 +17,5 @@
   "FullName": "ThuHoa",
   "Email": "thu@fivefood.com",
   "Phone": "0919458888",
-  "PromoCode": "GIAM20K"
+  "PromoCode": "GIAM10K"
 }
